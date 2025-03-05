@@ -19,5 +19,5 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),  # Alle API-Endpunkte werden unter /api/ erreichbar sein
+    path('api/', include('api.urls')),
 ]
