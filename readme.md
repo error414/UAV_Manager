@@ -1,3 +1,7 @@
+# DEV Readme
+
+This readme is not Final and has a lot of Temporary notes.
+
 # Installation
 
 Paste all your installation commands below:
@@ -16,6 +20,8 @@ python.exe -m pip install --upgrade pip
 pip install django djangorestframework psycopg2-binary
 
 django-admin startproject config .
+
+python manage.py runserver
 
 ## Create an PostgreSQL Container
 
@@ -42,4 +48,15 @@ docker-compose up -d
 ### Daten migrations
 
 ### DB Löschen
+
 docker exec -it uav_manager_poc-db-1 psql -U uav_manager postgres
+
+########################################################################
+########################################################################
+
+## Installation Frontend
+
+npm create vite@latest frontend --template react
+
+cd frontend
+npm install
