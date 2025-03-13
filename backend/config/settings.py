@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -39,6 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'api',
     'rest_framework',
+    'djoser',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -49,6 +52,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -129,3 +134,58 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'api.User'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+DJOSER = {
+    'LOGIN_FIELD': 'email',
+    'USER_CREATE_PASSWORD_RETYPE': True,
+    'USERNAME_FIELD': 'email',
+    'LOGIN_ON_REGISTRATION': True,
+    'SERIALIZERS': {
+        'user_create': 'api.serializers.CustomUserCreateSerializer',
+        'user': 'api.serializers.UserSerializer',
+    },
+}
+
+DJOSER.update({
+    'TOKEN_MODEL': None,  # Not used with JWT
+})
+
+SIMPLE_JWT = {
+    # The access token lifetime controls how long a user can use their access token before it expires.
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    # The refresh token lifetime controls how long a refresh token is valid.
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    # When set to True, the refresh token is rotated each time a new access token is issued.
+    'ROTATE_REFRESH_TOKENS': True,
+    # If refresh token rotation is enabled, blacklists the old refresh token.
+    'BLACKLIST_AFTER_ROTATION': True,
+    # The algorithm used to sign the token. HS256 is common.
+    'ALGORITHM': 'HS256',
+    # Your Django SECRET_KEY is typically used as the signing key.
+    'SIGNING_KEY': SECRET_KEY,
+    # Optional: Specify the authentication header types.
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    # The field in your user model used to identify the user.
+    'USER_ID_FIELD': 'user_id',
+    # The claim key used to identify the user in the payload.
+    'USER_ID_CLAIM': 'user_id',
+    # Additional settings can be added as needed.
+}
+
+
+CORS_ALLOW_ALL_ORIGINS = True # Allow all origins to access the API
+
+"""
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5175",
+]
+"""

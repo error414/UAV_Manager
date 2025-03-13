@@ -1,9 +1,13 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import Register from '../pages/Register.jsx';
+import AdditionalDetails from '../pages/AdditionalDetails.jsx';
+import Dashboard from '../pages/Dashboard.jsx'; // Dashboard importieren
+import reactLogo from './assets/react.svg';
+import viteLogo from '/vite.svg';
 
-function App() {
-  const [count, setCount] = useState(0)
+function Home() {
+  const [count, setCount] = useState(0);
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
@@ -23,6 +27,20 @@ function App() {
         >
           count is {count}
         </button>
+        {/* Registration button */}
+        <Link 
+          to="/register"
+          className="block mx-auto bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-10 rounded mt-4"
+        >
+          Register
+        </Link>
+        {/* Dashboard button */}
+        <Link 
+          to="/dashboard"
+          className="block mx-auto bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-10 rounded mt-4"
+        >
+          Dashboard
+        </Link>
         <p className="mt-4 text-gray-700">
           Edit <code>src/App.jsx</code> and save to test HMR.
         </p>
@@ -31,7 +49,24 @@ function App() {
         Click on the Vite and React logos to learn more.
       </p>
     </div>
-  )
+  );
 }
 
-export default App
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Home Route */}
+        <Route path="/" element={<Home />} />
+        {/* Registration Route */}
+        <Route path="/register" element={<Register />} />
+        {/* Additional Details Route */}
+        <Route path="/additionalDetails" element={<AdditionalDetails />} />
+        {/* Dashboard Route */}
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;

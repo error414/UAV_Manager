@@ -17,11 +17,13 @@ python -m venv .venv
 
 python.exe -m pip install --upgrade pip
 
-pip install django djangorestframework psycopg2-binary
+pip install django djangorestframework psycopg2-binary djoser djangorestframework-simplejwt
 
 django-admin startproject config .
 
 python manage.py runserver
+
+pip install -r requirements.txt
 
 ## Create an PostgreSQL Container
 
@@ -47,9 +49,19 @@ docker-compose up -d
 
 ### Daten migrations
 
+If DB should be deleted then migrate need to be run again.
+
+python manage.py makemigrations         #If new entries ar in models.py
+python manage.py migrate                #To migrate in to the DB
+
 ### DB Löschen
 
-docker exec -it uav_manager_poc-db-1 psql -U uav_manager postgres
+docker exec -it semesterarbeit_jonatan_carvalhais-db-1 psql -U uav_manager postgres
+
+DROP DATABASE uav_manager_db;
+CREATE DATABASE uav_manager_db;
+\q
+
 
 ########################################################################
 ########################################################################
