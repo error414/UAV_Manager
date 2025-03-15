@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import Register from '../pages/Register.jsx';
+import Login from '../pages/Login.jsx';
 import AdditionalDetails from '../pages/AdditionalDetails.jsx';
-import Dashboard from '../pages/Dashboard.jsx'; // Dashboard importieren
+import Dashboard from '../pages/Dashboard.jsx';
+import Flightlog from '../pages/Flightlog.jsx'; // Added Flightlog import
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 
@@ -34,12 +36,26 @@ function Home() {
         >
           Register
         </Link>
+        {/* Login button */}
+        <Link 
+          to="/login"
+          className="block mx-auto bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-10 rounded mt-4"
+        >
+          Login
+        </Link>
         {/* Dashboard button */}
         <Link 
           to="/dashboard"
           className="block mx-auto bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-10 rounded mt-4"
         >
           Dashboard
+        </Link>
+        {/* Flightlog button */}
+        <Link 
+          to="/flightlog"
+          className="block mx-auto bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-10 rounded mt-4"
+        >
+          Flightlog
         </Link>
         <p className="mt-4 text-gray-700">
           Edit <code>src/App.jsx</code> and save to test HMR.
@@ -60,10 +76,14 @@ function App() {
         <Route path="/" element={<Home />} />
         {/* Registration Route */}
         <Route path="/register" element={<Register />} />
+        {/* Login Route */}
+        <Route path="/login" element={<Login />} />
         {/* Additional Details Route */}
         <Route path="/additionalDetails" element={<AdditionalDetails />} />
         {/* Dashboard Route */}
         <Route path="/dashboard" element={<Dashboard />} />
+        {/* Flightlog Route */}
+        <Route path="/flightlog" element={<Flightlog />} />
       </Routes>
     </BrowserRouter>
   );

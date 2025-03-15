@@ -2,6 +2,17 @@
 
 This readme is not Final and has a lot of Temporary notes.
 
+###########################################################
+
+# Notes
+
+- Create User, Change PW should be done whit Djoser Endpoint.
+  - Other mutations like first_name / last_name i was not able change via Djoser endpoint.
+- All other User Related mutations are done whit django rest API.
+- For Token managment i use simplejwt
+
+###########################################################
+
 # Installation
 
 Paste all your installation commands below:
@@ -51,8 +62,8 @@ docker-compose up -d
 
 If DB should be deleted then migrate need to be run again.
 
-python manage.py makemigrations         #If new entries ar in models.py
-python manage.py migrate                #To migrate in to the DB
+python manage.py makemigrations #If new entries ar in models.py
+python manage.py migrate #To migrate in to the DB
 
 ### DB Löschen
 
@@ -61,7 +72,6 @@ docker exec -it semesterarbeit_jonatan_carvalhais-db-1 psql -U uav_manager postg
 DROP DATABASE uav_manager_db;
 CREATE DATABASE uav_manager_db;
 \q
-
 
 ########################################################################
 ########################################################################

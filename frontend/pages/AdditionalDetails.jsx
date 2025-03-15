@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthLayout, FormInput, Alert, Button } from '../components/ui';
 
 const AdditionalDetails = () => {
   const navigate = useNavigate();
@@ -12,9 +13,55 @@ const AdditionalDetails = () => {
     city: '',
     country: '',
   });
-
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    const user_id = localStorage.getItem('user_id');
+
+    // Wenn nicht eingeloggt, zur Login-Seite weiterleiten
+    if (!token || !user_id) {
+      navigate('/login');
+      return;
+    }
+
+    // Daten des aktuellen Benutzers abrufen und Formularfelder vorbelegen
+    fetch(`http://127.0.0.1:8000/api/users/${user_id}/`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+      .then(response => {
+        if (!response.ok) {
+          // If token expired or invalid, redirect to login
+          if (response.status === 401) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_id');
+            navigate('/login');
+            throw new Error('Token expired. Please login again.');
+          }
+          throw new Error('Failed to fetch user data');
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Vorbelegung der Felder, falls vorhanden
+        setDetails({
+          first_name: data.first_name || '',
+          last_name: data.last_name || '',
+          phone: data.phone || '',
+          street: data.street || '',
+          zip: data.zip || '',
+          city: data.city || '',
+          country: data.country || '',
+        });
+      })
+      .catch(err => {
+        console.error("Error fetching user details", err);
+      });
+  }, [navigate]);
 
   const handleChange = (e) => {
     setDetails({
@@ -31,13 +78,13 @@ const AdditionalDetails = () => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
 
-    if (!user_id) {
-      setError("User ID not found.");
+    if (!user_id || !token) {
+      navigate('/login');
       return;
     }
 
     try {
-      // PATCH request to the custom endpoint for updating the user
+      // PATCH-Request zum Aktualisieren der Benutzerdaten
       const response = await fetch(`http://127.0.0.1:8000/api/users/${user_id}/`, {
         method: 'PATCH',
         headers: {
@@ -46,157 +93,105 @@ const AdditionalDetails = () => {
         },
         body: JSON.stringify(details),
       });
+
+      if (!response.ok) {
+        // Handle token expiration during form submission
+        if (response.status === 401) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user_id');
+          navigate('/login');
+          return;
+        }
+        
+        const errorData = await response.json();
+        setError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
+        return;
+      }
+
       const data = await response.json();
       console.log('Update response:', data);
-
-      if (response.ok) {
-        setSuccess('Details updated successfully!');
-        navigate('/dashboard');
-      } else {
-        setError(JSON.stringify(data));
-      }
+      setSuccess('Details updated successfully!');
+      navigate('/flightlog');
     } catch (err) {
       setError('An error occurred. Please try again later.');
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-800">
-      <div className="w-full max-w-sm p-6 bg-gray-700 rounded shadow-md">
-        <h2 className="text-3xl font-semibold text-center text-white mb-6">
-          Additional Details
-        </h2>
+    <AuthLayout title="Additional Details">
+      <Alert type="error" message={error} />
+      <Alert type="success" message={success} />
 
-        {error && (
-          <div className="mb-4 p-2 bg-red-200 text-red-800 rounded">
-            {error}
-          </div>
-        )}
+      <form onSubmit={handleSubmit}>
+        <FormInput
+          label="First Name"
+          type="text"
+          name="first_name"
+          id="first_name"
+          value={details.first_name}
+          onChange={handleChange}
+          required
+        />
 
-        {success && (
-          <div className="mb-4 p-2 bg-green-200 text-green-800 rounded">
-            {success}
-          </div>
-        )}
+        <FormInput
+          label="Last Name"
+          type="text"
+          name="last_name"
+          id="last_name"
+          value={details.last_name}
+          onChange={handleChange}
+          required
+        />
 
-        <form onSubmit={handleSubmit}>
-          {/* First Name */}
-          <div className="mb-4">
-            <label htmlFor="first_name" className="block mb-1 text-gray-200">
-              First Name
-            </label>
-            <input
-              type="text"
-              name="first_name"
-              id="first_name"
-              value={details.first_name}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-              required
-            />
-          </div>
+        <FormInput
+          label="Phone"
+          type="text"
+          name="phone"
+          id="phone"
+          value={details.phone}
+          onChange={handleChange}
+        />
 
-          {/* Last Name */}
-          <div className="mb-4">
-            <label htmlFor="last_name" className="block mb-1 text-gray-200">
-              Last Name
-            </label>
-            <input
-              type="text"
-              name="last_name"
-              id="last_name"
-              value={details.last_name}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-              required
-            />
-          </div>
+        <FormInput
+          label="Street"
+          type="text"
+          name="street"
+          id="street"
+          value={details.street}
+          onChange={handleChange}
+        />
 
-          {/* Phone */}
-          <div className="mb-4">
-            <label htmlFor="phone" className="block mb-1 text-gray-200">
-              Phone
-            </label>
-            <input
-              type="text"
-              name="phone"
-              id="phone"
-              value={details.phone}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-            />
-          </div>
+        <FormInput
+          label="Zip"
+          type="text"
+          name="zip"
+          id="zip"
+          value={details.zip}
+          onChange={handleChange}
+        />
 
-          {/* Street */}
-          <div className="mb-4">
-            <label htmlFor="street" className="block mb-1 text-gray-200">
-              Street
-            </label>
-            <input
-              type="text"
-              name="street"
-              id="street"
-              value={details.street}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-            />
-          </div>
+        <FormInput
+          label="City"
+          type="text"
+          name="city"
+          id="city"
+          value={details.city}
+          onChange={handleChange}
+        />
 
-          {/* Zip */}
-          <div className="mb-4">
-            <label htmlFor="zip" className="block mb-1 text-gray-200">
-              Zip
-            </label>
-            <input
-              type="text"
-              name="zip"
-              id="zip"
-              value={details.zip}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-            />
-          </div>
+        <FormInput
+          label="Country"
+          type="text"
+          name="country"
+          id="country"
+          value={details.country}
+          onChange={handleChange}
+          className="mb-6"
+        />
 
-          {/* City */}
-          <div className="mb-4">
-            <label htmlFor="city" className="block mb-1 text-gray-200">
-              City
-            </label>
-            <input
-              type="text"
-              name="city"
-              id="city"
-              value={details.city}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* Country */}
-          <div className="mb-6">
-            <label htmlFor="country" className="block mb-1 text-gray-200">
-              Country
-            </label>
-            <input
-              type="text"
-              name="country"
-              id="country"
-              value={details.country}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Save Details
-          </button>
-        </form>
-      </div>
-    </div>
+        <Button type="submit">Save Details</Button>
+      </form>
+    </AuthLayout>
   );
 };
 

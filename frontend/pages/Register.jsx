@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthLayout, FormInput, Alert, Button } from '../components/ui';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -83,83 +84,45 @@ const Register = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-800">
-      <div className="w-full max-w-sm p-6 bg-gray-700 rounded shadow-md">
-        <h2 className="text-3xl font-semibold text-center text-white mb-6">
-          Register
-        </h2>
+    <AuthLayout title="Register">
+      <Alert type="error" message={error} />
+      <Alert type="success" message={success} />
 
-        {error && (
-          <div className="mb-4 p-2 bg-red-200 text-red-800 rounded">
-            {error}
-          </div>
-        )}
+      <form onSubmit={handleSubmit}>
+        <FormInput
+          label="E-Mail"
+          type="email"
+          name="email"
+          id="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+        />
 
-        {success && (
-          <div className="mb-4 p-2 bg-green-200 text-green-800 rounded">
-            {success}
-          </div>
-        )}
+        <FormInput
+          label="Password"
+          type="password"
+          name="password"
+          id="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+        />
 
-        <form onSubmit={handleSubmit}>
-          {/* Email */}
-          <div className="mb-4">
-            <label htmlFor="email" className="block mb-1 text-gray-200">
-              E-Mail
-            </label>
-            <input
-              type="email"
-              name="email"
-              id="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-              required
-            />
-          </div>
+        <FormInput
+          label="Repeat Password"
+          type="password"
+          name="re_password"
+          id="re_password"
+          value={formData.re_password}
+          onChange={handleChange}
+          required
+          className="mb-6"
+        />
 
-          {/* Password */}
-          <div className="mb-4">
-            <label htmlFor="password" className="block mb-1 text-gray-200">
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              id="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-              required
-            />
-          </div>
-
-          {/* Repeat Password */}
-          <div className="mb-6">
-            <label htmlFor="re_password" className="block mb-1 text-gray-200">
-              Repeat Password
-            </label>
-            <input
-              type="password"
-              name="re_password"
-              id="re_password"
-              value={formData.re_password}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-              required
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Register
-          </button>
-        </form>
-      </div>
-    </div>
+        <Button type="submit">Register</Button>
+      </form>
+    </AuthLayout>
   );
 };
 

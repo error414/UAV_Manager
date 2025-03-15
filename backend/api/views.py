@@ -1,4 +1,4 @@
-from rest_framework import generics
+from rest_framework import generics, permissions
 from .models import (
     UAV,
     FlightLog,
@@ -63,15 +63,27 @@ class FileDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = File.objects.all()
     serializer_class = FileSerializer
 
-# Optional: Endpunkte für Benutzer und Benutzereinstellungen
+# Angepasste Endpunkte für Benutzer und Benutzereinstellungen
+
+# Nur das eigene Benutzerobjekt wird angezeigt bzw. erstellt.
 class UserListCreateView(generics.ListCreateAPIView):
-    queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        # Gibt nur das aktuell authentifizierte Benutzerobjekt zurück
+        return User.objects.filter(pk=self.request.user.pk)
+
+# Der Benutzer kann nur sein eigenes Profil abrufen, aktualisieren oder löschen.
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get_object(self):
+        # Gibt immer das aktuell authentifizierte Benutzerobjekt zurück
+        return self.request.user
+
+# Endpunkte für Benutzereinstellungen
 class UserSettingsListCreateView(generics.ListCreateAPIView):
     queryset = UserSettings.objects.all()
     serializer_class = UserSettingsSerializer

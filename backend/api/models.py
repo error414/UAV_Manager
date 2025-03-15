@@ -103,8 +103,12 @@ class FlightLog(models.Model):
     departure_time = models.DateTimeField()
     landing_place = models.CharField(max_length=255)
     landing_time = models.DateTimeField()
-    flight_duration = models.IntegerField()  # z.B. in Minuten
+    flight_duration = models.IntegerField()  # z.B. in Secounds
+    takeoffs = models.IntegerField() 
     landings = models.IntegerField()
+    light_conditions = models.CharField(max_length=255)
+    ops_conditions = models.CharField(max_length=255)
+    pilot_type = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
