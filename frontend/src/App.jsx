@@ -21,7 +21,7 @@ function Home() {
           <img src={reactLogo} className="h-16 w-16" alt="React logo" />
         </a>
       </div>
-      <h1 className="text-4xl font-bold text-center mb-4">Vite + React</h1>
+      <h1 className="text-4xl font-bold text-center mb-4">UAV Manager</h1>
       <div className="bg-white shadow rounded p-6 mb-4">
         <button 
           onClick={() => setCount((prevCount) => prevCount + 1)}

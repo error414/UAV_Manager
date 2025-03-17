@@ -31,6 +31,8 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
                 onChange={onChange}
                 placeholder={field.placeholder || ""}
                 className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
+                step={field.step}
+                min={field.min}
               />
             )}
           </td>
@@ -77,6 +79,8 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
                 onChange={onChange}
                 placeholder={field.placeholder || ""}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
+                step={field.step}
+                min={field.min}
               />
             )}
           </div>

@@ -100,15 +100,17 @@ class FlightLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flightlogs')
     uav = models.ForeignKey(UAV, on_delete=models.CASCADE, related_name='flightlogs')
     departure_place = models.CharField(max_length=255)
-    departure_time = models.DateTimeField()
+    departure_date = models.DateField()
+    departure_time = models.TimeField()
     landing_place = models.CharField(max_length=255)
-    landing_time = models.DateTimeField()
+    landing_time = models.TimeField()
     flight_duration = models.IntegerField()  # z.B. in Secounds
     takeoffs = models.IntegerField() 
     landings = models.IntegerField()
     light_conditions = models.CharField(max_length=255)
     ops_conditions = models.CharField(max_length=255)
     pilot_type = models.CharField(max_length=255)
+    comments = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
