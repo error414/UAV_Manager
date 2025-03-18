@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Filters, Sidebar, Alert, AddNew, Button, Table } from '../components/ui';
+import { Filters, Sidebar, Alert, AddNew, Button, Table } from '../components';
 
 // Utility functions
 const calculateFlightDuration = (deptTime, landTime) => {

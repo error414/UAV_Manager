@@ -1,0 +1,37 @@
+gantt
+    title UAV-Manager Projekt Roadmap
+    dateFormat  YYYY-MM-DD
+    axisFormat  %d.%m.%Y
+
+    section Vorbereitung und Dokumentation
+    Anforderungsanalyse           :done, 2025-02-08, 2025-02-14
+    Technologie-Stack Festlegung  :done, 2025-02-15, 2025-02-21
+    Projektplanung                :done, 2025-02-22, 2025-02-28
+    Dokumentation erstellen       :done, 2025-03-01, 2025-03-07
+    UI/UX Design & Wireframes     :done, 2025-03-08, 2025-03-14
+
+    section Backend-Entwicklung und Frontend-Grundlagen
+    Datenbankmodelle               :active, 2025-03-15, 2025-03-21
+    API-Endpunkte                  :2025-03-22, 2025-04-04
+    Register & Login               :2025-04-05, 2025-04-11
+    Anbindung Backend              :2025-04-12, 2025-04-18
+
+    section Frontend mit MUSS-Anforderungen
+    Hauptseite                    :2025-04-19, 2025-04-25
+    New Flightlog                 :2025-04-26, 2025-05-02
+    Aircraft Settings             :2025-05-03, 2025-05-09
+    Benutzerverwaltung            :2025-05-10, 2025-05-16
+    Statistiken Aircraft          :2025-05-17, 2025-05-23
+
+    section KANN-Anforderungen & Finalisierung
+    CSV-Import & Bericht-Export   :2025-05-24, 2025-05-30
+    Dateianhänge & Wartungsalerts :2025-05-31, 2025-06-06
+    Kartenansicht (Start/Landeorte):2025-06-07, 2025-06-13
+    Testing & Bugfixing           :2025-06-14, 2025-06-20
+    Deployment                    :2025-06-21, 2025-06-27
+
+    section Meilensteine
+    2. PVA (Dokumentation)        :milestone, 2025-03-08, 0d
+    3. PVA (Backend & Grundlagen) :milestone, 2025-04-05, 0d
+    4. PVA (Frontend MUSS)        :milestone, 2025-05-10, 0d
+    5. PVA (Finalisierung)        :milestone, 2025-06-07, 0d

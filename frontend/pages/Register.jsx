@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthLayout, FormInput, Alert, Button } from '../components/ui';
+import { AuthLayout, FormInput, Alert, Button } from '../components';
 
 const Register = () => {
   const navigate = useNavigate();

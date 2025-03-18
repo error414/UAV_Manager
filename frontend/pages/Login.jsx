@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { AuthLayout, FormInput, Alert, Button } from '../components/ui';
+import { AuthLayout, FormInput, Alert, Button } from '../components';
 
 const Login = () => {
   const navigate = useNavigate();
