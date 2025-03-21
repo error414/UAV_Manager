@@ -86,7 +86,7 @@ DATABASES = {
         'NAME': 'uav_manager_db',
         'USER': 'uav_manager',
         'PASSWORD': 'DVgt8pf4',
-        'HOST': 'localhost',
+        'HOST': 'db',
         'PORT': '5432',
     }
 }
