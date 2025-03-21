@@ -13,13 +13,11 @@ RUN npm install
 # Copy project files
 COPY . .
 
-# Build the app
-RUN npm run build
+# Set environment variables - wichtig für die Vite-Proxy-Konfiguration
+ENV DOCKER=true
 
 # Expose port
 EXPOSE 5175
 
-ENV DOCKER=true
-
-# Start the app
+# Start the app with host binding
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5175"]
