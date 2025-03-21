@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Alert, Sidebar, FormInput } from '../components';
-import { apiService } from '../services/api'; // Add this import
 
 const NewAircraftPage = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Get API URL from environment variables
+  const API_URL = import.meta.env.VITE_API_URL;
   
   // Check authentication on component mount
   useEffect(() => {
@@ -146,9 +148,21 @@ const NewAircraftPage = () => {
         acc: parseInt(formData.acc)
       };
 
-      // Use apiService instead of fetch
-      const data = await apiService.createAircraft(aircraftPayload);
-      
+      const response = await fetch(`${API_URL}/api/uavs/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(aircraftPayload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
+      }
+
+      const data = await response.json();
       setSuccess('Aircraft successfully registered!');
       
       // Reset form after successful submission
@@ -219,7 +233,7 @@ const NewAircraftPage = () => {
         className="lg:hidden fixed top-4 left-4 z-20 bg-gray-800 text-white p-2 rounded-md"
         aria-label="Toggle sidebar"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button } from '../components';
-import { apiService } from '../services/api'; // Import the API service
 
 const AircraftList = () => {
   const navigate = useNavigate();
   const [aircrafts, setAircrafts] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Get API URL from environment variables
+  const API_URL = import.meta.env.VITE_API_URL;
   
   // State for filters - based on UAV model fields
   const [filters, setFilters] = useState({
@@ -31,7 +33,7 @@ const AircraftList = () => {
     fetchAircrafts();
   }, [navigate]);
 
-  // Function to fetch aircraft data using apiService
+  // Function to fetch aircraft data
   const fetchAircrafts = async () => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
@@ -42,20 +44,24 @@ const AircraftList = () => {
     }
     
     try {
-      // Use apiService instead of direct fetch
-      const data = await apiService.getUAVs(user_id, token);
-      setAircrafts(data);
-    } catch (err) {
-      console.error('Error fetching aircraft:', err);
+      const response = await fetch(`${API_URL}/api/uavs/?user=${user_id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
-      // Handle authentication errors
-      if (err.message && err.message.includes('401')) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user_id');
-        navigate('/login');
-        return;
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user_id');
+          navigate('/login');
+          return;
+        }
+        throw new Error('Failed to fetch aircraft data');
       }
       
+      const data = await response.json();
+      setAircrafts(data);
+    } catch (err) {
+      console.error(err);
       setError('Could not load aircraft data.');
     }
   };

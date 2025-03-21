@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,7 +27,8 @@ SECRET_KEY = 'django-insecure-ns1jd9c$05-&e0zgb_iwm8=3i5_f8^b-^1psjz3$6%beom%rru
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Update ALLOWED_HOSTS to include your IP and localhost
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.178.58']
 
 
 # Application definition
@@ -83,11 +85,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DATABASE_NAME', 'uav_manager_db'),
-        'USER': os.environ.get('DATABASE_USER', 'uav_manager'),
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'DVgt8pf4'),
-        'HOST': os.environ.get('DATABASE_HOST', 'localhost'),
-        'PORT': os.environ.get('DATABASE_PORT', '5432'),
+        'NAME': os.environ.get('POSTGRES_NAME', 'uav_manager_db'),
+        'USER': os.environ.get('POSTGRES_USER', 'uav_manager'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'DVgt8pf4'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+        'PORT': '5432',
     }
 }
 
@@ -182,10 +184,30 @@ SIMPLE_JWT = {
 }
 
 
-CORS_ALLOW_ALL_ORIGINS = True # Allow all origins to access the API
-
-"""
+# Replace the CORS settings with these explicit configurations
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5175",
+    "http://192.168.178.58:5175",
 ]
-"""
+
+# Add additional CORS settings for handling preflight requests
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]

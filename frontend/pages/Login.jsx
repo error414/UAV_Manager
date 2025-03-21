@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button } from '../components';
-import { apiService } from '../services/api'; // Import the API service
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,6 +11,9 @@ const Login = () => {
 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  
+  // Get API URL from environment variables
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const handleChange = (e) => {
     setFormData({
@@ -26,26 +28,43 @@ const Login = () => {
     setSuccess(null);
 
     try {
-      // Use the API service for login instead of direct fetch
-      const data = await apiService.login(formData.email, formData.password);
-      
-      if (data.access) {
+      const response = await fetch(`${API_URL}/auth/jwt/create/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+      console.log('Login response:', data);
+
+      if (response.ok) {
         // Save token to localStorage
-        localStorage.setItem('access_token', data.access);
-        
-        // Fetch the user ID from the /me endpoint
-        const userData = await apiService.getUser(data.access);
-        if (userData.user_id) {
-          localStorage.setItem('user_id', userData.user_id);
+        if (data.access) {
+          localStorage.setItem('access_token', data.access);
+          
+          // Fetch the user ID from the /me endpoint
+          const meResponse = await fetch(`${API_URL}/auth/users/me/`, {
+            headers: {
+              'Authorization': `Bearer ${data.access}`
+            }
+          });
+          
+          if (meResponse.ok) {
+            const userData = await meResponse.json();
+            localStorage.setItem('user_id', userData.user_id);
+          }
+          
+          setSuccess('Login successful!');
+          navigate('/flightlog');
+        } else {
+          setError('No access token received.');
         }
-        
-        setSuccess('Login successful!');
-        navigate('/flightlog');
       } else {
-        setError(data.detail || 'No access token received.');
+        setError(data.detail || 'Invalid credentials');
       }
     } catch (err) {
-      console.error(err);
       setError('An error occurred. Please try again later.');
     }
   };

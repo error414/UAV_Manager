@@ -1,15 +1,27 @@
-FROM python:3.13-slim
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim
 
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
+# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-EXPOSE 8000
+# Set work directory
+WORKDIR /app
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy project
+COPY . .
+
+# Collect static files
+# RUN python manage.py collectstatic --noinput
+
+# Run migrations
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from './Button';
-import { apiService } from '../services/api'; // Import the API service
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const [userName, setUserName] = useState('');
   const [activePath, setActivePath] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get API URL from environment variables
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // Speichern und Wiederherstellen des aktiven Pfads
   useEffect(() => {
@@ -35,19 +37,24 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       if (!token || !user_id) return;
       
       try {
-        // Use apiService instead of direct fetch
-        const userData = await apiService.updateUser(user_id, {}, token);
+        const response = await fetch(`${API_URL}/api/users/${user_id}/`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         
-        // Format the user's name
-        const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-        setUserName(fullName || userData.email);
+        if (response.ok) {
+          const userData = await response.json();
+          const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+          setUserName(fullName || userData.email);
+        }
       } catch (error) {
         console.error('Error fetching user data:', error);
       }
     };
     
     fetchUserData();
-  }, []);
+  }, [API_URL]); // Added API_URL to dependencies
   
   const handleLogout = () => {
     localStorage.removeItem('access_token');
