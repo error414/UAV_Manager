@@ -35,7 +35,7 @@ services:
       - POSTGRES_NAME=uav_manager_db
       - POSTGRES_USER=uav_manager
       - POSTGRES_PASSWORD=DVgt8pf4
-      - POSTGRES_HOST=uav_manager-db-1
+      - POSTGRES_HOST=db
     volumes:
       - ./backend:/app
 
