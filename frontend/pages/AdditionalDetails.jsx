@@ -28,7 +28,7 @@ const AdditionalDetails = () => {
     }
 
     // Daten des aktuellen Benutzers abrufen und Formularfelder vorbelegen
-    fetch(`http://127.0.0.1:8000/api/users/${user_id}/`, {
+    fetch(`/api/users/${user_id}/`, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
@@ -107,7 +107,7 @@ const AdditionalDetails = () => {
 
     try {
       // PATCH-Request zum Aktualisieren der Benutzerdaten
-      const response = await fetch(`http://127.0.0.1:8000/api/users/${user_id}/`, {
+      const response = await fetch(`/api/users/${user_id}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

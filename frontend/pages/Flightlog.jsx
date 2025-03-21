@@ -97,7 +97,7 @@ const Flightlog = () => {
       return;
     }
     
-    fetch(`http://127.0.0.1:8000/api/flightlogs/?user=${user_id}`, {
+    fetch(`/api/flightlogs/?user=${user_id}`, {
       headers: getAuthHeaders()
     })
       .then((res) => {
@@ -120,7 +120,7 @@ const Flightlog = () => {
     const user_id = localStorage.getItem('user_id');
     if (!token || !user_id) return;
     
-    fetch(`http://127.0.0.1:8000/api/uavs/?user=${user_id}`, {
+    fetch(`/api/uavs/?user=${user_id}`, {
       headers: getAuthHeaders()
     })
       .then((res) => {
@@ -269,7 +269,7 @@ const Flightlog = () => {
     };
   
     try {
-      const response = await fetch('http://localhost:8000/api/flightlogs/', {
+      const response = await fetch('/api/flightlogs/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -348,7 +348,7 @@ const Flightlog = () => {
     };
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/flightlogs/${editingLogId}/`, {
+      const response = await fetch(`/api/flightlogs/${editingLogId}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -392,7 +392,7 @@ const Flightlog = () => {
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/flightlogs/${id}/`, {
+      const response = await fetch(`/api/flightlogs/${id}/`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });

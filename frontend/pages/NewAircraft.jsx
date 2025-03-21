@@ -145,7 +145,7 @@ const NewAircraftPage = () => {
         acc: parseInt(formData.acc)
       };
 
-      const response = await fetch('http://127.0.0.1:8000/api/uavs/', {
+      const response = await fetch('/api/uavs/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

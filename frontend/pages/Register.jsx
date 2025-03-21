@@ -32,7 +32,7 @@ const Register = () => {
 
     try {
       // Registration request using Djoser's endpoint
-      const response = await fetch('http://localhost:8000/auth/users/', {
+      const response = await fetch('/auth/users/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ const Register = () => {
           localStorage.setItem('access_token', data.access);
         } else {
           // If no token is returned, try logging in
-          const loginResponse = await fetch('http://localhost:8000/auth/jwt/create/', {
+          const loginResponse = await fetch('/auth/jwt/create/', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

@@ -25,7 +25,7 @@ const Login = () => {
     setSuccess(null);
 
     try {
-      const response = await fetch('http://localhost:8000/auth/jwt/create/', {
+      const response = await fetch('/auth/jwt/create/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ const Login = () => {
           localStorage.setItem('access_token', data.access);
           
           // Fetch the user ID from the /me endpoint
-          const meResponse = await fetch('http://localhost:8000/auth/users/me/', {
+          const meResponse = await fetch('/auth/users/me/', {
             headers: {
               'Authorization': `Bearer ${data.access}`
             }

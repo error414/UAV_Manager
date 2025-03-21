@@ -41,7 +41,7 @@ const AircraftList = () => {
     }
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/uavs/?user=${user_id}`, {
+      const response = await fetch(`/api/uavs/?user=${user_id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       

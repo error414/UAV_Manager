@@ -34,7 +34,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       if (!token || !user_id) return;
       
       try {
-        const response = await fetch(`http://127.0.0.1:8000/api/users/${user_id}/`, {
+        const response = await fetch(`/api/users/${user_id}/`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
