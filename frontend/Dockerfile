@@ -19,5 +19,7 @@ RUN npm run build
 # Expose port
 EXPOSE 5175
 
+ENV DOCKER=true
+
 # Start the app
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5175"]
