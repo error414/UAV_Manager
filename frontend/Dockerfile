@@ -10,6 +10,9 @@ ARG NODE_ENV=development
 # Set environment variable
 ENV NODE_ENV=${NODE_ENV}
 
+# Increase the file watch limit
+RUN echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf && sysctl -p
+
 # Install dependencies needed for native modules
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -20,8 +23,8 @@ RUN apt-get update && apt-get install -y \
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies with platform-specific flags
-RUN npm install --platform=linux --arch=x64
+# Install dependencies with explicit dev inclusion
+RUN npm install --platform=linux --arch=x64 --include=dev
 
 # Copy project files
 COPY . .

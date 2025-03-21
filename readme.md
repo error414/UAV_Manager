@@ -58,6 +58,8 @@ postgres_data:
 
 docker-compose up -d
 
+docker-compose build --no-cache frontend
+
 ### Daten migrations
 
 If DB should be deleted then migrate need to be run again.
