@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from './Button';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const [userName, setUserName] = useState('');
+  const [activePath, setActivePath] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Speichern und Wiederherstellen des aktiven Pfads
+  useEffect(() => {
+    const currentPath = location.pathname;
+    localStorage.setItem('activePath', currentPath);
+    setActivePath(currentPath);
+  }, [location.pathname]);
+
+  // Beim ersten Laden den gespeicherten Pfad wiederherstellen
+  useEffect(() => {
+    const savedPath = localStorage.getItem('activePath');
+    if (savedPath) {
+      setActivePath(savedPath);
+    } else {
+      setActivePath(location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     // Fetch user data to display the name
@@ -40,47 +59,76 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     navigate('/login');
   };
 
+  // Menu items with appropriate icons
+  const menuItems = [
+    { path: '/flightlog', icon: 'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z', label: 'Flight Log' },
+    { path: '/AircraftList', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', label: 'Aircraft List' },
+    { path: '/dashboard', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z', label: 'User Settings' }
+  ];
+
   return (
     <aside
       className={`${
         isOpen ? 'translate-x-0' : '-translate-x-full'
-      } lg:translate-x-0 transform transition-transform duration-300 ease-in-out fixed lg:static lg:w-64 w-64 bg-gray-800 text-white h-full z-10 flex flex-col`}
+      } lg:translate-x-0 transform transition-transform duration-300 ease-in-out fixed lg:static lg:w-64 w-64 bg-gray-900 text-gray-300 h-full z-10 flex flex-col overflow-y-auto`}
     >
-      <div className="p-4 text-xl font-bold border-b border-gray-700 flex justify-between items-center">
+      <div className="p-3 text-lg font-bold border-b border-gray-800 flex justify-between items-center">
         <span>UAV Manager</span>
         <button onClick={toggleSidebar} className="lg:hidden text-white" aria-label="Close sidebar">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
       
-      <nav className="flex-1 p-4 space-y-2">
-        <Link to="/flightlog" className="block hover:bg-gray-700 px-2 py-1 rounded" onClick={toggleSidebar}>
-          Flight Log
-        </Link>
-        <Link to="/aircraft-list" className="block hover:bg-gray-700 px-2 py-1 rounded" onClick={toggleSidebar}>
-          Aircraft List
-        </Link>
-        <Link to="/user-settings" className="block hover:bg-gray-700 px-2 py-1 rounded" onClick={toggleSidebar}>
-          User Settings
-        </Link>
+      <nav className="flex-1 py-1">
+        {menuItems.map((item) => {
+          // Überprüfung gegen sowohl location.pathname als auch den gespeicherten aktivePath
+          const isActive = 
+            activePath === item.path || 
+            activePath === `${item.path}/` ||
+            (item.path !== '/' && activePath.startsWith(item.path)) ||
+            location.pathname === item.path || 
+            location.pathname === `${item.path}/` ||
+            (item.path !== '/' && location.pathname.startsWith(item.path));
+          return (
+            <Link 
+              key={item.path}
+              to={item.path} 
+              className={`flex items-center px-3 py-2 text-sm hover:bg-gray-800 ${
+                isActive ? 'bg-blue-600 text-white' : ''
+              }`} 
+              onClick={() => {
+                setActivePath(item.path);
+                localStorage.setItem('activePath', item.path);
+                toggleSidebar();
+              }}
+            >
+              {item.icon && (
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
+                </svg>
+              )}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
       
       {/* User info and logout at the bottom */}
-      <div className="p-4 border-t border-gray-700">
-        {userName && (
-          <div className="text-center mb-3 font-semibold text-gray-300">
+      {userName && (
+        <div className="p-3 border-t border-gray-800">
+          <div className="text-center mb-2 text-sm text-gray-400">
             {userName}
           </div>
-        )}
-        <Button 
-          onClick={handleLogout}
-          className="bg-red-600 hover:bg-red-700"
-        >
-          Log Out
-        </Button>
-      </div>
+          <Button 
+            onClick={handleLogout}
+            className="bg-red-600 hover:bg-red-700 w-full"
+          >
+            Log Out
+          </Button>
+        </div>
+      )}
     </aside>
   );
 };

@@ -4,7 +4,9 @@ import Register from '../pages/Register.jsx';
 import Login from '../pages/Login.jsx';
 import AdditionalDetails from '../pages/AdditionalDetails.jsx';
 import Dashboard from '../pages/Dashboard.jsx';
-import Flightlog from '../pages/Flightlog.jsx'; // Added Flightlog import
+import Flightlog from '../pages/Flightlog.jsx';
+import AircraftList from '../pages/AircraftList.jsx'; 
+import NewAircraftForm from '../pages/NewAircraft.jsx'; // Import the new component
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 
@@ -57,6 +59,20 @@ function Home() {
         >
           Flightlog
         </Link>
+        {/* Aircraft List button */}
+        <Link 
+          to="/aircraft-list"
+          className="block mx-auto bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-10 rounded mt-4"
+        >
+          Aircraft List
+        </Link>
+        {/* New Aircraft button */}
+        <Link 
+          to="/new-aircraft"
+          className="block mx-auto bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-10 rounded mt-4"
+        >
+          New Aircraft
+        </Link>
         <p className="mt-4 text-gray-700">
           Edit <code>src/App.jsx</code> and save to test HMR.
         </p>
@@ -84,6 +100,12 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         {/* Flightlog Route */}
         <Route path="/flightlog" element={<Flightlog />} />
+        {/* Aircraft List Route */}
+        <Route path="/aircraft-list" element={<AircraftList />} />
+        {/* Add a route for the capitalized version too in case it's being used elsewhere */}
+        <Route path="/AircraftList" element={<AircraftList />} />
+        {/* New Aircraft Form Route */}
+        <Route path="/new-aircraft" element={<NewAircraftForm />} />
       </Routes>
     </BrowserRouter>
   );
