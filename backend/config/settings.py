@@ -83,11 +83,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_NAME', 'uav_manager_db'),
-        'USER': os.environ.get('POSTGRES_USER', 'uav_manager'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'DVgt8pf4'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),  # Default to localhost, override in Docker
-        'PORT': '5432',
+        'NAME': os.environ.get('DATABASE_NAME', 'uav_manager_db'),
+        'USER': os.environ.get('DATABASE_USER', 'uav_manager'),
+        'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'DVgt8pf4'),
+        'HOST': os.environ.get('DATABASE_HOST', 'localhost'),
+        'PORT': os.environ.get('DATABASE_PORT', '5432'),
     }
 }
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button } from '../components';
+import { apiService } from '../services/api'; // Import the API service
 
 const Login = () => {
   const navigate = useNavigate();
@@ -25,43 +26,26 @@ const Login = () => {
     setSuccess(null);
 
     try {
-      const response = await fetch('/auth/jwt/create/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-      console.log('Login response:', data);
-
-      if (response.ok) {
+      // Use the API service for login instead of direct fetch
+      const data = await apiService.login(formData.email, formData.password);
+      
+      if (data.access) {
         // Save token to localStorage
-        if (data.access) {
-          localStorage.setItem('access_token', data.access);
-          
-          // Fetch the user ID from the /me endpoint
-          const meResponse = await fetch('/auth/users/me/', {
-            headers: {
-              'Authorization': `Bearer ${data.access}`
-            }
-          });
-          
-          if (meResponse.ok) {
-            const userData = await meResponse.json();
-            localStorage.setItem('user_id', userData.user_id);
-          }
-          
-          setSuccess('Login successful!');
-          navigate('/flightlog');
-        } else {
-          setError('No access token received.');
+        localStorage.setItem('access_token', data.access);
+        
+        // Fetch the user ID from the /me endpoint
+        const userData = await apiService.getUser(data.access);
+        if (userData.user_id) {
+          localStorage.setItem('user_id', userData.user_id);
         }
+        
+        setSuccess('Login successful!');
+        navigate('/flightlog');
       } else {
-        setError(data.detail || 'Invalid credentials');
+        setError(data.detail || 'No access token received.');
       }
     } catch (err) {
+      console.error(err);
       setError('An error occurred. Please try again later.');
     }
   };

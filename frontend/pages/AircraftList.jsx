@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button } from '../components';
+import { apiService } from '../services/api'; // Import the API service
 
 const AircraftList = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const AircraftList = () => {
     fetchAircrafts();
   }, [navigate]);
 
-  // Function to fetch aircraft data
+  // Function to fetch aircraft data using apiService
   const fetchAircrafts = async () => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
@@ -41,24 +42,20 @@ const AircraftList = () => {
     }
     
     try {
-      const response = await fetch(`/api/uavs/?user=${user_id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user_id');
-          navigate('/login');
-          return;
-        }
-        throw new Error('Failed to fetch aircraft data');
-      }
-      
-      const data = await response.json();
+      // Use apiService instead of direct fetch
+      const data = await apiService.getUAVs(user_id, token);
       setAircrafts(data);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching aircraft:', err);
+      
+      // Handle authentication errors
+      if (err.message && err.message.includes('401')) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_id');
+        navigate('/login');
+        return;
+      }
+      
       setError('Could not load aircraft data.');
     }
   };

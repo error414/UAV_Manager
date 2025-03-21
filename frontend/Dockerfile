@@ -1,23 +1,12 @@
-# Use official Node image
-FROM node:20
+FROM node:20-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy project files
 COPY . .
 
-# Set environment variables - wichtig für die Vite-Proxy-Konfiguration
-ENV DOCKER=true
+EXPOSE 5173
 
-# Expose port
-EXPOSE 5175
-
-# Start the app with host binding
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5175"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

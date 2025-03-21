@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from './Button';
+import { apiService } from '../services/api'; // Import the API service
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const [userName, setUserName] = useState('');
@@ -34,17 +35,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       if (!token || !user_id) return;
       
       try {
-        const response = await fetch(`/api/users/${user_id}/`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        // Use apiService instead of direct fetch
+        const userData = await apiService.updateUser(user_id, {}, token);
         
-        if (response.ok) {
-          const userData = await response.json();
-          const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-          setUserName(fullName || userData.email);
-        }
+        // Format the user's name
+        const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+        setUserName(fullName || userData.email);
       } catch (error) {
         console.error('Error fetching user data:', error);
       }

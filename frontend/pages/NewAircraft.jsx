@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Alert, Sidebar, FormInput } from '../components';
+import { apiService } from '../services/api'; // Add this import
 
 const NewAircraftPage = () => {
   const navigate = useNavigate();
@@ -145,21 +146,9 @@ const NewAircraftPage = () => {
         acc: parseInt(formData.acc)
       };
 
-      const response = await fetch('/api/uavs/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(aircraftPayload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
-      }
-
-      const data = await response.json();
+      // Use apiService instead of fetch
+      const data = await apiService.createAircraft(aircraftPayload);
+      
       setSuccess('Aircraft successfully registered!');
       
       // Reset form after successful submission
