@@ -10,11 +10,18 @@ ARG NODE_ENV=development
 # Set environment variable
 ENV NODE_ENV=${NODE_ENV}
 
+# Install dependencies needed for native modules
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with platform-specific flags
+RUN npm install --platform=linux --arch=x64
 
 # Copy project files
 COPY . .
@@ -26,4 +33,4 @@ RUN npm run build
 EXPOSE 5175
 
 # Start the app with the appropriate environment
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5175", "--mode", "${NODE_ENV}"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5175"]
