@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button } from '../components';
+import { CountryDropdown } from 'react-country-region-selector';
 
 const AdditionalDetails = () => {
   const navigate = useNavigate();
@@ -67,6 +68,27 @@ const AdditionalDetails = () => {
     setDetails({
       ...details,
       [e.target.name]: e.target.value,
+    });
+  };
+
+  // Handle numeric input fields (phone and zip)
+  const handleNumericInput = (e) => {
+    const { name, value } = e.target;
+    
+    // Only allow numeric characters
+    const numericValue = value.replace(/\D/g, '');
+    
+    setDetails({
+      ...details,
+      [name]: numericValue,
+    });
+  };
+
+  // Handle country selection
+  const selectCountry = (val) => {
+    setDetails({
+      ...details,
+      country: val
     });
   };
 
@@ -145,11 +167,13 @@ const AdditionalDetails = () => {
 
         <FormInput
           label="Phone"
-          type="text"
+          type="tel"
           name="phone"
           id="phone"
           value={details.phone}
-          onChange={handleChange}
+          onChange={handleNumericInput}
+          inputMode="numeric"
+          pattern="[0-9]*"
         />
 
         <FormInput
@@ -167,7 +191,9 @@ const AdditionalDetails = () => {
           name="zip"
           id="zip"
           value={details.zip}
-          onChange={handleChange}
+          onChange={handleNumericInput}
+          inputMode="numeric"
+          pattern="[0-9]*"
         />
 
         <FormInput
@@ -179,15 +205,18 @@ const AdditionalDetails = () => {
           onChange={handleChange}
         />
 
-        <FormInput
-          label="Country"
-          type="text"
-          name="country"
-          id="country"
-          value={details.country}
-          onChange={handleChange}
-          className="mb-6"
-        />
+        {/* Country-Feld - mit Label in exakt dem gleichen Format wie die anderen FormInput-Komponenten */}
+        <div className="mb-4">
+          <p className="text-white mb-2">Country</p>
+          <CountryDropdown
+            id="country"
+            name="country"
+            value={details.country}
+            onChange={selectCountry}
+            defaultOptionLabel=" "
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+          />
+        </div>
 
         <Button type="submit">Save Details</Button>
       </form>

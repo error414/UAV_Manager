@@ -41,7 +41,6 @@ const OPTIONS = {
   ]
 };
 
-// Initial state for flight data
 const INITIAL_FLIGHT_STATE = {
   departure_place: '',
   departure_date: '',
@@ -178,15 +177,15 @@ const Flightlog = () => {
       { label: 'Departure Date', name: 'departure_date', type: 'date', required: !forFilters },
       { label: 'Departure Time', name: 'departure_time', type: 'time', required: !forFilters, step: "1" },
       { label: 'Landing Time', name: 'landing_time', type: 'time', required: !forFilters, step: "1" },
-      { label: 'Landing Place', name: 'landing_place', type: 'text', placeholder: forFilters ? 'Filter Landing Place' : 'Landing place' },
-      { label: 'Flight Duration', name: 'flight_duration', type: 'number', placeholder: forFilters ? 'Filter Duration' : 'Flight time (s)', step: "1", min: "0" },
-      { label: 'Takeoffs', name: 'takeoffs', type: 'number', placeholder: forFilters ? 'Filter Takeoffs' : 'Number of T/O', step: "1", min: "0" },
-      { label: 'Landings', name: 'landings', type: 'number', placeholder: forFilters ? 'Filter Landings' : 'Number of LDG', step: "1", min: "0" },
-      { label: 'Light Conditions', name: 'light_conditions', type: forFilters ? 'text' : 'select', placeholder: forFilters ? 'Filter Light Conditions' : 'Select', options: OPTIONS.light_conditions },
-      { label: 'Ops Conditions', name: 'ops_conditions', type: forFilters ? 'text' : 'select', placeholder: forFilters ? 'Filter Ops Conditions' : 'Select', options: OPTIONS.ops_conditions },
-      { label: 'Pilot Type', name: 'pilot_type', type: forFilters ? 'text' : 'select', placeholder: forFilters ? 'Filter Pilot Type' : 'Select', options: OPTIONS.pilot_type }
+      { label: 'Landing Place', name: 'landing_place', type: 'text', placeholder: forFilters ? 'Filter Landing Place' : 'Landing place', required: !forFilters },
+      { label: 'Flight Duration', name: 'flight_duration', type: 'number', placeholder: forFilters ? 'Filter Duration' : 'Flight time (s)', step: "1", min: "0", required: false },
+      { label: 'Takeoffs', name: 'takeoffs', type: 'number', placeholder: forFilters ? 'Filter Takeoffs' : 'Number of T/O', step: "1", min: "0", required: !forFilters },
+      { label: 'Landings', name: 'landings', type: 'number', placeholder: forFilters ? 'Filter Landings' : 'Number of LDG', step: "1", min: "0", required: !forFilters },
+      { label: 'Light Conditions', name: 'light_conditions', type: forFilters ? 'text' : 'select', placeholder: forFilters ? 'Filter Light Conditions' : 'Select', options: OPTIONS.light_conditions, required: !forFilters },
+      { label: 'Ops Conditions', name: 'ops_conditions', type: forFilters ? 'text' : 'select', placeholder: forFilters ? 'Filter Ops Conditions' : 'Select', options: OPTIONS.ops_conditions, required: !forFilters },
+      { label: 'Pilot Type', name: 'pilot_type', type: forFilters ? 'text' : 'select', placeholder: forFilters ? 'Filter Pilot Type' : 'Select', options: OPTIONS.pilot_type, required: !forFilters }
     ];
-
+  
     // Add UAV field with appropriate options for non-filter forms
     if (!forFilters) {
       baseFields.push({
@@ -245,29 +244,32 @@ const Flightlog = () => {
   // CRUD operations
   const handleNewFlightAdd = async () => {
     if (!newFlight.departure_date || !newFlight.departure_time || 
-        !newFlight.landing_time || !newFlight.uav) {
+        !newFlight.landing_time || !newFlight.uav || 
+        !newFlight.departure_place || !newFlight.landing_place || 
+        !newFlight.light_conditions || !newFlight.ops_conditions || 
+        !newFlight.pilot_type) {
       setError('Please fill in all required fields.');
       return;
     }
-
+  
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
     if (!token || !user_id) {
       navigate('/login');
       return;
     }
-
+  
     const flightPayload = {
       ...newFlight,
       flight_duration: parseInt(newFlight.flight_duration) || 0,
-      takeoffs: parseInt(newFlight.takeoffs) || 0,
-      landings: parseInt(newFlight.landings) || 0,
+      takeoffs: parseInt(newFlight.takeoffs) || 1,  
+      landings: parseInt(newFlight.landings) || 1,
       comments: newFlight.comments || '',
       user: user_id
     };
-
+  
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/flightlogs/', {
+      const response = await fetch('http://localhost:8000/api/flightlogs/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -275,14 +277,14 @@ const Flightlog = () => {
         },
         body: JSON.stringify(flightPayload)
       });
-
+  
       if (!response.ok) {
         if (handleAuthError(response)) return;
         const errorData = await response.json();
         setError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
         return;
       }
-
+  
       fetchFlightLogs();
       setNewFlight({...INITIAL_FLIGHT_STATE});
       setError(null);
@@ -296,10 +298,34 @@ const Flightlog = () => {
     const logToEdit = logs.find(log => log.flightlog_id === id);
     
     if (logToEdit) {
+      let uavValue;
+
+      if (logToEdit.uav && typeof logToEdit.uav === 'object' && logToEdit.uav.uav_id) {
+
+        uavValue = logToEdit.uav.uav_id;
+      } else {
+
+        uavValue = logToEdit.uav;
+      }
+      
       setEditingLog({
         ...logToEdit,
-        uav: logToEdit.uav ? logToEdit.uav.uav_id : '',
+        uav: uavValue,
+
+        departure_place: logToEdit.departure_place || '',
+        departure_date: logToEdit.departure_date || '',
+        departure_time: logToEdit.departure_time || '',
+        landing_time: logToEdit.landing_time || '',
+        landing_place: logToEdit.landing_place || '',
+        flight_duration: logToEdit.flight_duration !== undefined ? logToEdit.flight_duration : '',
+        takeoffs: logToEdit.takeoffs !== undefined ? logToEdit.takeoffs : '',
+        landings: logToEdit.landings !== undefined ? logToEdit.landings : '',
+        light_conditions: logToEdit.light_conditions || '',
+        ops_conditions: logToEdit.ops_conditions || '',
+        pilot_type: logToEdit.pilot_type || '',
+        comments: logToEdit.comments || ''
       });
+      
       setEditingLogId(id);
     }
   };

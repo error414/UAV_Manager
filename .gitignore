@@ -11,3 +11,8 @@ backend/config/__pycache__/urls.cpython-313.pyc
 backend/config/__pycache__/settings.cpython-313.pyc
 backend/config/__pycache__/settings.cpython-313.pyc
 backend/config/__pycache__/urls.cpython-313.pyc
+backend/api/__pycache__/tests.cpython-313.pyc
+backend/api/migrations/0001_initial.py
+backend/api/migrations/0002_alter_user_options_alter_user_managers_and_more.py
+backend/api/migrations/__pycache__/0001_initial.cpython-313.pyc
+backend/api/migrations/__pycache__/0002_alter_user_options_alter_user_managers_and_more.cpython-313.pyc

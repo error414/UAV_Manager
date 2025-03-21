@@ -24,8 +24,8 @@ class UserSerializer(BaseDjoserUserSerializer):
             'a1_a3', 'a2', 'sts', 'created_at', 'updated_at'
         )
         extra_kwargs = {
-            'first_name': {'required': False, 'allow_blank': True},
-            'last_name': {'required': False, 'allow_blank': True},
+            'first_name': {'required': True, 'allow_blank': False},
+            'last_name': {'required': True, 'allow_blank': False},
             'phone': {'required': False, 'allow_blank': True},
             'street': {'required': False, 'allow_blank': True},
             'zip': {'required': False, 'allow_blank': True},

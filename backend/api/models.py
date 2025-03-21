@@ -95,7 +95,25 @@ class UAV(models.Model):
 
 
 # Fluglogs (FLIGHTLOGS)
+# Fluglogs (FLIGHTLOGS)
 class FlightLog(models.Model):
+    # Definiere Choices für die Dropdown-Felder
+    LIGHT_CONDITIONS = [
+        ('Day', 'Day'),
+        ('Night', 'Night'),
+    ]
+    
+    OPS_CONDITIONS = [
+        ('VLOS', 'VLOS'),
+        ('BLOS', 'BLOS'),
+    ]
+    
+    PILOT_TYPE = [
+        ('PIC', 'PIC'),
+        ('Dual', 'Dual'),
+        ('Instruction', 'Instruction'),
+    ]
+    
     flightlog_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flightlogs')
     uav = models.ForeignKey(UAV, on_delete=models.CASCADE, related_name='flightlogs')
@@ -107,15 +125,14 @@ class FlightLog(models.Model):
     flight_duration = models.IntegerField()  # z.B. in Secounds
     takeoffs = models.IntegerField() 
     landings = models.IntegerField()
-    light_conditions = models.CharField(max_length=255)
-    ops_conditions = models.CharField(max_length=255)
-    pilot_type = models.CharField(max_length=255)
-    comments = models.CharField(max_length=255)
+    light_conditions = models.CharField(max_length=255, choices=LIGHT_CONDITIONS)
+    ops_conditions = models.CharField(max_length=255, choices=OPS_CONDITIONS)
+    pilot_type = models.CharField(max_length=255, choices=PILOT_TYPE)
+    comments = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"FlightLog {self.flightlog_id} for UAV {self.uav}"
-
 
 # Wartungsprotokolle (MAINTENANCELOGS)
 class MaintenanceLog(models.Model):
