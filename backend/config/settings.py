@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
-
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -83,10 +83,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'uav_manager_db',
-        'USER': 'uav_manager',
-        'PASSWORD': 'DVgt8pf4',
-        'HOST': 'localhost',
+        'NAME': os.environ.get('POSTGRES_NAME', 'uav_manager_db'),
+        'USER': os.environ.get('POSTGRES_USER', 'uav_manager'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'DVgt8pf4'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),  # Default to localhost, override in Docker
         'PORT': '5432',
     }
 }
