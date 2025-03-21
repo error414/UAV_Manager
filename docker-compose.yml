@@ -22,5 +22,32 @@ services:
     volumes:
       - ./servers.json:/pgadmin4/servers.json
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_NAME=uav_manager_db
+      - POSTGRES_USER=uav_manager
+      - POSTGRES_PASSWORD=DVgt8pf4
+      - POSTGRES_HOST=db
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "5175:5175"
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
