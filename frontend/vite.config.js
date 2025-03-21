@@ -12,12 +12,11 @@ export default defineConfig({
     port: 5175,
     proxy: {
       '/api': {
-        target: process.env.DOCKER === 'true' || process.env.DOCKER === '1' ? 'http://backend:8000' : 'http://localhost:8000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        target: process.env.DOCKER === 'true' ? 'http://backend:8000' : 'http://localhost:8000',
+        changeOrigin: true
       },
       '/auth': {
-        target: process.env.DOCKER === 'true' || process.env.DOCKER === '1' ? 'http://backend:8000' : 'http://localhost:8000',
+        target: process.env.DOCKER === 'true' ? 'http://backend:8000' : 'http://localhost:8000',
         changeOrigin: true
       }
     }
