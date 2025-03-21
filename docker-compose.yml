@@ -38,6 +38,7 @@ services:
       - POSTGRES_HOST=db # Changed from localhost to db
     volumes:
       - ./backend:/app
+    command: python manage.py runserver 0.0.0.0:8000
 
   frontend:
     build:
