@@ -60,6 +60,8 @@ docker-compose up -d
 
 docker-compose build --no-cache frontend
 
+docker-compose up -d --build #Falls du sicherstellen willst, dass alles von Grund auf neu gebaut wird
+
 ### Daten migrations
 
 If DB should be deleted then migrate need to be run again.
