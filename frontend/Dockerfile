@@ -10,9 +10,6 @@ ARG NODE_ENV=development
 # Set environment variable
 ENV NODE_ENV=${NODE_ENV}
 
-# Increase the file watch limit
-RUN echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf && sysctl -p
-
 # Install dependencies needed for native modules
 RUN apt-get update && apt-get install -y \
     python3 \
