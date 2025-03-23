@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
 COPY package*.json ./
 
 # Install dependencies with explicit dev inclusion
-RUN npm install --platform=linux --arch=x64 --include=dev
+RUN npm install 
 
 # Copy project files
 COPY . .

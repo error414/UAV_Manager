@@ -11,17 +11,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  pgadmin:
-    image: dpage/pgadmin4
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: info@carvalhais.ch
-      PGADMIN_DEFAULT_PASSWORD: carvalhais
-    ports:
-      - "5050:80"
-    volumes:
-      - ./servers.json:/pgadmin4/servers.json
-
   backend:
     build:
       context: ./backend
