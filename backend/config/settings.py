@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-ns1jd9c$05-&e0zgb_iwm8=3i5_f8^b-^1psjz3$6%beom%rru
 DEBUG = True
 
 # Update ALLOWED_HOSTS to include your IP and localhost
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.178.58','192.168.178.53']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.178.58','192.168.178.53','192.168.178.33']
 
 
 # Application definition
@@ -190,6 +190,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5175",
     "http://192.168.178.58:5175",
     "http://192.168.178.53:5175",
+    "http://192.168.178.33:5175",
 ]
 
 # Add additional CORS settings for handling preflight requests
