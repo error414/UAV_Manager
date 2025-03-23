@@ -5,7 +5,7 @@ FROM node:20
 WORKDIR /app
 
 # Add build argument for environment
-ARG NODE_ENV=development
+ARG NODE_ENV=prodocution
 
 # Set environment variable
 ENV NODE_ENV=${NODE_ENV}
