@@ -5,7 +5,7 @@ FROM node:20
 WORKDIR /app
 
 # Add build argument for environment
-ARG NODE_ENV=prodocution
+ARG NODE_ENV=production
 
 # Set environment variable
 ENV NODE_ENV=${NODE_ENV}
@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
 COPY package*.json ./
 
 # Install dependencies with explicit dev inclusion
-RUN npm install --include=dev
+RUN npm install 
 
 # Copy project files
 COPY . .
