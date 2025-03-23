@@ -1,71 +1,99 @@
+# backend/api/views.py
 from rest_framework import generics, permissions
 from .models import (
-    UAV,
-    FlightLog,
-    MaintenanceLog,
-    MaintenanceReminder,
-    File,
-    User,
-    UserSettings
+    UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings
 )
 from .serializers import (
-    UAVSerializer,
-    FlightLogSerializer,
-    MaintenanceLogSerializer,
-    MaintenanceReminderSerializer,
-    FileSerializer,
-    UserSerializer,
-    UserSettingsSerializer
+    UAVSerializer, FlightLogSerializer, MaintenanceLogSerializer,
+    MaintenanceReminderSerializer, FileSerializer, UserSerializer, UserSettingsSerializer
 )
 
 # Endpunkte für UAVs (USERS besitzt UAVs)
 class UAVListCreateView(generics.ListCreateAPIView):
-    queryset = UAV.objects.all()
     serializer_class = UAVSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return UAV.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = UAV.objects.all()
     serializer_class = UAVSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return UAV.objects.filter(user=self.request.user)
 
 # Endpunkte für Fluglogs
 class FlightLogListCreateView(generics.ListCreateAPIView):
-    queryset = FlightLog.objects.all()
     serializer_class = FlightLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return FlightLog.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 class FlightLogDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = FlightLog.objects.all()
     serializer_class = FlightLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return FlightLog.objects.filter(user=self.request.user)
 
 # Endpunkte für Wartungsprotokolle
 class MaintenanceLogListCreateView(generics.ListCreateAPIView):
-    queryset = MaintenanceLog.objects.all()
     serializer_class = MaintenanceLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return MaintenanceLog.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 class MaintenanceLogDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = MaintenanceLog.objects.all()
     serializer_class = MaintenanceLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return MaintenanceLog.objects.filter(user=self.request.user)
 
 # Endpunkte für Wartungserinnerungen
 class MaintenanceReminderListCreateView(generics.ListCreateAPIView):
-    queryset = MaintenanceReminder.objects.all()
     serializer_class = MaintenanceReminderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        # Filter reminders for UAVs that belong to the current user
+        return MaintenanceReminder.objects.filter(uav__user=self.request.user)
 
 class MaintenanceReminderDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = MaintenanceReminder.objects.all()
     serializer_class = MaintenanceReminderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return MaintenanceReminder.objects.filter(uav__user=self.request.user)
 
 # Endpunkte für Dateien
 class FileListCreateView(generics.ListCreateAPIView):
-    queryset = File.objects.all()
     serializer_class = FileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return File.objects.filter(uav__user=self.request.user)
 
 class FileDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = File.objects.all()
     serializer_class = FileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return File.objects.filter(uav__user=self.request.user)
 
 # Angepasste Endpunkte für Benutzer und Benutzereinstellungen
-
-# Nur das eigene Benutzerobjekt wird angezeigt bzw. erstellt.
 class UserListCreateView(generics.ListCreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -85,9 +113,18 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 # Endpunkte für Benutzereinstellungen
 class UserSettingsListCreateView(generics.ListCreateAPIView):
-    queryset = UserSettings.objects.all()
     serializer_class = UserSettingsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserSettings.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 class UserSettingsDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = UserSettings.objects.all()
     serializer_class = UserSettingsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserSettings.objects.filter(user=self.request.user)
