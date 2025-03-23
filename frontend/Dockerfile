@@ -6,9 +6,11 @@ WORKDIR /app
 
 # Add build argument for environment
 ARG NODE_ENV=production
+ARG VITE_API_URL=http://192.168.178.33:8000
 
-# Set environment variable
+# Set environment variables
 ENV NODE_ENV=${NODE_ENV}
+ENV VITE_API_URL=${VITE_API_URL}
 
 # Install dependencies needed for native modules
 RUN apt-get update && apt-get install -y \
