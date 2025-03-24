@@ -6,3 +6,4 @@ export { default as Filters } from './Filters';
 export { default as Table } from './Table';
 export { default as AddNew } from './AddNew';
 export { default as Sidebar } from './Sidebar';
+export { default as EditableRow } from './EditableRow';

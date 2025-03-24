@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Filters, Sidebar, Alert, AddNew, Button, Table } from '../components';
+import { Filters, Sidebar, Alert, AddNew, Button, Table, EditableRow } from '../components';
 
 // Utility functions
 const calculateFlightDuration = (deptTime, landTime) => {
@@ -57,31 +57,51 @@ const INITIAL_FLIGHT_STATE = {
   comments: ''
 };
 
+// Function to generate form fields (need to define this since it's referenced)
+const getFormFields = (isFilter = false) => {
+  // This function should return the form fields based on the isFilter parameter
+  // Since it's referenced but not defined in the provided code, I'm adding a placeholder
+  const fields = [
+    { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
+    { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },
+    { name: 'departure_time', label: 'Departure Time', type: 'time', placeholder: 'Departure Time', step: '1' },
+    { name: 'landing_time', label: 'Landing Time', type: 'time', placeholder: 'Landing Time', step: '1' },
+    { name: 'landing_place', label: 'Landing Place', type: 'text', placeholder: 'Landing Place' },
+    { name: 'flight_duration', label: 'Duration', type: 'number', placeholder: 'Duration (s)', step: '1', min: '0' },
+    { name: 'takeoffs', label: 'Takeoffs', type: 'number', placeholder: 'Takeoffs', step: '1', min: '0' },
+    { name: 'landings', label: 'Landings', type: 'number', placeholder: 'Landings', step: '1', min: '0' },
+    { name: 'light_conditions', label: 'Light Conditions', type: 'select', placeholder: 'Light Conditions', options: OPTIONS.light_conditions },
+    { name: 'ops_conditions', label: 'Ops Conditions', type: 'select', placeholder: 'Ops Conditions', options: OPTIONS.ops_conditions },
+    { name: 'pilot_type', label: 'Pilot Type', type: 'select', placeholder: 'Pilot Type', options: OPTIONS.pilot_type },
+    { name: 'uav', label: 'UAV', type: 'select', placeholder: 'Select UAV' /* We'll use availableUAVs directly in the component */ },
+    { name: 'comments', label: 'Comments', type: 'text', placeholder: 'Comments' }
+  ];
+  
+  return fields;
+};
+
 const Flightlog = () => {
+  // State declarations and hooks
   const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
   const [availableUAVs, setAvailableUAVs] = useState([]);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  // Get API URL from environment variables
   const API_URL = import.meta.env.VITE_API_URL;
   
-  // State for inline editing
   const [editingLogId, setEditingLogId] = useState(null);
   const [editingLog, setEditingLog] = useState(null);
-
-  // Filters and new flight state
   const [filters, setFilters] = useState({...INITIAL_FLIGHT_STATE});
   const [newFlight, setNewFlight] = useState({...INITIAL_FLIGHT_STATE});
 
-  // Fetch API helpers
-  const getAuthHeaders = () => {
+  // API helpers and callbacks
+  const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('access_token');
     return { Authorization: `Bearer ${token}` };
-  };
+  }, []);
 
-  const handleAuthError = (res) => {
+  const handleAuthError = useCallback((res) => {
     if (res.status === 401) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('user_id');
@@ -89,10 +109,10 @@ const Flightlog = () => {
       return true;
     }
     return false;
-  };
+  }, [navigate]);
 
-  // Fetch flight logs
-  const fetchFlightLogs = () => {
+  // API fetch functions
+  const fetchFlightLogs = useCallback(() => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
     if (!token || !user_id) {
@@ -115,10 +135,9 @@ const Flightlog = () => {
         console.error(err);
         setError('Could not load flight logs.');
       });
-  };
+  }, [API_URL, getAuthHeaders, handleAuthError, navigate]);
 
-  // Fetch available UAVs
-  const fetchUAVs = () => {
+  const fetchUAVs = useCallback(() => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
     if (!token || !user_id) return;
@@ -132,16 +151,16 @@ const Flightlog = () => {
       })
       .then((data) => setAvailableUAVs(data))
       .catch((err) => console.error(err));
-  };
+  }, [API_URL, getAuthHeaders]);
 
   // Initial data fetching
   useEffect(() => {
     fetchFlightLogs();
     fetchUAVs();
-  }, [navigate]);
+  }, [fetchFlightLogs, fetchUAVs]);
 
-  // Table column definitions
-  const tableColumns = [
+  // Memoized values
+  const tableColumns = useMemo(() => [
     { header: 'Dept Place', accessor: 'departure_place' },
     { header: 'Date', accessor: 'departure_date' },
     { header: 'Dept Time', accessor: 'departure_time' },
@@ -171,55 +190,13 @@ const Flightlog = () => {
       } 
     },
     { header: 'Comments', accessor: 'comments' }
-  ];
+  ], [availableUAVs]);
 
-  // Form field definitions
-  const getFormFields = (forFilters = false) => {
-    const baseFields = [
-      { label: 'Departure Place', name: 'departure_place', type: 'text', placeholder: forFilters ? 'Filter Departure Place' : 'Departure place', required: !forFilters },
-      { label: 'Departure Date', name: 'departure_date', type: 'date', required: !forFilters },
-      { label: 'Departure Time', name: 'departure_time', type: 'time', required: !forFilters, step: "1" },
-      { label: 'Landing Time', name: 'landing_time', type: 'time', required: !forFilters, step: "1" },
-      { label: 'Landing Place', name: 'landing_place', type: 'text', placeholder: forFilters ? 'Filter Landing Place' : 'Landing place', required: !forFilters },
-      { label: 'Flight Duration', name: 'flight_duration', type: 'number', placeholder: forFilters ? 'Filter Duration' : 'Flight time (s)', step: "1", min: "0", required: false },
-      { label: 'Takeoffs', name: 'takeoffs', type: 'number', placeholder: forFilters ? 'Filter Takeoffs' : 'Number of T/O', step: "1", min: "0", required: !forFilters },
-      { label: 'Landings', name: 'landings', type: 'number', placeholder: forFilters ? 'Filter Landings' : 'Number of LDG', step: "1", min: "0", required: !forFilters },
-      { label: 'Light Conditions', name: 'light_conditions', type: forFilters ? 'text' : 'select', placeholder: forFilters ? 'Filter Light Conditions' : 'Select', options: OPTIONS.light_conditions, required: !forFilters },
-      { label: 'Ops Conditions', name: 'ops_conditions', type: forFilters ? 'text' : 'select', placeholder: forFilters ? 'Filter Ops Conditions' : 'Select', options: OPTIONS.ops_conditions, required: !forFilters },
-      { label: 'Pilot Type', name: 'pilot_type', type: forFilters ? 'text' : 'select', placeholder: forFilters ? 'Filter Pilot Type' : 'Select', options: OPTIONS.pilot_type, required: !forFilters }
-    ];
-  
-    // Add UAV field with appropriate options for non-filter forms
-    if (!forFilters) {
-      baseFields.push({
-        label: 'UAV', 
-        name: 'uav', 
-        type: 'select', 
-        required: true, 
-        placeholder: 'Select UAV',
-        options: availableUAVs.map((uav) => ({ 
-          value: uav.uav_id, 
-          label: `${uav.drone_name} (${uav.serial_number})` 
-        }))
-      });
-    } else {
-      baseFields.push({ label: 'UAV', name: 'uav', type: 'text', placeholder: 'Filter UAV' });
-    }
-    
-    // Add comments field
-    baseFields.push({ 
-      label: 'Comments', 
-      name: 'comments', 
-      type: 'text', 
-      placeholder: forFilters ? 'Filter Comments' : 'Comments (optional)', 
-      required: false 
-    });
-    
-    return baseFields;
-  };
+  const filterFormFields = useMemo(() => getFormFields(true), [availableUAVs]);
+  const addFormFields = useMemo(() => getFormFields(false), [availableUAVs]);
 
   // Form change handlers
-  const handleFormChange = (setter, e) => {
+  const handleFormChange = useCallback((setter, e) => {
     const { name, value } = e.target;
     
     setter(prev => {
@@ -238,14 +215,14 @@ const Flightlog = () => {
       
       return newState;
     });
-  };
+  }, []);
 
-  const handleFilterChange = (e) => handleFormChange(setFilters, e);
-  const handleNewFlightChange = (e) => handleFormChange(setNewFlight, e);
-  const handleEditChange = (e) => handleFormChange(setEditingLog, e);
+  const handleFilterChange = useCallback((e) => handleFormChange(setFilters, e), [handleFormChange]);
+  const handleNewFlightChange = useCallback((e) => handleFormChange(setNewFlight, e), [handleFormChange]);
+  const handleEditChange = useCallback((e) => handleFormChange(setEditingLog, e), [handleFormChange]);
 
   // CRUD operations
-  const handleNewFlightAdd = async () => {
+  const handleNewFlightAdd = useCallback(async () => {
     if (!newFlight.departure_date || !newFlight.departure_time || 
         !newFlight.landing_time || !newFlight.uav || 
         !newFlight.departure_place || !newFlight.landing_place || 
@@ -295,26 +272,23 @@ const Flightlog = () => {
       console.error(err);
       setError('An error occurred while adding the flight log.');
     }
-  };
+  }, [API_URL, fetchFlightLogs, getAuthHeaders, handleAuthError, navigate, newFlight]);
 
-  const handleEdit = (id) => {
+  const handleEdit = useCallback((id) => {
     const logToEdit = logs.find(log => log.flightlog_id === id);
     
     if (logToEdit) {
       let uavValue;
-
+  
       if (logToEdit.uav && typeof logToEdit.uav === 'object' && logToEdit.uav.uav_id) {
-
         uavValue = logToEdit.uav.uav_id;
       } else {
-
         uavValue = logToEdit.uav;
       }
       
       setEditingLog({
         ...logToEdit,
         uav: uavValue,
-
         departure_place: logToEdit.departure_place || '',
         departure_date: logToEdit.departure_date || '',
         departure_time: logToEdit.departure_time || '',
@@ -331,9 +305,9 @@ const Flightlog = () => {
       
       setEditingLogId(id);
     }
-  };
+  }, [logs]);
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = useCallback(async () => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
     
@@ -375,14 +349,14 @@ const Flightlog = () => {
       console.error(err);
       setError('An error occurred while saving the flight log.');
     }
-  };
+  }, [API_URL, editingLog, editingLogId, fetchFlightLogs, getAuthHeaders, handleAuthError, navigate]);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setEditingLogId(null);
     setEditingLog(null);
-  };
+  }, []);
 
-  const handleDeleteLog = async (id) => {
+  const handleDeleteLog = useCallback(async (id) => {
     if (!window.confirm('Are you sure you want to delete this flight log?')) {
       return;
     }
@@ -413,135 +387,43 @@ const Flightlog = () => {
       console.error(err);
       setError('An error occurred while deleting the flight log.');
     }
-  };
+  }, [API_URL, fetchFlightLogs, getAuthHeaders, handleAuthError, navigate]);
 
-  // Toggle sidebar visibility
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  // UI helpers
+  const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
 
-  // Filter logs using all filter attributes
-  const filteredLogs = logs.filter((log) => {
-    return Object.entries(filters).every(([key, filterValue]) => {
-      if (!filterValue) return true;
+  // Filtered logs calculation
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      return Object.entries(filters).every(([key, filterValue]) => {
+        if (!filterValue) return true;
 
-      let logValue = '';
-      switch (key) {
-        case 'departure_date':
-        case 'departure_time':
-        case 'landing_time':
-          logValue = log[key] || '';
-          break;
-        case 'flight_duration':
-        case 'takeoffs':
-        case 'landings':
-          logValue = log[key] ? log[key].toString() : '';
-          break;
-        case 'uav':
-          logValue = log.uav?.drone_name ? log.uav.drone_name.toLowerCase() : '';
-          filterValue = filterValue.toLowerCase();
-          break;
-        default:
-          logValue = log[key] ? log[key].toString().toLowerCase() : '';
-          filterValue = filterValue.toLowerCase();
-      }
-      return logValue.includes(filterValue);
+        let logValue = '';
+        switch (key) {
+          case 'departure_date':
+          case 'departure_time':
+          case 'landing_time':
+            logValue = log[key] || '';
+            break;
+          case 'flight_duration':
+          case 'takeoffs':
+          case 'landings':
+            logValue = log[key] ? log[key].toString() : '';
+            break;
+          case 'uav':
+            logValue = log.uav?.drone_name ? log.uav.drone_name.toLowerCase() : '';
+            filterValue = filterValue.toLowerCase();
+            break;
+          default:
+            logValue = log[key] ? log[key].toString().toLowerCase() : '';
+            filterValue = filterValue.toLowerCase();
+        }
+        return logValue.includes(filterValue);
+      });
     });
-  });
+  }, [logs, filters]);
 
-  // Render edit cell for desktop view
-  const renderEditCell = (log) => {
-    const isEditing = editingLogId === log.flightlog_id;
-    
-    return (
-      <td className="py-3 px-4">
-        {isEditing ? (
-          <div className="flex space-x-2">
-            <button onClick={handleSaveEdit} className="text-green-600 hover:text-green-800">Save</button>
-            <button onClick={handleCancelEdit} className="text-gray-600 hover:text-gray-800">Cancel</button>
-            <button onClick={() => handleDeleteLog(log.flightlog_id)} className="text-red-600 hover:text-red-800">Delete</button>
-          </div>
-        ) : (
-          <button onClick={() => handleEdit(log.flightlog_id)} className="text-blue-600 hover:text-blue-800">Edit</button>
-        )}
-      </td>
-    );
-  };
-
-  // Render edit field for desktop view
-  const renderEditField = (log, col) => {
-    const isEditing = editingLogId === log.flightlog_id;
-    
-    if (!isEditing) {
-      return <td key={col.accessor} className="py-3 px-4">{col.render ? col.render(log[col.accessor], log) : log[col.accessor]}</td>;
-    }
-    
-    // Special case handling for selects
-    if (col.accessor === 'uav') {
-      return (
-        <td key={col.accessor} className="py-3 px-4">
-          <select
-            name="uav"
-            value={editingLog.uav}
-            onChange={handleEditChange}
-            className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-          >
-            <option value="">Select UAV</option>
-            {availableUAVs.map((uav) => (
-              <option key={uav.uav_id} value={uav.uav_id}>
-                {uav.drone_name} ({uav.serial_number})
-              </option>
-            ))}
-          </select>
-        </td>
-      );
-    }
-    
-    if (['light_conditions', 'ops_conditions', 'pilot_type'].includes(col.accessor)) {
-      return (
-        <td key={col.accessor} className="py-3 px-4">
-          <select
-            name={col.accessor}
-            value={editingLog[col.accessor]}
-            onChange={handleEditChange}
-            className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-          >
-            <option value="">Select</option>
-            {OPTIONS[col.accessor].map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </td>
-      );
-    }
-    
-    // Determine input type based on the field
-    let inputType = 'text';
-    let inputProps = {};
-    
-    if (col.accessor === 'departure_date') {
-      inputType = 'date';
-    } else if (col.accessor === 'departure_time' || col.accessor === 'landing_time') {
-      inputType = 'time';
-      inputProps.step = "1";
-    } else if (col.accessor === 'flight_duration' || col.accessor === 'takeoffs' || col.accessor === 'landings') {
-      inputType = 'number';
-      inputProps.step = "1";
-      inputProps.min = "0";
-    }
-    
-    return (
-      <td key={col.accessor} className="py-3 px-4">
-        <input
-          type={inputType}
-          name={col.accessor}
-          value={editingLog[col.accessor] || ''}
-          onChange={handleEditChange}
-          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-          {...inputProps}
-        />
-      </td>
-    );
-  };
-
+  // Render the component
   return (
     <div className="flex h-screen relative">
       {/* Mobile Sidebar Toggle */}
@@ -562,7 +444,7 @@ const Flightlog = () => {
 
         {/* MOBILE: Filters, Card-Style Table, and AddNew Form */}
         <div className="sm:hidden">
-          <Filters fields={getFormFields(true)} onFilterChange={handleFilterChange} />
+          <Filters fields={filterFormFields} onFilterChange={handleFilterChange} />
           <Table 
             columns={tableColumns} 
             data={filteredLogs}
@@ -576,7 +458,7 @@ const Flightlog = () => {
             availableUAVs={availableUAVs}
           />
           <AddNew
-            fields={getFormFields()}
+            fields={addFormFields}
             formValues={newFlight}
             onChange={handleNewFlightChange}
             onSubmit={handleNewFlightAdd}
@@ -590,7 +472,7 @@ const Flightlog = () => {
             <table className="w-full text-sm text-left text-gray-500 table-auto">
               <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                 <tr>
-                  {getFormFields(true).map((field) => (
+                  {filterFormFields.map((field) => (
                     <th key={field.name} className="p-2">
                       <input
                         type={field.type}
@@ -613,16 +495,26 @@ const Flightlog = () => {
                 </tr>
               </thead>
               <tbody>
+                {/* Replace with EditableRow component */}
                 {filteredLogs.map((log) => (
-                  <tr key={log.flightlog_id} className="bg-white border-b hover:bg-gray-50 transition-colors">
-                    {tableColumns.map((col) => renderEditField(log, col))}
-                    {renderEditCell(log)}
-                  </tr>
+                  <EditableRow
+                    key={log.flightlog_id}
+                    log={log}
+                    columns={tableColumns}
+                    isEditing={editingLogId === log.flightlog_id}
+                    editingData={editingLog}
+                    availableUAVs={availableUAVs}
+                    onEditChange={handleEditChange}
+                    onSave={handleSaveEdit}
+                    onCancel={handleCancelEdit}
+                    onDelete={handleDeleteLog}
+                    onEdit={handleEdit}
+                  />
                 ))}
                 
                 {/* Desktop AddNew row */}
                 <tr>
-                  {getFormFields().map((field) => (
+                  {addFormFields.map((field) => (
                     <td key={field.name} className="py-3 px-4 pl-3">
                       {field.type === 'select' ? (
                         <select

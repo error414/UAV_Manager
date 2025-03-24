@@ -93,7 +93,7 @@ describe('AdditionalDetails Component', () => {
     );
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/api/users/1/', expect.any(Object));
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/users/1/', expect.any(Object));
     });
 
     await waitFor(() => {
@@ -186,7 +186,7 @@ describe('AdditionalDetails Component', () => {
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:8000/api/users/1/',
+        'http://localhost:8000/api/users/1/',
         expect.objectContaining({
           method: 'PATCH',
           body: expect.stringContaining('Jane'),

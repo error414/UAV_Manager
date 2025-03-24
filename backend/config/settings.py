@@ -183,7 +183,7 @@ SIMPLE_JWT = {
     # Additional settings can be added as needed.
 }
 
-#CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Replace the CORS settings with these explicit configurations
 CORS_ALLOWED_ORIGINS = [

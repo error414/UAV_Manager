@@ -283,10 +283,16 @@ const NewAircraftPage = () => {
               </div>
               
               {/* Type */}
-              <div>
-                <label className="block text-sm font-medium text-black">Type</label>
-                {renderSelect("type", formData.type, aircraftTypes, handleChange)}
-              </div>
+              <FormInput
+                type="select"
+                label="Type"
+                name="type"
+                id="type"
+                value={formData.type}
+                onChange={handleChange}
+                options={aircraftTypes}
+                className="border-gray-400 text-black"
+              />
               
               {/* Motors */}
               <div className="grid grid-cols-2 gap-4">
@@ -319,16 +325,28 @@ const NewAircraftPage = () => {
               </div>
               
               {/* Video */}
-              <div>
-                <label className="block text-sm font-medium text-black">Video</label>
-                {renderSelect("video", formData.video, videoOptions, handleChange)}
-              </div>
+              <FormInput
+                type="select"
+                label="Video"
+                name="video"
+                id="video"
+                value={formData.video}
+                onChange={handleChange}
+                options={videoOptions}
+                className="border-gray-400 text-black"
+              />
               
               {/* Video System */}
-              <div>
-                <label className="block text-sm font-medium text-black">Video System</label>
-                {renderSelect("video_system", formData.video_system, videoSystemOptions, handleChange)}
-              </div>
+              <FormInput
+                type="select"
+                label="Video System"
+                name="video_system"
+                id="video_system"
+                value={formData.video_system}
+                onChange={handleChange}
+                options={videoSystemOptions}
+                className="border-gray-400 text-black"
+              />
               
               {/* ESC */}
               <div>
@@ -404,10 +422,16 @@ const NewAircraftPage = () => {
               </div>
               
               {/* Firmware */}
-              <div>
-                <label className="block text-sm font-medium text-black">Firmware</label>
-                {renderSelect("firmware", formData.firmware, firmwareOptions, handleChange)}
-              </div>
+              <FormInput
+                type="select"
+                label="Firmware"
+                name="firmware"
+                id="firmware"
+                value={formData.firmware}
+                onChange={handleChange}
+                options={firmwareOptions}
+                className="border-gray-400 text-black"
+              />
               
               {/* Firmware Version */}
               <div>
