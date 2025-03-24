@@ -524,9 +524,16 @@ const Flightlog = () => {
                           className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
                         >
                           <option value="">{field.placeholder}</option>
-                          {field.options && field.options.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
+                          {field.name === 'uav' 
+                            ? availableUAVs.map((uav) => (
+                                <option key={uav.uav_id} value={uav.uav_id}>
+                                  {uav.drone_name}
+                                </option>
+                              ))
+                            : field.options && field.options.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))
+                          }
                         </select>
                       ) : (
                         <input
