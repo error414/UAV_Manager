@@ -65,13 +65,13 @@ const getFormFields = (isFilter = false) => {
     { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
     { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },
     { name: 'departure_time', label: 'Departure Time', type: 'time', placeholder: 'Departure Time', step: '1' },
-    { name: 'landing_time', label: 'Landing Time', type: 'time', placeholder: 'Landing Time', step: '1' },
-    { name: 'landing_place', label: 'Landing Place', type: 'text', placeholder: 'Landing Place' },
+    { name: 'landing_time', label: 'LDG Time', type: 'time', placeholder: 'LDG Time', step: '1' },
+    { name: 'landing_place', label: 'LDG Place', type: 'text', placeholder: 'LDG Place' },
     { name: 'flight_duration', label: 'Duration', type: 'number', placeholder: 'Duration (s)', step: '1', min: '0' },
-    { name: 'takeoffs', label: 'Takeoffs', type: 'number', placeholder: 'Takeoffs', step: '1', min: '0' },
-    { name: 'landings', label: 'Landings', type: 'number', placeholder: 'Landings', step: '1', min: '0' },
-    { name: 'light_conditions', label: 'Light Conditions', type: 'select', placeholder: 'Light Conditions', options: OPTIONS.light_conditions },
-    { name: 'ops_conditions', label: 'Ops Conditions', type: 'select', placeholder: 'Ops Conditions', options: OPTIONS.ops_conditions },
+    { name: 'takeoffs', label: 'T/O', type: 'number', placeholder: 'T/O', step: '1', min: '0' },
+    { name: 'landings', label: 'LDG', type: 'number', placeholder: 'LDG', step: '1', min: '0' },
+    { name: 'light_conditions', label: 'Light', type: 'select', placeholder: 'Light', options: OPTIONS.light_conditions },
+    { name: 'ops_conditions', label: 'OPS', type: 'select', placeholder: 'OPS', options: OPTIONS.ops_conditions },
     { name: 'pilot_type', label: 'Pilot Type', type: 'select', placeholder: 'Pilot Type', options: OPTIONS.pilot_type },
     { name: 'uav', label: 'UAV', type: 'select', placeholder: 'Select UAV' /* We'll use availableUAVs directly in the component */ },
     { name: 'comments', label: 'Comments', type: 'text', placeholder: 'Comments' }
@@ -164,13 +164,13 @@ const Flightlog = () => {
     { header: 'Dept Place', accessor: 'departure_place' },
     { header: 'Date', accessor: 'departure_date' },
     { header: 'Dept Time', accessor: 'departure_time' },
-    { header: 'Landing Time', accessor: 'landing_time' },
-    { header: 'Landing Place', accessor: 'landing_place' },
+    { header: 'LDG Time', accessor: 'landing_time' },
+    { header: 'LDG Place', accessor: 'landing_place' },
     { header: 'Duration', accessor: 'flight_duration' },
-    { header: 'Takeoffs', accessor: 'takeoffs' },
-    { header: 'Landings', accessor: 'landings' },
-    { header: 'Light Conditions', accessor: 'light_conditions' },
-    { header: 'Ops Conditions', accessor: 'ops_conditions' },
+    { header: 'T/O', accessor: 'takeoffs' },
+    { header: 'LDG', accessor: 'landings' },
+    { header: 'Light', accessor: 'light_conditions' },
+    { header: 'OPS', accessor: 'ops_conditions' },
     { header: 'Pilot Type', accessor: 'pilot_type' },
     { 
       header: 'UAV', 
@@ -192,8 +192,8 @@ const Flightlog = () => {
     { header: 'Comments', accessor: 'comments' }
   ], [availableUAVs]);
 
-  const filterFormFields = useMemo(() => getFormFields(true), [availableUAVs]);
-  const addFormFields = useMemo(() => getFormFields(false), [availableUAVs]);
+  const filterFormFields = useMemo(() => getFormFields(true), []);
+  const addFormFields = useMemo(() => getFormFields(false), []);
 
   // Form change handlers
   const handleFormChange = useCallback((setter, e) => {
@@ -426,7 +426,7 @@ const Flightlog = () => {
   // Render the component
   return (
     <div className="flex h-screen relative">
-      {/* Mobile Sidebar Toggle */}
+      {/* Mobile & Tablet Sidebar Toggle */}
       <button
         onClick={toggleSidebar}
         className="lg:hidden fixed top-4 left-4 z-20 bg-gray-800 text-white p-2 rounded-md"
@@ -442,7 +442,7 @@ const Flightlog = () => {
         <h1 className="text-2xl font-semibold mb-4">Flight Log</h1>
         <Alert type="error" message={error} />
 
-        {/* MOBILE: Filters, Card-Style Table, and AddNew Form */}
+        {/* NUR MOBILE: Card-Style Table und AddNew Form */}
         <div className="sm:hidden">
           <Filters fields={filterFormFields} onFilterChange={handleFilterChange} />
           <Table 
@@ -466,7 +466,7 @@ const Flightlog = () => {
           />
         </div>
 
-        {/* DESKTOP: Table with Filter row and AddNew row */}
+        {/* TABLET & DESKTOP: Table mit Filter row und AddNew row */}
         <div className="hidden sm:block">
           <div className="overflow-x-auto relative shadow-md sm:rounded-lg border border-gray-200">
             <table className="w-full text-sm text-left text-gray-500 table-auto">
@@ -512,7 +512,7 @@ const Flightlog = () => {
                   />
                 ))}
                 
-                {/* Desktop AddNew row */}
+                {/* Desktop & Tablet AddNew row */}
                 <tr>
                   {addFormFields.map((field) => (
                     <td key={field.name} className="py-3 px-4 pl-3">

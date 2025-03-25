@@ -54,7 +54,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     };
     
     fetchUserData();
-  }, [API_URL]); // Added API_URL to dependencies
+  }, [API_URL]);
   
   const handleLogout = () => {
     localStorage.removeItem('access_token');
