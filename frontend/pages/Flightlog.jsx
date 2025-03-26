@@ -1,25 +1,32 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Filters, Sidebar, Alert, AddNew, Button, Table, EditableRow } from '../components';
+import { Sidebar, Alert, Button } from '../components';
+import ResponsiveTable from '../components/Table';
 
 // Utility functions
 const calculateFlightDuration = (deptTime, landTime) => {
   if (!deptTime || !landTime) return '';
   
   try {
-    const deptDate = new Date(`2000-01-01T${deptTime}`);
-    const landDate = new Date(`2000-01-01T${landTime}`);
+    // Parse time strings to extract hours, minutes, seconds
+    const [deptHours, deptMinutes, deptSeconds = 0] = deptTime.split(':').map(Number);
+    const [landHours, landMinutes, landSeconds = 0] = landTime.split(':').map(Number);
     
-    let differenceInSeconds = (landDate - deptDate) / 1000;
+    // Convert times to seconds
+    const deptTotalSeconds = deptHours * 3600 + deptMinutes * 60 + deptSeconds;
+    const landTotalSeconds = landHours * 3600 + landMinutes * 60 + landSeconds;
+    
+    // Calculate difference in seconds
+    let durationInSeconds = landTotalSeconds - deptTotalSeconds;
     
     // Handle overnight flights
-    if (differenceInSeconds < 0) {
-      differenceInSeconds += 24 * 60 * 60;
+    if (durationInSeconds < 0) {
+      durationInSeconds += 86400; // Add 24 hours (in seconds)
     }
     
-    return Math.round(differenceInSeconds);
-  } catch (err) {
-    console.error("Error calculating flight duration:", err);
+    return Math.round(durationInSeconds);
+  } catch (error) {
+    console.error("Error calculating flight duration:", error);
     return '';
   }
 };
@@ -59,8 +66,6 @@ const INITIAL_FLIGHT_STATE = {
 
 // Function to generate form fields (need to define this since it's referenced)
 const getFormFields = (isFilter = false) => {
-  // This function should return the form fields based on the isFilter parameter
-  // Since it's referenced but not defined in the provided code, I'm adding a placeholder
   const fields = [
     { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
     { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },
@@ -73,7 +78,7 @@ const getFormFields = (isFilter = false) => {
     { name: 'light_conditions', label: 'Light', type: 'select', placeholder: 'Light', options: OPTIONS.light_conditions },
     { name: 'ops_conditions', label: 'OPS', type: 'select', placeholder: 'OPS', options: OPTIONS.ops_conditions },
     { name: 'pilot_type', label: 'Pilot Type', type: 'select', placeholder: 'Pilot Type', options: OPTIONS.pilot_type },
-    { name: 'uav', label: 'UAV', type: 'select', placeholder: 'Select UAV' /* We'll use availableUAVs directly in the component */ },
+    { name: 'uav', label: 'UAV', type: 'select', placeholder: 'Select UAV' },
     { name: 'comments', label: 'Comments', type: 'text', placeholder: 'Comments' }
   ];
   
@@ -81,7 +86,6 @@ const getFormFields = (isFilter = false) => {
 };
 
 const Flightlog = () => {
-  // State declarations and hooks
   const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
   const [availableUAVs, setAvailableUAVs] = useState([]);
@@ -441,122 +445,34 @@ const Flightlog = () => {
       <div className="flex-1 flex flex-col w-full p-4 pt-16 lg:pt-4">
         <h1 className="text-2xl font-semibold mb-4">Flight Log</h1>
         <Alert type="error" message={error} />
-
-        {/* NUR MOBILE: Card-Style Table und AddNew Form */}
-        <div className="sm:hidden">
-          <Filters fields={filterFormFields} onFilterChange={handleFilterChange} />
-          <Table 
-            columns={tableColumns} 
-            data={filteredLogs}
-            onEdit={handleEdit}
-            editingId={editingLogId}
-            editingData={editingLog}
-            onEditChange={handleEditChange}
-            onSaveEdit={handleSaveEdit}
-            onCancelEdit={handleCancelEdit}
-            onDelete={handleDeleteLog}
-            availableUAVs={availableUAVs}
-          />
-          <AddNew
-            fields={addFormFields}
-            formValues={newFlight}
-            onChange={handleNewFlightChange}
-            onSubmit={handleNewFlightAdd}
-            submitLabel="Add"
-          />
-        </div>
-
-        {/* TABLET & DESKTOP: Table mit Filter row und AddNew row */}
-        <div className="hidden sm:block">
-          <div className="overflow-x-auto relative shadow-md sm:rounded-lg border border-gray-200">
-            <table className="w-full text-sm text-left text-gray-500 table-auto">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                <tr>
-                  {filterFormFields.map((field) => (
-                    <th key={field.name} className="p-2">
-                      <input
-                        type={field.type}
-                        name={field.name}
-                        placeholder={field.placeholder || field.label}
-                        value={filters[field.name]}
-                        onChange={handleFilterChange}
-                        className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-                      />
-                    </th>
-                  ))}
-                  {/* Empty cell for Edit column */}
-                  <th className="p-2"></th>
-                </tr>
-                <tr>
-                  {tableColumns.map((col) => (
-                    <th key={col.accessor} className="p-2 pl-3">{col.header}</th>
-                  ))}
-                  <th className="p-2 pl-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Replace with EditableRow component */}
-                {filteredLogs.map((log) => (
-                  <EditableRow
-                    key={log.flightlog_id}
-                    log={log}
-                    columns={tableColumns}
-                    isEditing={editingLogId === log.flightlog_id}
-                    editingData={editingLog}
-                    availableUAVs={availableUAVs}
-                    onEditChange={handleEditChange}
-                    onSave={handleSaveEdit}
-                    onCancel={handleCancelEdit}
-                    onDelete={handleDeleteLog}
-                    onEdit={handleEdit}
-                  />
-                ))}
-                
-                {/* Desktop & Tablet AddNew row */}
-                <tr>
-                  {addFormFields.map((field) => (
-                    <td key={field.name} className="py-3 px-4 pl-3">
-                      {field.type === 'select' ? (
-                        <select
-                          name={field.name}
-                          value={newFlight[field.name]}
-                          onChange={handleNewFlightChange}
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-                        >
-                          <option value="">{field.placeholder}</option>
-                          {field.name === 'uav' 
-                            ? availableUAVs.map((uav) => (
-                                <option key={uav.uav_id} value={uav.uav_id}>
-                                  {uav.drone_name}
-                                </option>
-                              ))
-                            : field.options && field.options.map((option) => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                              ))
-                          }
-                        </select>
-                      ) : (
-                        <input
-                          type={field.type}
-                          name={field.name}
-                          placeholder={field.placeholder}
-                          value={newFlight[field.name]}
-                          onChange={handleNewFlightChange}
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-                          step={field.step}
-                          min={field.min}
-                        />
-                      )}
-                    </td>
-                  ))}
-                  <td className="py-3 px-4">
-                    <Button onClick={handleNewFlightAdd} className="bg-green-500 hover:bg-green-600">Add</Button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        
+        {/* Unified responsive table component */}
+        <ResponsiveTable 
+          columns={tableColumns}
+          data={filteredLogs}
+          
+          filterFields={filterFormFields}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          
+          addFields={addFormFields}
+          newItem={newFlight}
+          onNewItemChange={handleNewFlightChange}
+          onAdd={handleNewFlightAdd}
+          
+          editingId={editingLogId}
+          editingData={editingLog}
+          onEditChange={handleEditChange}
+          onSaveEdit={handleSaveEdit}
+          onCancelEdit={handleCancelEdit}
+          
+          onEdit={handleEdit}
+          onDelete={handleDeleteLog}
+          
+          availableOptions={{
+            availableUAVs: availableUAVs
+          }}
+        />
       </div>
     </div>
   );

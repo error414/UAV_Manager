@@ -1,208 +1,289 @@
 import React from 'react';
+import EditableRow from './EditableRow';
+import { Button } from './index';
+import Filters from './Filters';
 
-/**
- * Table for mobile:
- *  - On <sm screens: displays each row as a "card" with labeled fields
- *  - On >=sm screens: you can simply hide it (show your normal table instead)
- */
-const Table = ({ 
-  columns, 
-  data, 
-  onEdit, 
+const ResponsiveTable = ({
+  columns,
+  data,
+  filterFields,
+  filters,
+  onFilterChange,
+  addFields,
+  newItem,
+  onNewItemChange,
+  onAdd,
+  onEdit,
   editingId,
   editingData,
   onEditChange,
   onSaveEdit,
   onCancelEdit,
   onDelete,
-  availableUAVs = []
+  availableOptions,
+  hideDesktopFilters = false,
 }) => {
   return (
-    <div className="sm:hidden overflow-x-auto relative shadow-md rounded-lg border border-gray-200">
-      <table className="w-full text-sm text-left text-gray-500 table-auto">
-        {/* We hide the desktop header on mobile */}
-        <thead className="hidden">
-          <tr>
-            {columns.map((col) => (
-              <th key={col.accessor}>{col.header}</th>
-            ))}
-            {onEdit && <th>Actions</th>}
-          </tr>
-        </thead>
-
-        <tbody>
-          {data.map((row, rowIndex) => {
-            const isEditing = editingId === row.flightlog_id;
-            
-            return (
-              <tr
-                key={row.flightlog_id || rowIndex}
-                className="bg-white border-b hover:bg-gray-50 transition-colors
-                           flex flex-col mb-4 rounded shadow-sm"
-              >
-                {columns.map((col) => {
-                  // If this row is being edited, show input fields
-                  if (isEditing) {
-                    // Special cases for dropdown fields
-                    if (col.accessor === 'uav') {
-                      return (
-                        <td key={col.accessor} className="py-3 px-4">
-                          <span className="font-bold text-gray-700">{col.header}:</span>{' '}
-                          <select
-                            name="uav"
-                            value={editingData.uav}
-                            onChange={onEditChange}
-                            className="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-                          >
-                            <option value="">Select UAV</option>
-                            {availableUAVs.map((uav) => (
-                              <option key={uav.uav_id} value={uav.uav_id}>
-                                {uav.drone_name} ({uav.serial_number})
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                      );
-                    } else if (col.accessor === 'light_conditions') {
-                      return (
-                        <td key={col.accessor} className="py-3 px-4">
-                          <span className="font-bold text-gray-700">{col.header}:</span>{' '}
-                          <select
-                            name="light_conditions"
-                            value={editingData.light_conditions}
-                            onChange={onEditChange}
-                            className="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-                          >
-                            <option value="">Select</option>
-                            <option value="Day">Day</option>
-                            <option value="Night">Night</option>
-                          </select>
-                        </td>
-                      );
-                    } else if (col.accessor === 'ops_conditions') {
-                      return (
-                        <td key={col.accessor} className="py-3 px-4">
-                          <span className="font-bold text-gray-700">{col.header}:</span>{' '}
-                          <select
-                            name="ops_conditions"
-                            value={editingData.ops_conditions}
-                            onChange={onEditChange}
-                            className="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-                          >
-                            <option value="">Select</option>
-                            <option value="VLOS">VLOS</option>
-                            <option value="BLOS">BLOS</option>
-                          </select>
-                        </td>
-                      );
-                    } else if (col.accessor === 'pilot_type') {
-                      return (
-                        <td key={col.accessor} className="py-3 px-4">
-                          <span className="font-bold text-gray-700">{col.header}:</span>{' '}
-                          <select
-                            name="pilot_type"
-                            value={editingData.pilot_type}
-                            onChange={onEditChange}
-                            className="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-                          >
-                            <option value="">Select</option>
-                            <option value="PIC">PIC</option>
-                            <option value="Dual">Dual</option>
-                            <option value="Instruction">Instruction</option>
-                          </select>
-                        </td>
-                      );
-                    }
-                    
-                    // Determine input type based on the field
-                    let inputType = 'text';
-                    let inputStep = null;
-                    let inputMin = null;
-                    
-                    if (col.accessor === 'departure_date') {
-                      inputType = 'date';
-                    } else if (col.accessor === 'departure_time' || col.accessor === 'landing_time') {
-                      inputType = 'time';
-                      inputStep = "1"; // Enable seconds in time inputs
-                    } else if (col.accessor === 'flight_duration' || col.accessor === 'takeoffs' || col.accessor === 'landings') {
-                      inputType = 'number';
-                      inputStep = "1";
-                      inputMin = "0"; // Prevent negative values
-                    }
-                    
-                    return (
-                      <td key={col.accessor} className="py-3 px-4">
-                        <span className="font-bold text-gray-700">{col.header}:</span>{' '}
-                        <input
-                          type={inputType}
-                          name={col.accessor}
-                          value={editingData[col.accessor] || ''}
-                          onChange={onEditChange}
-                          className="w-full mt-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-                          step={inputStep}
-                          min={inputMin}
-                        />
-                      </td>
-                    );
-                  }
-                  
-                  // If not editing, show regular cell content
-                  const cellValue = row[col.accessor];
-                  return (
-                    <td key={col.accessor} className="py-3 px-4">
-                      <span className="font-bold text-gray-700">{col.header}:</span>{' '}
-                      <span>
-                        {col.render ? col.render(cellValue, row) : cellValue}
-                      </span>
-                    </td>
-                  );
-                })}
-
-                {/* Action buttons cell */}
-                <td className="py-3 px-4 flex items-center">
-                  {isEditing ? (
-                    <>
-                      <span className="font-bold text-gray-700 mr-2">Actions:</span>
-                      <div className="flex space-x-4">
-                        <button
-                          onClick={onSaveEdit}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={onCancelEdit}
-                          className="text-gray-600 hover:text-gray-800"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => onDelete(row.flightlog_id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          Delete
-                        </button>
+    <div>
+      {/* Mobile view */}
+      <div className="sm:hidden">
+        {/* Mobile filters */}
+        <Filters 
+          fields={filterFields}
+          filters={filters}
+          onFilterChange={onFilterChange}
+          availableOptions={availableOptions}
+          asTable={false}
+        />
+        
+        {/* Mobile data cards */}
+        <div className="mt-4 space-y-4">
+          {data.map((item) => (
+            <div key={item.flightlog_id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+              {editingId === item.flightlog_id ? (
+                /* Editing form for mobile */
+                <div className="space-y-3">
+                  {columns.map((col) => (
+                    <div key={col.accessor} className="flex flex-col">
+                      <label className="text-sm font-medium text-gray-700">{col.header}</label>
+                      {renderEditField(col, editingData, onEditChange, availableOptions)}
+                    </div>
+                  ))}
+                  <div className="flex space-x-2 mt-3">
+                    <Button onClick={onSaveEdit} className="bg-green-500 hover:bg-green-600">Save</Button>
+                    <Button onClick={onCancelEdit} className="bg-gray-500 hover:bg-gray-600">Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                /* Card display */
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {columns.map((col) => (
+                      <div key={col.accessor} className="mb-2">
+                        <div className="text-xs font-bold text-gray-500">{col.header}</div>
+                        <div className="text-gray-800">
+                          {col.render ? col.render(item[col.accessor], item) : item[col.accessor]}
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-end space-x-2 mt-3">
+                    <Button onClick={() => onEdit(item.flightlog_id)} className="bg-blue-500 hover:bg-blue-600">Edit</Button>
+                    <Button onClick={() => onDelete(item.flightlog_id)} className="bg-red-500 hover:bg-red-600">Delete</Button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+        
+        {/* Mobile Add New form */}
+        <div className="mt-6 bg-white p-4 rounded-lg shadow border border-gray-200">
+          <h3 className="font-medium text-lg mb-3">Add New Flight</h3>
+          <div className="space-y-3">
+            {addFields.map((field) => (
+              <div key={field.name} className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700">{field.label}</label>
+                {renderAddField(field, newItem, onNewItemChange, availableOptions)}
+              </div>
+            ))}
+            <Button onClick={onAdd} className="w-full bg-green-500 hover:bg-green-600 mt-3">Add</Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden sm:block">
+        <div className="overflow-x-auto relative shadow-md sm:rounded-lg border border-gray-200">
+          <table className="w-full text-sm text-left text-gray-500 table-auto">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                {columns.map((col) => (
+                  <th key={col.accessor} className="p-2 pl-3">{col.header}</th>
+                ))}
+                <th className="p-2 pl-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Desktop filters as table row - only if not hidden */}
+              {!hideDesktopFilters && (
+                <Filters 
+                  fields={filterFields}
+                  filters={filters}
+                  onFilterChange={onFilterChange}
+                  availableOptions={availableOptions}
+                  asTable={true}
+                />
+              )}
+              
+              {/* Data rows */}
+              {data.map((item) => (
+                <tr key={item.flightlog_id} className="bg-white border-b hover:bg-gray-50">
+                  {editingId === item.flightlog_id ? (
+                    // Editing row
+                    <>
+                      {columns.map((col) => (
+                        <td key={col.accessor} className="py-3 px-4 pl-3">
+                          {renderEditField(col, editingData, onEditChange, availableOptions)}
+                        </td>
+                      ))}
+                      <td className="py-3 px-4 pl-3 flex space-x-2">
+                        <Button onClick={onSaveEdit} className="bg-green-500 hover:bg-green-600">Save</Button>
+                        <Button onClick={onCancelEdit} className="bg-gray-500 hover:bg-gray-600">Cancel</Button>
+                      </td>
                     </>
                   ) : (
+                    // Normal row
                     <>
-                      <span className="font-bold text-gray-700 mr-2">Edit:</span>
-                      <button
-                        onClick={() => onEdit(row.flightlog_id)}
-                        className="inline-flex items-center text-blue-600 hover:text-blue-800"
-                      >
-                        Edit
-                      </button>
+                      {columns.map((col) => (
+                        <td key={col.accessor} className="py-3 px-4 pl-3">
+                          {col.render ? col.render(item[col.accessor], item) : item[col.accessor]}
+                        </td>
+                      ))}
+                      <td className="py-3 px-4 pl-3 flex space-x-2">
+                        <Button onClick={() => onEdit(item.flightlog_id)} className="bg-blue-500 hover:bg-blue-600">Edit</Button>
+                        <Button onClick={() => onDelete(item.flightlog_id)} className="bg-red-500 hover:bg-red-600">Delete</Button>
+                      </td>
                     </>
                   )}
+                </tr>
+              ))}
+              
+              {/* Add new row */}
+              <tr className="bg-white border-b">
+                {addFields.map((field) => (
+                  <td key={field.name} className="py-3 px-4 pl-3">
+                    {renderAddField(field, newItem, onNewItemChange, availableOptions)}
+                  </td>
+                ))}
+                <td className="py-3 px-4 pl-3">
+                  <Button onClick={onAdd} className="bg-green-500 hover:bg-green-600">Add</Button>
                 </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default Table;
+// Helper functions for rendering form fields
+function renderEditField(column, data, onChange, availableOptions) {
+  const fieldName = column.accessor;
+  const value = data ? data[fieldName] : '';
+  
+  // Special handling for select fields
+  if (fieldName === 'uav') {
+    return (
+      <select
+        name={fieldName}
+        value={value || ''}
+        onChange={onChange}
+        className="w-full px-2 py-1 border border-gray-300 rounded"
+      >
+        <option value="">Select UAV</option>
+        {availableOptions.availableUAVs?.map((uav) => (
+          <option key={uav.uav_id} value={uav.uav_id}>
+            {uav.drone_name}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  
+  // Handle other select fields
+  if (['light_conditions', 'ops_conditions', 'pilot_type'].includes(fieldName)) {
+    const options = {
+      light_conditions: [
+        { value: 'Day', label: 'Day' },
+        { value: 'Night', label: 'Night' }
+      ],
+      ops_conditions: [
+        { value: 'VLOS', label: 'VLOS' },
+        { value: 'BLOS', label: 'BLOS' }
+      ],
+      pilot_type: [
+        { value: 'PIC', label: 'PIC' },
+        { value: 'Dual', label: 'Dual' },
+        { value: 'Instruction', label: 'Instruction' }
+      ]
+    };
+    
+    return (
+      <select
+        name={fieldName}
+        value={value || ''}
+        onChange={onChange}
+        className="w-full px-2 py-1 border border-gray-300 rounded"
+      >
+        <option value="">Select {column.header}</option>
+        {options[fieldName]?.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    );
+  }
+  
+  // Default to text input
+  return (
+    <input
+      type={fieldName.includes('time') ? 'time' : fieldName.includes('date') ? 'date' : 'text'}
+      name={fieldName}
+      value={value || ''}
+      onChange={onChange}
+      className="w-full px-2 py-1 border border-gray-300 rounded"
+    />
+  );
+}
+
+function renderAddField(field, data, onChange, availableOptions) {
+  if (field.type === 'select') {
+    if (field.name === 'uav') {
+      return (
+        <select
+          name={field.name}
+          value={data[field.name] || ''}
+          onChange={onChange}
+          className="w-full px-2 py-1 border border-gray-300 rounded"
+        >
+          <option value="">{field.placeholder}</option>
+          {availableOptions.availableUAVs?.map((uav) => (
+            <option key={uav.uav_id} value={uav.uav_id}>
+              {uav.drone_name}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    
+    return (
+      <select
+        name={field.name}
+        value={data[field.name] || ''}
+        onChange={onChange}
+        className="w-full px-2 py-1 border border-gray-300 rounded"
+      >
+        <option value="">{field.placeholder}</option>
+        {field.options?.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    );
+  }
+  
+  return (
+    <input
+      type={field.type}
+      name={field.name}
+      placeholder={field.placeholder}
+      value={data[field.name] || ''}
+      onChange={onChange}
+      className="w-full px-2 py-1 border border-gray-300 rounded"
+      step={field.step}
+      min={field.min}
+    />
+  );
+}
+
+export default ResponsiveTable;
