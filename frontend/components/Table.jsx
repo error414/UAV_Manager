@@ -52,6 +52,7 @@ const ResponsiveTable = ({
                   <div className="flex space-x-2 mt-3">
                     <Button onClick={onSaveEdit} className="bg-green-500 hover:bg-green-600">Save</Button>
                     <Button onClick={onCancelEdit} className="bg-gray-500 hover:bg-gray-600">Cancel</Button>
+                    <Button onClick={() => onDelete(item.flightlog_id)} className="bg-red-500 hover:bg-red-600">Delete</Button>
                   </div>
                 </div>
               ) : (
@@ -69,7 +70,6 @@ const ResponsiveTable = ({
                   </div>
                   <div className="flex justify-end space-x-2 mt-3">
                     <Button onClick={() => onEdit(item.flightlog_id)} className="bg-blue-500 hover:bg-blue-600">Edit</Button>
-                    <Button onClick={() => onDelete(item.flightlog_id)} className="bg-red-500 hover:bg-red-600">Delete</Button>
                   </div>
                 </>
               )}
@@ -130,6 +130,7 @@ const ResponsiveTable = ({
                       <td className="py-3 px-4 pl-3 flex space-x-2">
                         <Button onClick={onSaveEdit} className="bg-green-500 hover:bg-green-600">Save</Button>
                         <Button onClick={onCancelEdit} className="bg-gray-500 hover:bg-gray-600">Cancel</Button>
+                        <Button onClick={() => onDelete(item.flightlog_id)} className="bg-red-500 hover:bg-red-600">Delete</Button>
                       </td>
                     </>
                   ) : (
@@ -142,7 +143,6 @@ const ResponsiveTable = ({
                       ))}
                       <td className="py-3 px-4 pl-3 flex space-x-2">
                         <Button onClick={() => onEdit(item.flightlog_id)} className="bg-blue-500 hover:bg-blue-600">Edit</Button>
-                        <Button onClick={() => onDelete(item.flightlog_id)} className="bg-red-500 hover:bg-red-600">Delete</Button>
                       </td>
                     </>
                   )}
