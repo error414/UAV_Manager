@@ -90,7 +90,7 @@ const Flightlog = () => {
   const [logs, setLogs] = useState([]);
   const [availableUAVs, setAvailableUAVs] = useState([]);
   const [error, setError] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   
   const API_URL = import.meta.env.VITE_API_URL;
   
@@ -396,6 +396,23 @@ const Flightlog = () => {
   // UI helpers
   const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
 
+  // Add an effect to handle responsive defaults
+  useEffect(() => {
+    const handleResize = () => {
+      // For desktop: automatically show sidebar
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      } 
+      // For mobile: automatically hide sidebar
+      else {
+        setSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []); // Remove sidebarOpen from dependencies to prevent unwanted rerenders
+
   // Filtered logs calculation
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
@@ -430,23 +447,49 @@ const Flightlog = () => {
   // Render the component
   return (
     <div className="flex h-screen relative">
-      {/* Mobile & Tablet Sidebar Toggle */}
+      {/* Mobile Sidebar Toggle - same position */}
       <button
         onClick={toggleSidebar}
-        className="lg:hidden fixed top-4 left-4 z-20 bg-gray-800 text-white p-2 rounded-md"
-        aria-label="Toggle sidebar"
+        className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
+        aria-label="Toggle sidebar for mobile"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
+      
+      {/* Desktop toggle stays the same */}
+      <button
+        onClick={toggleSidebar}
+        className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
+          sidebarOpen ? 'left-2' : 'left-4'
+        }`}
+        aria-label="Toggle sidebar for desktop"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+      
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-
-      <div className="flex-1 flex flex-col w-full p-4 pt-16 lg:pt-4">
-        <h1 className="text-2xl font-semibold mb-4">Flight Log</h1>
+      
+      {/* Reduce top padding on mobile to pt-2 (0.5rem) to align with toggle button */}
+      <div 
+        className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
+          sidebarOpen ? 'lg:ml-64' : ''
+        }`}
+      >
+        {/* Add padding to the title to align with toggle button */}
+        <div className="flex items-center h-10 mb-4">
+          {/* Empty div for spacing on mobile (same width as toggle button) */}
+          <div className="w-10 lg:hidden"></div>
+          
+          {/* Centered title */}
+          <h1 className="text-2xl font-semibold text-center flex-1">Flight Log</h1>
+        </div>
+        
         <Alert type="error" message={error} />
         
-        {/* Unified responsive table component */}
         <ResponsiveTable 
           columns={tableColumns}
           data={filteredLogs}

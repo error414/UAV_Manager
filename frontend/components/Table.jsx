@@ -26,7 +26,7 @@ const ResponsiveTable = ({
   return (
     <div>
       {/* Mobile view */}
-      <div className="sm:hidden">
+      <div className="sm:hidden overflow-auto pb-20"> {/* Added overflow-auto and bottom padding */}
         {/* Mobile filters */}
         <Filters 
           fields={filterFields}
