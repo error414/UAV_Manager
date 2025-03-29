@@ -156,6 +156,7 @@ const AdditionalDetails = () => {
           value={details.first_name}
           onChange={handleChange}
           required
+          labelClassName="text-white" // Weißer Text für das Label
         />
 
         <FormInput
@@ -166,6 +167,7 @@ const AdditionalDetails = () => {
           value={details.last_name}
           onChange={handleChange}
           required
+          labelClassName="text-white" // Weißer Text für das Label
         />
 
         <FormInput
@@ -177,6 +179,7 @@ const AdditionalDetails = () => {
           onChange={handleNumericInput}
           inputMode="numeric"
           pattern="[0-9]*"
+          labelClassName="text-white" // Weißer Text für das Label
         />
 
         <FormInput
@@ -186,6 +189,7 @@ const AdditionalDetails = () => {
           id="street"
           value={details.street}
           onChange={handleChange}
+          labelClassName="text-white" // Weißer Text für das Label
         />
 
         <FormInput
@@ -197,6 +201,7 @@ const AdditionalDetails = () => {
           onChange={handleNumericInput}
           inputMode="numeric"
           pattern="[0-9]*"
+          labelClassName="text-white" // Weißer Text für das Label
         />
 
         <FormInput
@@ -206,9 +211,10 @@ const AdditionalDetails = () => {
           id="city"
           value={details.city}
           onChange={handleChange}
+          labelClassName="text-white" // Weißer Text für das Label
         />
 
-        {/* Country-Feld - mit Label in exakt dem gleichen Format wie die anderen FormInput-Komponenten */}
+        {/* Country-Feld */}
         <div className="mb-4">
           <p className="text-white mb-2">Country</p>
           <CountryDropdown

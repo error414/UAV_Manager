@@ -283,7 +283,7 @@ const NewAircraftPage = () => {
           <div className="w-10 lg:hidden"></div>
           
           {/* Centered title */}
-          <h1 className="text-2xl font-semibold text-center flex-1">New Aircraft</h1>
+          <h1 className="text-2xl font-semibold  text-center flex-1">New Aircraft</h1>
         </div>
         
         {/* Alerts */}
@@ -296,7 +296,7 @@ const NewAircraftPage = () => {
           <div className="space-y-4">
             {/* Drone Name */}
             <div>
-              <label className="block text-sm font-medium text-black">Drone Name</label>
+              <label className="">Drone Name</label>
               <FormInput
                 type="text"
                 name="drone_name"
@@ -304,14 +304,14 @@ const NewAircraftPage = () => {
                 value={formData.drone_name}
                 onChange={handleChange}
                 placeholder="ModularHDZero"
-                className="border-gray-400 text-black"
+                className=""
                 required
               />
             </div>
             
             {/* Manufacturer */}
             <div>
-              <label className="block text-sm font-medium text-black">Manufacturer</label>
+              <label className="">Manufacturer</label>
               <FormInput
                 type="text"
                 name="manufacturer"
@@ -319,7 +319,7 @@ const NewAircraftPage = () => {
                 value={formData.manufacturer}
                 onChange={handleChange}
                 placeholder="Happymodel"
-                className="border-gray-400 text-black"
+                className=""
                 required
               />
             </div>
@@ -333,13 +333,13 @@ const NewAircraftPage = () => {
               value={formData.type}
               onChange={handleChange}
               options={aircraftTypes}
-              className="border-gray-400 text-black"
+              className=""
             />
             
             {/* Motors */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-black">Motors</label>
+                <label className="">Motors</label>
                 <FormInput
                   type="number"
                   name="motors"
@@ -347,13 +347,12 @@ const NewAircraftPage = () => {
                   value={formData.motors}
                   onChange={handleChange}
                   min="0"
-                  className="mt-0 border-gray-400 text-black"
-                />
+                  />
               </div>
               
               {/* Motor Type */}
               <div>
-                <label className="block text-sm font-medium text-black">Type of Motor</label>
+                <label className="">Type of Motor</label>
                 <FormInput
                   type="text"
                   name="motor_type"
@@ -361,8 +360,7 @@ const NewAircraftPage = () => {
                   value={formData.motor_type}
                   onChange={handleChange}
                   placeholder="Electric"
-                  className="mt-0 border-gray-400 text-black"
-                />
+                  />
               </div>
             </div>
             
@@ -375,7 +373,7 @@ const NewAircraftPage = () => {
               value={formData.video}
               onChange={handleChange}
               options={videoOptions}
-              className="border-gray-400 text-black"
+              className=""
             />
             
             {/* Video System */}
@@ -387,12 +385,12 @@ const NewAircraftPage = () => {
               value={formData.video_system}
               onChange={handleChange}
               options={videoSystemOptions}
-              className="border-gray-400 text-black"
+              className=""
             />
             
             {/* ESC */}
             <div>
-              <label className="block text-sm font-medium text-black">ESC</label>
+              <label className="">ESC</label>
               <FormInput
                 type="text"
                 name="esc"
@@ -400,13 +398,12 @@ const NewAircraftPage = () => {
                 value={formData.esc}
                 onChange={handleChange}
                 placeholder="Happymodel x12 AIO 12A"
-                className="border-gray-400 text-black"
               />
             </div>
             
             {/* ESC Firmware */}
             <div>
-              <label className="block text-sm font-medium text-black">ESC Firmware</label>
+              <label className="">ESC Firmware</label>
               <FormInput
                 type="text"
                 name="esc_firmware"
@@ -414,13 +411,12 @@ const NewAircraftPage = () => {
                 value={formData.esc_firmware}
                 onChange={handleChange}
                 placeholder="Bluejay_0.21.0"
-                className="border-gray-400 text-black"
-              />
+                />
             </div>
             
             {/* Receiver */}
             <div>
-              <label className="block text-sm font-medium text-black">Receiver</label>
+              <label className="">Receiver</label>
               <FormInput
                 type="text"
                 name="receiver"
@@ -428,13 +424,12 @@ const NewAircraftPage = () => {
                 value={formData.receiver}
                 onChange={handleChange}
                 placeholder="RadioMaster RP1"
-                className="border-gray-400 text-black"
-              />
+                />
             </div>
             
             {/* Receiver Firmware */}
             <div>
-              <label className="block text-sm font-medium text-black">Receiver Firmware</label>
+              <label className="">Receiver Firmware</label>
               <FormInput
                 type="text"
                 name="receiver_firmware"
@@ -442,8 +437,7 @@ const NewAircraftPage = () => {
                 value={formData.receiver_firmware}
                 onChange={handleChange}
                 placeholder="elrs v3.5.3"
-                className="border-gray-400 text-black"
-              />
+                />
             </div>
           </div>
           
@@ -451,7 +445,7 @@ const NewAircraftPage = () => {
           <div className="space-y-4">
             {/* Flight Controller */}
             <div>
-              <label className="block text-sm font-medium text-black">Flight Controller</label>
+              <label className="">Flight Controller</label>
               <FormInput
                 type="text"
                 name="flight_controller"
@@ -459,8 +453,7 @@ const NewAircraftPage = () => {
                 value={formData.flight_controller}
                 onChange={handleChange}
                 placeholder="Happymodel x12 AIO"
-                className="border-gray-400 text-black"
-              />
+                />
             </div>
             
             {/* Firmware */}
@@ -472,12 +465,12 @@ const NewAircraftPage = () => {
               value={formData.firmware}
               onChange={handleChange}
               options={firmwareOptions}
-              className="border-gray-400 text-black"
+              className=""
             />
             
             {/* Firmware Version */}
             <div>
-              <label className="block text-sm font-medium text-black">Firmware Version</label>
+              <label className="">Firmware Version</label>
               <FormInput
                 type="text"
                 name="firmware_version"
@@ -485,14 +478,13 @@ const NewAircraftPage = () => {
                 value={formData.firmware_version}
                 onChange={handleChange}
                 placeholder="4.5.5"
-                className="border-gray-400 text-black"
-              />
+                />
             </div>
             
             {/* Sensors Grid */}
             <div className="grid grid-cols-5 gap-1">
               <div>
-                <label className="block text-sm font-medium text-black text-center">GPS</label>
+                <label className="">GPS</label>
                 <FormInput
                   type="number"
                   name="gps"
@@ -500,11 +492,11 @@ const NewAircraftPage = () => {
                   value={formData.gps}
                   onChange={handleChange}
                   min="0"
-                  className="text-center mt-0 border-gray-400 text-black"
+                  className="text-center "
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-black text-center">Mag</label>
+                <label className="">Mag</label>
                 <FormInput
                   type="number"
                   name="mag"
@@ -512,11 +504,11 @@ const NewAircraftPage = () => {
                   value={formData.mag}
                   onChange={handleChange}
                   min="0"
-                  className="text-center mt-0 border-gray-400 text-black"
+                  className="text-center "
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-black text-center">Baro</label>
+                <label className="">Baro</label>
                 <FormInput
                   type="number"
                   name="baro"
@@ -524,11 +516,11 @@ const NewAircraftPage = () => {
                   value={formData.baro}
                   onChange={handleChange}
                   min="0"
-                  className="text-center mt-0 border-gray-400 text-black"
+                  className="text-center "
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-black text-center">Gyro</label>
+                <label className="">Gyro</label>
                 <FormInput
                   type="number"
                   name="gyro"
@@ -536,11 +528,11 @@ const NewAircraftPage = () => {
                   value={formData.gyro}
                   onChange={handleChange}
                   min="0"
-                  className="text-center mt-0 border-gray-400 text-black"
+                  className="text-center "
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-black text-center">ACC</label>
+                <label className="">ACC</label>
                 <FormInput
                   type="number"
                   name="acc"
@@ -548,14 +540,14 @@ const NewAircraftPage = () => {
                   value={formData.acc}
                   onChange={handleChange}
                   min="0"
-                  className="text-center mt-0 border-gray-400 text-black"
+                  className="text-center "
                 />
               </div>
             </div>
             
             {/* Registration Number */}
             <div>
-              <label className="block text-sm font-medium text-black">Registration Number</label>
+              <label className="">Registration Number</label>
               <FormInput
                 type="text"
                 name="registration_number"
@@ -563,13 +555,12 @@ const NewAircraftPage = () => {
                 value={formData.registration_number}
                 onChange={handleChange}
                 placeholder="CHEdkI9245ddjG325"
-                className="border-gray-400 text-black"
-              />
+                />
             </div>
             
             {/* Serial Number */}
             <div>
-              <label className="block text-sm font-medium text-black">Serial Number</label>
+              <label className="">Serial Number</label>
               <FormInput
                 type="text"
                 name="serial_number"
@@ -577,7 +568,6 @@ const NewAircraftPage = () => {
                 value={formData.serial_number}
                 onChange={handleChange}
                 placeholder="SN5678905312AB"
-                className="border-gray-400 text-black"
                 required
               />
             </div>
@@ -587,25 +577,24 @@ const NewAircraftPage = () => {
             <div className="grid grid-cols-2 gap-4">
               {/* Props Maintenance */}
               <div>
-                <label className="block text-sm font-medium text-black">Props Maint:</label>
+                <label className="">Props Maint:</label>
                 <FormInput
                   type="date"
                   name="props_maint_date"
                   id="props_maint_date"
                   value={formatDateForInput(formData.props_maint_date)}
                   onChange={handleChange}
-                  className="mt-0 border-gray-400 text-black"
-                />
+                  />
               </div>
               <div>
-                <label className="block text-sm font-medium text-black">Next:</label>
+                <label className="">Next:</label>
                 <FormInput
                   type="date"
                   name="props_reminder_date"
                   id="props_reminder_date"
                   value={formatDateForInput(formData.props_reminder_date)}
                   onChange={handleChange}
-                  className="mt-0 w-full border-gray-400 text-black"
+                  className="mt-0 w-full "
                 />
               </div>
             </div>
@@ -613,25 +602,24 @@ const NewAircraftPage = () => {
             <div className="grid grid-cols-2 gap-4">
               {/* Motor Maintenance */}
               <div>
-                <label className="block text-sm font-medium text-black">Motor Maint:</label>
+                <label className="">Motor Maint:</label>
                 <FormInput
                   type="date"
                   name="motor_maint_date"
                   id="motor_maint_date"
                   value={formatDateForInput(formData.motor_maint_date)}
                   onChange={handleChange}
-                  className="mt-0 border-gray-400 text-black"
-                />
+                  />
               </div>
               <div>
-                <label className="block text-sm font-medium text-black">Next:</label>
+                <label className="">Next:</label>
                 <FormInput
                   type="date"
                   name="motor_reminder_date"
                   id="motor_reminder_date"
                   value={formatDateForInput(formData.motor_reminder_date)}
                   onChange={handleChange}
-                  className="mt-0 w-full border-gray-400 text-black"
+                  className="mt-0 w-full "
                 />
               </div>
             </div>
@@ -639,33 +627,32 @@ const NewAircraftPage = () => {
             <div className="grid grid-cols-2 gap-4">
               {/* Frame Maintenance */}
               <div>
-                <label className="block text-sm font-medium text-black">Frame Maint:</label>
+                <label className="">Frame Maint:</label>
                 <FormInput
                   type="date"
                   name="frame_maint_date"
                   id="frame_maint_date"
                   value={formatDateForInput(formData.frame_maint_date)}
                   onChange={handleChange}
-                  className="mt-0 border-gray-400 text-black"
-                />
+                  />
               </div>
               <div>
-                <label className="block text-sm font-medium text-black">Next:</label>
+                <label className="">Next:</label>
                 <FormInput
                   type="date"
                   name="frame_reminder_date"
                   id="frame_reminder_date"
                   value={formatDateForInput(formData.frame_reminder_date)}
                   onChange={handleChange}
-                  className="mt-0 w-full border-gray-400 text-black"
+                  className="mt-0 w-full "
                 />
               </div>
             </div>
           </div>
           
           {/* Submit Button - Full Width */}
-          <div className="col-span-1 md:col-span-2 mt-6">
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+          <div className="col-span-1 md:col-span-2 mt-6 flex justify-center">
+            <Button type="submit" className="max-w-md">
               Save changes
             </Button>
           </div>

@@ -260,7 +260,7 @@ const AircraftList = () => {
         <div className="flex justify-center gap-4 p-4 mt-4">
           <Button 
             onClick={handleNewAircraft} 
-            className="bg-blue-500 hover:bg-blue-600 max-w-xs"
+            className="max-w-xs"
           >
             New Aircraft
           </Button>

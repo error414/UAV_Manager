@@ -7,6 +7,7 @@ import Dashboard from '../pages/Dashboard.jsx';
 import Flightlog from '../pages/Flightlog.jsx';
 import AircraftList from '../pages/AircraftList.jsx'; 
 import NewAircraftForm from '../pages/NewAircraft.jsx'; // Import the new component
+import UserSettings from '../pages/UserSettings.jsx'; // Import the new component
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 
@@ -106,6 +107,7 @@ function App() {
         <Route path="/AircraftList" element={<AircraftList />} />
         {/* New Aircraft Form Route */}
         <Route path="/new-aircraft" element={<NewAircraftForm />} />
+        <Route path="/UserSettings" element={<UserSettings />} />
       </Routes>
     </BrowserRouter>
   );

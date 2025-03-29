@@ -2,6 +2,7 @@ import React from 'react';
 
 const FormInput = ({
   label,
+  labelClassName = '', // Neue Prop für Label-Klassen
   type = 'text',
   name,
   id,
@@ -18,7 +19,10 @@ const FormInput = ({
     return (
       <div className={`mb-4 ${className}`}>
         {label && (
-          <label htmlFor={id} className="block mb-1 text-gray-200">
+          <label
+            htmlFor={id}
+            className={`block text-sm font-medium text-black ${labelClassName}`} 
+          >
             {label}
           </label>
         )}
@@ -28,7 +32,7 @@ const FormInput = ({
           id={id || name}
           value={value}
           onChange={onChange}
-          className="w-full px-3 py-2 rounded border border-gray-600 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
           required={required}
           placeholder={placeholder}
           min={min}
@@ -36,12 +40,15 @@ const FormInput = ({
       </div>
     );
   }
-  
+
   // For rendering select inputs
   return (
     <div className={`mb-4 ${className}`}>
       {label && (
-        <label htmlFor={id} className="block mb-1 text-gray-200">
+        <label
+          htmlFor={id}
+          className={`block text-sm font-medium text-black ${labelClassName}`}
+        >
           {label}
         </label>
       )}
@@ -52,7 +59,7 @@ const FormInput = ({
           value={value}
           onChange={onChange}
           required={required}
-          className="w-full px-3 py-2 border border-gray-600 rounded appearance-none bg-white text-gray-900 focus:outline-none focus:border-blue-500 pr-8"
+          className="w-full px-3 py-2 border border-gray-300 rounded appearance-none bg-white text-gray-900 focus:outline-none focus:border-blue-500 pr-8"
         >
           {options.map(option => (
             <option key={option.value} value={option.value}>

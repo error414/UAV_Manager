@@ -100,6 +100,7 @@ const Register = () => {
           value={formData.email}
           onChange={handleChange}
           required
+          labelClassName="text-white" // Weißer Text für das Label
         />
 
         <FormInput
@@ -110,6 +111,7 @@ const Register = () => {
           value={formData.password}
           onChange={handleChange}
           required
+          labelClassName="text-white" // Weißer Text für das Label
         />
 
         <FormInput
@@ -121,6 +123,7 @@ const Register = () => {
           onChange={handleChange}
           required
           className="mb-6"
+          labelClassName="text-white" // Weißer Text für das Label
         />
 
         <Button type="submit">Register</Button>

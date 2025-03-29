@@ -83,6 +83,7 @@ const Login = () => {
           value={formData.email}
           onChange={handleChange}
           required
+          labelClassName="text-white"
         />
 
         <FormInput
@@ -94,6 +95,7 @@ const Login = () => {
           onChange={handleChange}
           required
           className="mb-6"
+          labelClassName="text-white"
         />
 
         <Button type="submit">Login</Button>
