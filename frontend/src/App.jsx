@@ -13,6 +13,63 @@ import viteLogo from '/vite.svg';
 
 function Home() {
   const [count, setCount] = useState(0);
+  const [deleteMessage, setDeleteMessage] = useState(null);
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  const deleteAllFlightLogs = async () => {
+    if (!window.confirm('⚠️ DEVELOPMENT ONLY: Are you sure you want to delete ALL flight logs? This cannot be undone!')) {
+      return;
+    }
+    
+    const token = localStorage.getItem('access_token');
+    const user_id = localStorage.getItem('user_id');
+    
+    if (!token || !user_id) {
+      setDeleteMessage({ type: 'error', text: 'You must be logged in to delete logs' });
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_URL}/api/flightlogs/?user=${user_id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch logs');
+      }
+      
+      const logs = await response.json();
+      
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const log of logs) {
+        try {
+          const deleteResponse = await fetch(`${API_URL}/api/flightlogs/${log.flightlog_id}/`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (deleteResponse.ok) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (err) {
+          errorCount++;
+        }
+      }
+      
+      setDeleteMessage({ 
+        type: 'success', 
+        text: `Deleted ${successCount} logs. Failed to delete ${errorCount} logs.` 
+      });
+      
+    } catch (err) {
+      console.error('Error deleting logs:', err);
+      setDeleteMessage({ type: 'error', text: 'Error deleting logs: ' + err.message });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
@@ -77,6 +134,22 @@ function Home() {
         <p className="mt-4 text-gray-700">
           Edit <code>src/App.jsx</code> and save to test HMR.
         </p>
+        {/* Development Button - Delete All Flight Logs */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <h2 className="text-red-500 font-bold mb-2">⚠️ DEVELOPMENT TOOLS ⚠️</h2>
+          <button 
+            onClick={deleteAllFlightLogs}
+            className="block mx-auto bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-10 rounded mt-2"
+          >
+            Delete ALL Flight Logs
+          </button>
+          
+          {deleteMessage && (
+            <div className={`mt-2 p-2 rounded ${deleteMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {deleteMessage.text}
+            </div>
+          )}
+        </div>
       </div>
       <p className="text-sm text-gray-500">
         Click on the Vite and React logos to learn more.

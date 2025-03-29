@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button } from '../components';
 import ResponsiveTable from '../components/Table';
+import CSVImporter from '../helper/CSVImporter'; // <-- added CSVImporter import
 
 // Utility functions
 const calculateFlightDuration = (deptTime, landTime) => {
@@ -99,7 +100,9 @@ const Flightlog = () => {
   const [filters, setFilters] = useState({...INITIAL_FLIGHT_STATE});
   const [newFlight, setNewFlight] = useState({...INITIAL_FLIGHT_STATE});
 
-  // API helpers and callbacks
+  // CSV Importer: create a ref for the hidden file input
+  const fileInputRef = useRef(null);
+
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('access_token');
     return { Authorization: `Bearer ${token}` };
@@ -115,7 +118,6 @@ const Flightlog = () => {
     return false;
   }, [navigate]);
 
-  // API fetch functions
   const fetchFlightLogs = useCallback(() => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
@@ -141,6 +143,21 @@ const Flightlog = () => {
       });
   }, [API_URL, getAuthHeaders, handleAuthError, navigate]);
 
+  const { handleFileUpload } = CSVImporter({
+    setError,
+    navigate,
+    API_URL,
+    getAuthHeaders,
+    availableUAVs,
+    fetchFlightLogs
+  });
+
+  const handleImportClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const fetchUAVs = useCallback(() => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
@@ -157,13 +174,11 @@ const Flightlog = () => {
       .catch((err) => console.error(err));
   }, [API_URL, getAuthHeaders]);
 
-  // Initial data fetching
   useEffect(() => {
     fetchFlightLogs();
     fetchUAVs();
   }, [fetchFlightLogs, fetchUAVs]);
 
-  // Memoized values
   const tableColumns = useMemo(() => [
     { header: 'Dept Place', accessor: 'departure_place' },
     { header: 'Date', accessor: 'departure_date' },
@@ -199,14 +214,12 @@ const Flightlog = () => {
   const filterFormFields = useMemo(() => getFormFields(true), []);
   const addFormFields = useMemo(() => getFormFields(false), []);
 
-  // Form change handlers
   const handleFormChange = useCallback((setter, e) => {
     const { name, value } = e.target;
     
     setter(prev => {
       const newState = { ...prev, [name]: value };
       
-      // Auto-calculate flight duration for time changes
       if ((name === 'departure_time' || name === 'landing_time') && name !== 'flight_duration') {
         const deptTime = name === 'departure_time' ? value : prev.departure_time;
         const landTime = name === 'landing_time' ? value : prev.landing_time;
@@ -225,7 +238,6 @@ const Flightlog = () => {
   const handleNewFlightChange = useCallback((e) => handleFormChange(setNewFlight, e), [handleFormChange]);
   const handleEditChange = useCallback((e) => handleFormChange(setEditingLog, e), [handleFormChange]);
 
-  // CRUD operations
   const handleNewFlightAdd = useCallback(async () => {
     if (!newFlight.departure_date || !newFlight.departure_time || 
         !newFlight.landing_time || !newFlight.uav || 
@@ -393,27 +405,21 @@ const Flightlog = () => {
     }
   }, [API_URL, fetchFlightLogs, getAuthHeaders, handleAuthError, navigate]);
 
-  // UI helpers
   const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
 
-  // Add an effect to handle responsive defaults
   useEffect(() => {
     const handleResize = () => {
-      // For desktop: automatically show sidebar
       if (window.innerWidth >= 1024) {
         setSidebarOpen(true);
-      } 
-      // For mobile: automatically hide sidebar
-      else {
+      } else {
         setSidebarOpen(false);
       }
     };
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []); // Remove sidebarOpen from dependencies to prevent unwanted rerenders
+  }, []);
 
-  // Filtered logs calculation
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       return Object.entries(filters).every(([key, filterValue]) => {
@@ -444,10 +450,8 @@ const Flightlog = () => {
     });
   }, [logs, filters]);
 
-  // Render the component
   return (
     <div className="flex h-screen relative">
-      {/* Mobile Sidebar Toggle - same position */}
       <button
         onClick={toggleSidebar}
         className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
@@ -458,7 +462,6 @@ const Flightlog = () => {
         </svg>
       </button>
       
-      {/* Desktop toggle stays the same */}
       <button
         onClick={toggleSidebar}
         className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
@@ -473,18 +476,14 @@ const Flightlog = () => {
       
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
-      {/* Reduce top padding on mobile to pt-2 (0.5rem) to align with toggle button */}
       <div 
         className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
           sidebarOpen ? 'lg:ml-64' : ''
         }`}
       >
-        {/* Add padding to the title to align with toggle button */}
         <div className="flex items-center h-10 mb-4">
-          {/* Empty div for spacing on mobile (same width as toggle button) */}
           <div className="w-10 lg:hidden"></div>
           
-          {/* Centered title */}
           <h1 className="text-2xl font-semibold text-center flex-1">Flight Log</h1>
         </div>
         
@@ -516,6 +515,21 @@ const Flightlog = () => {
             availableUAVs: availableUAVs
           }}
         />
+        <div className="mt-4">
+          <button 
+            className="px-4 py-2 bg-blue-600 text-white rounded"
+            onClick={handleImportClick}
+          >
+            Import CSV
+          </button>
+          <input 
+            type="file" 
+            accept=".csv" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+        </div>
       </div>
     </div>
   );
