@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button } from '../components';
+import UAVImporter from '../helper/UAVImporter';
 
 const AircraftList = () => {
   const navigate = useNavigate();
@@ -8,6 +9,7 @@ const AircraftList = () => {
   // Initialize sidebarOpen based on screen size - same as Flightlog
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
   
   // Add resize handler to match Flightlog behavior
   useEffect(() => {
@@ -29,6 +31,12 @@ const AircraftList = () => {
   // Get API URL from environment variables
   const API_URL = import.meta.env.VITE_API_URL;
   
+  // Function to get auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('access_token');
+    return { Authorization: `Bearer ${token}` };
+  };
+  
   // State for filters - based on UAV model fields
   const [filters, setFilters] = useState({
     drone_name: '',
@@ -46,12 +54,7 @@ const AircraftList = () => {
     acc: ''
   });
 
-  // Fetch aircraft data
-  useEffect(() => {
-    fetchAircrafts();
-  }, [navigate]);
-
-  // Function to fetch aircraft data
+  // Function to fetch aircraft data - MOVED UP before it's used
   const fetchAircrafts = async () => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
@@ -84,6 +87,20 @@ const AircraftList = () => {
     }
   };
 
+  // Initialize the UAV importer - MOVED AFTER fetchAircrafts is defined
+  const { handleFileUpload } = UAVImporter({
+    setError,
+    navigate,
+    API_URL,
+    getAuthHeaders,
+    fetchAircrafts
+  });
+
+  // Fetch aircraft data
+  useEffect(() => {
+    fetchAircrafts();
+  }, [navigate]);
+
   // Function to handle filter changes
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -95,15 +112,15 @@ const AircraftList = () => {
     navigate('/new-aircraft');
   };
 
-  // Function to handle CSV import (placeholder)
+  // Function to handle CSV import
   const handleImportCSV = () => {
-    // Implement CSV import logic or navigate to import page
-    alert('CSV import functionality would be implemented here');
+    // Trigger file input click
+    fileInputRef.current.click();
   };
 
-  // Function to handle clicking on an aircraft (navigate to detail view)
+  // Function to handle clicking on an aircraft (navigate to edit view)
   const handleAircraftClick = (uavId) => {
-    navigate(`/aircraft-detail/${uavId}`);
+    navigate(`/edit-aircraft/${uavId}`);
   };
 
   // Toggle sidebar for mobile view
@@ -135,6 +152,89 @@ const AircraftList = () => {
     { header: 'GYRO', accessor: 'gyro' },
     { header: 'ACC', accessor: 'acc' }
   ];
+
+  // Function to handle CSV export
+  const handleExportCSV = () => {
+    if (aircrafts.length === 0) {
+      alert('No aircraft data to export.');
+      return;
+    }
+    
+    // CSV header row - MUST match exactly what the importer expects
+    const headers = [
+      'DroneName', 'Manufacturer', 'Type', 'Motors', 'MotorType',
+      'Video', 'VideoSystem', 'ESC', 'ESCFirmware', 'Receiver',
+      'ReceiverFirmware', 'FlightController', 'Firmware', 'FirmwareVersion',
+      'GPS', 'MAG', 'BARO', 'GYRO', 'ACC', 'RegistrationNumber', 'SerialNumber'
+    ];
+    
+    // Map data fields to CSV rows - ensure field names match the importer
+    const csvData = aircrafts.map(aircraft => [
+      aircraft.drone_name || '',
+      aircraft.manufacturer || '',
+      aircraft.type || '',
+      aircraft.motors || '',
+      aircraft.motor_type || '',
+      aircraft.video || '',
+      aircraft.video_system || '',
+      aircraft.esc || '',
+      aircraft.esc_firmware || '',
+      aircraft.receiver || '',
+      aircraft.receiver_firmware || '',
+      aircraft.flight_controller || '',
+      aircraft.firmware || '',
+      aircraft.firmware_version || '',
+      aircraft.gps || '',
+      aircraft.mag || '',
+      aircraft.baro || '',
+      aircraft.gyro || '',
+      aircraft.acc || '',
+      aircraft.registration_number || '',
+      aircraft.serial_number || ''
+    ]);
+    
+    // Add header row to CSV data
+    csvData.unshift(headers);
+    
+    // Convert to CSV format with proper handling of special characters
+    const csvContent = csvData.map(row => {
+      return row.map(cell => {
+        // Handle null/undefined values
+        if (cell === null || cell === undefined) {
+          return '';
+        }
+        
+        // Convert numbers to strings
+        const cellStr = String(cell);
+        
+        // Handle fields with commas, quotes, or newlines
+        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+          // Escape quotes with double quotes and wrap in quotes
+          return `"${cellStr.replace(/"/g, '""')}"`;
+        }
+        return cellStr;
+      }).join(',');
+    }).join('\n');
+    
+    // Create blob and download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[-:]/g, '').substring(0, 15);
+    
+    // Set download attributes and trigger click
+    link.setAttribute('href', url);
+    link.setAttribute('download', `uav-export-${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up by revoking the object URL
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
 
   return (
     <div className="flex h-screen relative">
@@ -270,6 +370,21 @@ const AircraftList = () => {
           >
             Import CSV
           </Button>
+          <Button 
+            onClick={handleExportCSV} 
+            className="bg-blue-500 hover:bg-blue-600 max-w-xs"
+          >
+            Export CSV
+          </Button>
+          
+          {/* Hidden file input for CSV import */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".csv"
+            onChange={handleFileUpload}
+          />
         </div>
       </div>
     </div>

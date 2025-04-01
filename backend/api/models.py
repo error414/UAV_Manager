@@ -66,7 +66,7 @@ class UAV(models.Model):
     uav_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uavs')
     drone_name = models.CharField(max_length=255)
-    manufacturer = models.CharField(max_length=100)
+    manufacturer = models.CharField(max_length=100, blank=True, null=True)
     type = models.CharField(max_length=100)
     motors = models.IntegerField()
     motor_type = models.CharField(max_length=100, blank=True, null=True)
@@ -85,8 +85,9 @@ class UAV(models.Model):
     gyro = models.CharField(max_length=100, blank=True, null=True)
     acc = models.CharField(max_length=100, blank=True, null=True)
     registration_number = models.CharField(max_length=100, blank=True, null=True)
-    serial_number = models.CharField(max_length=100, unique=True)
+    serial_number = models.CharField(max_length=100, blank=True, null=True)
     custom_attributes = models.JSONField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -94,7 +95,6 @@ class UAV(models.Model):
         return f"{self.drone_name} ({self.serial_number})"
 
 
-# Fluglogs (FLIGHTLOGS)
 # Fluglogs (FLIGHTLOGS)
 class FlightLog(models.Model):
     # Definiere Choices für die Dropdown-Felder

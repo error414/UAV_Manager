@@ -2,6 +2,7 @@ from rest_framework import serializers
 from djoser.serializers import UserCreateSerializer as BaseUserCreateSerializer, UserSerializer as BaseDjoserUserSerializer
 from django.contrib.auth import get_user_model
 from .models import UserSettings, UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File
+from datetime import datetime
 
 User = get_user_model()
 
@@ -51,9 +52,33 @@ class UserSettingsSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class UAVSerializer(serializers.ModelSerializer):
+    # Add fields for maintenance dates that aren't in the model
+    props_maint_date = serializers.DateField(required=False, allow_null=True)
+    motor_maint_date = serializers.DateField(required=False, allow_null=True)
+    frame_maint_date = serializers.DateField(required=False, allow_null=True)
+    props_reminder_date = serializers.DateField(required=False, allow_null=True)
+    motor_reminder_date = serializers.DateField(required=False, allow_null=True)
+    frame_reminder_date = serializers.DateField(required=False, allow_null=True)
+    
     class Meta:
         model = UAV
         fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at')
+    
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        
+        # Get the maintenance reminder data for this UAV
+        reminders = MaintenanceReminder.objects.filter(uav=instance)
+        
+        # Add maintenance date fields from reminders
+        for reminder in reminders:
+            component = reminder.component
+            if component in ['props', 'motor', 'frame']:
+                representation[f'{component}_maint_date'] = reminder.last_maintenance.strftime('%Y-%m-%d')
+                representation[f'{component}_reminder_date'] = reminder.next_maintenance.strftime('%Y-%m-%d')
+        
+        return representation
 
 class FlightLogSerializer(serializers.ModelSerializer):
     class Meta:

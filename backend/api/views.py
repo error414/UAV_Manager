@@ -1,5 +1,6 @@
 # backend/api/views.py
 from rest_framework import generics, permissions
+from datetime import datetime
 from .models import (
     UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings
 )
@@ -17,7 +18,44 @@ class UAVListCreateView(generics.ListCreateAPIView):
         return UAV.objects.filter(user=self.request.user)
     
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        uav = serializer.save(user=self.request.user)
+        self._update_maintenance_reminders(uav, serializer.validated_data)
+    
+    def _update_maintenance_reminders(self, uav, data):
+        # Process maintenance reminders
+        components = ['props', 'motor', 'frame']
+        for component in components:
+            maint_date_key = f'{component}_maint_date'
+            reminder_date_key = f'{component}_reminder_date'
+            
+            # Skip if no maintenance date is provided
+            if maint_date_key not in data or data[maint_date_key] is None:
+                continue
+            
+            last_maintenance = data[maint_date_key]
+            next_maintenance = data.get(reminder_date_key, None)
+            
+            # If no next_maintenance date, default to 1 year later
+            if next_maintenance is None and last_maintenance is not None:
+                next_year = datetime(
+                    last_maintenance.year + 1, 
+                    last_maintenance.month, 
+                    last_maintenance.day
+                )
+                next_maintenance = next_year
+            
+            # Create or update reminder
+            if last_maintenance:
+                # Check if a reminder for this component already exists
+                reminder, created = MaintenanceReminder.objects.update_or_create(
+                    uav=uav,
+                    component=component,
+                    defaults={
+                        'last_maintenance': last_maintenance,
+                        'next_maintenance': next_maintenance,
+                        'reminder_active': True
+                    }
+                )
 
 class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UAVSerializer
@@ -25,6 +63,49 @@ class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def get_queryset(self):
         return UAV.objects.filter(user=self.request.user)
+    
+    def perform_update(self, serializer):
+        uav = serializer.save()
+        self._update_maintenance_reminders(uav, serializer.validated_data)
+    
+    def _update_maintenance_reminders(self, uav, data):
+        # Process maintenance reminders
+        components = ['props', 'motor', 'frame']
+        for component in components:
+            maint_date_key = f'{component}_maint_date'
+            reminder_date_key = f'{component}_reminder_date'
+            
+            # Only update if the field is in the data
+            if maint_date_key not in data:
+                continue
+            
+            last_maintenance = data[maint_date_key]
+            next_maintenance = data.get(reminder_date_key, None)
+            
+            # If maintenance date is None, we might want to delete any existing reminder
+            if last_maintenance is None:
+                MaintenanceReminder.objects.filter(uav=uav, component=component).delete()
+                continue
+            
+            # If no next_maintenance date, default to 1 year later
+            if next_maintenance is None and last_maintenance is not None:
+                next_year = datetime(
+                    last_maintenance.year + 1, 
+                    last_maintenance.month, 
+                    last_maintenance.day
+                )
+                next_maintenance = next_year
+            
+            # Create or update reminder
+            reminder, created = MaintenanceReminder.objects.update_or_create(
+                uav=uav,
+                component=component,
+                defaults={
+                    'last_maintenance': last_maintenance,
+                    'next_maintenance': next_maintenance,
+                    'reminder_active': True
+                }
+            )
 
 # Endpunkte für Fluglogs
 class FlightLogListCreateView(generics.ListCreateAPIView):
