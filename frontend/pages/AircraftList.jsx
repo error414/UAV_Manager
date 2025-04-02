@@ -80,7 +80,17 @@ const AircraftList = () => {
       }
       
       const data = await response.json();
-      setAircrafts(data);
+      // Fetch total landings for each UAV
+      const aircraftsWithLandings = await Promise.all(
+        data.map(async (aircraft) => {
+          const landingsResponse = await fetch(`${API_URL}/api/flightlogs/total-landings/?uav=${aircraft.uav_id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const landingsData = await landingsResponse.json();
+          return { ...aircraft, total_landings: landingsData.total_landings || 0 };
+        })
+      );
+      setAircrafts(aircraftsWithLandings);
     } catch (err) {
       console.error(err);
       setError('Could not load aircraft data.');
@@ -118,9 +128,9 @@ const AircraftList = () => {
     fileInputRef.current.click();
   };
 
-  // Function to handle clicking on an aircraft (navigate to edit view)
+  // Function to handle clicking on an aircraft (navigate to settings view)
   const handleAircraftClick = (uavId) => {
-    navigate(`/edit-aircraft/${uavId}`);
+    navigate(`/aircraft-settings/${uavId}`);
   };
 
   // Toggle sidebar for mobile view
@@ -143,7 +153,7 @@ const AircraftList = () => {
     { header: 'Type', accessor: 'type' },
     { header: 'Motors', accessor: 'motors' },
     { header: 'Type of Motor', accessor: 'motor_type' },
-    { header: 'LDG', accessor: 'ldg' }, // May need adjustment based on your data model
+    { header: 'LDG', accessor: 'total_landings' }, // Updated to show total landings
     { header: 'Firmware', accessor: 'firmware_version' },
     { header: 'Video System', accessor: 'video_system' },
     { header: 'GPS', accessor: 'gps' },
@@ -314,7 +324,7 @@ const AircraftList = () => {
                   {filteredAircrafts.map(aircraft => (
                     <tr 
                       key={aircraft.uav_id} 
-                      className="bg-white border-b hover:bg-gray-50 cursor-pointer"
+                      className={`border-b hover:bg-gray-50 cursor-pointer ${aircraft.is_active === false ? 'bg-red-100' : 'bg-white'}`}
                       onClick={() => handleAircraftClick(aircraft.uav_id)}
                     >
                       {tableColumns.map(column => (
@@ -335,7 +345,7 @@ const AircraftList = () => {
           {filteredAircrafts.map(aircraft => (
             <div 
               key={aircraft.uav_id}
-              className="bg-white rounded-lg shadow mb-4 p-4"
+              className={`rounded-lg shadow mb-4 p-4 ${aircraft.is_active === false ? 'bg-red-100' : 'bg-white'}`}
               onClick={() => handleAircraftClick(aircraft.uav_id)}
             >
               <h3 className="font-bold text-lg mb-2">{aircraft.drone_name || 'Unnamed Aircraft'}</h3>

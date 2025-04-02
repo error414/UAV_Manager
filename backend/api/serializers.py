@@ -43,6 +43,14 @@ class UserSerializer(BaseDjoserUserSerializer):
         instance.zip = validated_data.get('zip', instance.zip)
         instance.city = validated_data.get('city', instance.city)
         instance.country = validated_data.get('country', instance.country)
+        # Add missing fields
+        instance.company = validated_data.get('company', instance.company)
+        instance.drone_ops_nb = validated_data.get('drone_ops_nb', instance.drone_ops_nb)
+        instance.pilot_license_nb = validated_data.get('pilot_license_nb', instance.pilot_license_nb)
+        # Also ensure license dates can be updated
+        instance.a1_a3 = validated_data.get('a1_a3', instance.a1_a3)
+        instance.a2 = validated_data.get('a2', instance.a2)
+        instance.sts = validated_data.get('sts', instance.sts)
         instance.save()
         return instance
 

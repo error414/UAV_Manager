@@ -1,6 +1,8 @@
 # backend/api/views.py
 from rest_framework import generics, permissions
 from datetime import datetime
+from django.http import JsonResponse
+from rest_framework.decorators import api_view
 from .models import (
     UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings
 )
@@ -106,6 +108,13 @@ class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
                     'reminder_active': True
                 }
             )
+    
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        uav_id = self.get_object().uav_id
+        response.data['total_flights'] = FlightLog.objects.filter(uav_id=uav_id).count()
+        response.data['total_flight_hours'] = FlightLog.get_total_flight_hours(uav_id)
+        return response
 
 # Endpunkte für Fluglogs
 class FlightLogListCreateView(generics.ListCreateAPIView):
@@ -209,3 +218,12 @@ class UserSettingsDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def get_queryset(self):
         return UserSettings.objects.filter(user=self.request.user)
+
+@api_view(['GET'])
+def total_landings(request):
+    uav_id = request.GET.get('uav')
+    if not uav_id:
+        return JsonResponse({'error': 'UAV ID is required'}, status=400)
+    
+    total_landings = FlightLog.get_total_landings(uav_id)
+    return JsonResponse({'total_landings': total_landings})

@@ -476,6 +476,15 @@ const NewAircraftPage = () => {
             {isEditMode ? 'Edit Aircraft' : 'New Aircraft'}
           </h1>
         </div>
+
+        {/* Back Button */}
+        {isEditMode && (
+          <div className="mb-4">
+            <Button onClick={() => navigate(`/aircraft-settings/${uavId}`)} className="bg-gray-500 hover:bg-gray-600">
+              Back to Aircraft Settings
+            </Button>
+          </div>
+        )}
         
         {/* Inactive Aircraft Alert */}
         {isEditMode && formData.is_active === false && (
