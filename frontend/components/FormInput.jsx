@@ -2,7 +2,7 @@ import React from 'react';
 
 const FormInput = ({
   label,
-  labelClassName = '', // Neue Prop für Label-Klassen
+  labelClassName = '',
   type = 'text',
   name,
   id,

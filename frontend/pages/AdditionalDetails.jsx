@@ -17,7 +17,6 @@ const AdditionalDetails = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   
-  // Get API URL from environment variables
   const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -39,7 +38,6 @@ const AdditionalDetails = () => {
     })
       .then(response => {
         if (!response.ok) {
-          // If token expired or invalid, redirect to login
           if (response.status === 401) {
             localStorage.removeItem('access_token');
             localStorage.removeItem('user_id');
@@ -51,7 +49,6 @@ const AdditionalDetails = () => {
         return response.json();
       })
       .then(data => {
-        // Vorbelegung der Felder, falls vorhanden
         setDetails({
           first_name: data.first_name || '',
           last_name: data.last_name || '',
@@ -74,11 +71,9 @@ const AdditionalDetails = () => {
     });
   };
 
-  // Handle numeric input fields (phone and zip)
   const handleNumericInput = (e) => {
     const { name, value } = e.target;
     
-    // Only allow numeric characters
     const numericValue = value.replace(/\D/g, '');
     
     setDetails({
@@ -87,7 +82,6 @@ const AdditionalDetails = () => {
     });
   };
 
-  // Handle country selection
   const selectCountry = (val) => {
     setDetails({
       ...details,
@@ -109,7 +103,6 @@ const AdditionalDetails = () => {
     }
 
     try {
-      // PATCH-Request zum Aktualisieren der Benutzerdaten
       const response = await fetch(`${API_URL}/api/users/${user_id}/`, {
         method: 'PATCH',
         headers: {
@@ -120,7 +113,6 @@ const AdditionalDetails = () => {
       });
 
       if (!response.ok) {
-        // Handle token expiration during form submission
         if (response.status === 401) {
           localStorage.removeItem('access_token');
           localStorage.removeItem('user_id');
@@ -156,7 +148,7 @@ const AdditionalDetails = () => {
           value={details.first_name}
           onChange={handleChange}
           required
-          labelClassName="text-white" // Weißer Text für das Label
+          labelClassName="text-white"
         />
 
         <FormInput
@@ -167,7 +159,7 @@ const AdditionalDetails = () => {
           value={details.last_name}
           onChange={handleChange}
           required
-          labelClassName="text-white" // Weißer Text für das Label
+          labelClassName="text-white"
         />
 
         <FormInput
@@ -179,7 +171,7 @@ const AdditionalDetails = () => {
           onChange={handleNumericInput}
           inputMode="numeric"
           pattern="[0-9]*"
-          labelClassName="text-white" // Weißer Text für das Label
+          labelClassName="text-white"
         />
 
         <FormInput
@@ -189,7 +181,7 @@ const AdditionalDetails = () => {
           id="street"
           value={details.street}
           onChange={handleChange}
-          labelClassName="text-white" // Weißer Text für das Label
+          labelClassName="text-white"
         />
 
         <FormInput
@@ -201,7 +193,7 @@ const AdditionalDetails = () => {
           onChange={handleNumericInput}
           inputMode="numeric"
           pattern="[0-9]*"
-          labelClassName="text-white" // Weißer Text für das Label
+          labelClassName="text-white"
         />
 
         <FormInput
@@ -211,10 +203,9 @@ const AdditionalDetails = () => {
           id="city"
           value={details.city}
           onChange={handleChange}
-          labelClassName="text-white" // Weißer Text für das Label
+          labelClassName="text-white"
         />
 
-        {/* Country-Feld */}
         <div className="mb-4">
           <p className="text-white mb-2">Country</p>
           <CountryDropdown

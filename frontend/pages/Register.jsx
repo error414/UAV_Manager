@@ -47,7 +47,6 @@ const Register = () => {
       console.log('Registration response:', data);
 
       if (response.ok) {
-        // Save user_id from registration response to localStorage
         if (data.user_id) {
           localStorage.setItem('user_id', data.user_id);
         }
@@ -100,7 +99,7 @@ const Register = () => {
           value={formData.email}
           onChange={handleChange}
           required
-          labelClassName="text-white" // Weißer Text für das Label
+          labelClassName="text-white" 
         />
 
         <FormInput
@@ -111,7 +110,7 @@ const Register = () => {
           value={formData.password}
           onChange={handleChange}
           required
-          labelClassName="text-white" // Weißer Text für das Label
+          labelClassName="text-white" 
         />
 
         <FormInput
@@ -123,7 +122,7 @@ const Register = () => {
           onChange={handleChange}
           required
           className="mb-6"
-          labelClassName="text-white" // Weißer Text für das Label
+          labelClassName="text-white" 
         />
 
         <Button type="submit">Register</Button>

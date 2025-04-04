@@ -187,7 +187,6 @@ const UserSettings = () => {
 
   return (
     <div className="flex h-screen relative">
-      {/* Mobile Sidebar Toggle - match existing behavior */}
       <button
         onClick={toggleSidebar}
         className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
@@ -198,7 +197,6 @@ const UserSettings = () => {
         </svg>
       </button>
       
-      {/* Desktop toggle - match existing behavior */}
       <button
         onClick={toggleSidebar}
         className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
@@ -213,30 +211,21 @@ const UserSettings = () => {
       
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
-      {/* Main Content - match layout with existing pages */}
       <div 
         className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
           sidebarOpen ? 'lg:ml-64' : ''
         }`}
       >
-        {/* Title with consistent styling */}
         <div className="flex items-center h-10 mb-4">
-          {/* Empty div for spacing on mobile (same width as toggle button) */}
           <div className="w-10 lg:hidden"></div>
-          
-          {/* Centered title */}
           <h1 className="text-2xl font-semibold text-center flex-1">User Settings</h1>
         </div>
         
-        {/* Alerts */}
         {error && <Alert type="error" message={error} />}
         {success && <Alert type="success" message={success} />}
         
-        {/* Form content */}
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column */}
           <div className="space-y-4">
-            {/* First Name */}
             <div>
               <label className="">First name</label>
               <FormInput
@@ -250,7 +239,6 @@ const UserSettings = () => {
               />
             </div>
             
-            {/* Last Name */}
             <div>
               <label className="">Last name</label>
               <FormInput
@@ -264,7 +252,6 @@ const UserSettings = () => {
               />
             </div>
             
-            {/* Company Name */}
             <div>
               <label className="">Company Name</label>
               <FormInput
@@ -277,7 +264,6 @@ const UserSettings = () => {
                 />
             </div>
             
-            {/* Email */}
             <div>
               <label className="">E-mail</label>
               <FormInput
@@ -288,11 +274,10 @@ const UserSettings = () => {
                 onChange={handleChange}
                 placeholder="john.doe@example.com"
                 required
-                disabled // Email should not be changed directly through this form
+                disabled
               />
             </div>
             
-            {/* Phone Number */}
             <div>
               <label className="">Phone number</label>
               <FormInput
@@ -305,7 +290,6 @@ const UserSettings = () => {
                 />
             </div>
             
-            {/* Street Address */}
             <div>
               <label className="">Street Address</label>
               <FormInput
@@ -318,7 +302,6 @@ const UserSettings = () => {
                 />
             </div>
             
-            {/* Zip and City */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="">Zip Code</label>
@@ -344,7 +327,6 @@ const UserSettings = () => {
               </div>
             </div>
             
-            {/* Country */}
             <div>
               <label className="">Country</label>
               <div className="mt-1">
@@ -360,9 +342,7 @@ const UserSettings = () => {
             </div>
           </div>
           
-          {/* Right Column */}
           <div className="space-y-4">
-            {/* Drone Operator Number */}
             <div>
               <label className="">Drone Operator Number</label>
               <FormInput
@@ -375,7 +355,6 @@ const UserSettings = () => {
                 />
             </div>
             
-            {/* Pilot License Number */}
             <div>
               <label className="">Pilot License number</label>
               <FormInput
@@ -388,10 +367,8 @@ const UserSettings = () => {
                 />
             </div>
             
-            {/* License Category */}
             <h3 className="text-lg font-medium pt-2 text-black">License Category</h3>
             
-            {/* A1/A3 License */}
             <div className="grid grid-cols-4 gap-2 items-center">
               <div className="col-span-1">
                 <label className="">A1 / A3</label>
@@ -410,7 +387,6 @@ const UserSettings = () => {
               </div>
             </div>
             
-            {/* A2 License */}
             <div className="grid grid-cols-4 gap-2 items-center">
               <div className="col-span-1">
                 <label className="">A2</label>
@@ -429,7 +405,6 @@ const UserSettings = () => {
               </div>
             </div>
             
-            {/* STS License */}
             <div className="grid grid-cols-4 gap-2 items-center">
               <div className="col-span-1">
                 <label className="">STS</label>
@@ -449,7 +424,6 @@ const UserSettings = () => {
             </div>
           </div>
           
-          {/* Submit Button - Full Width */}
           <div className="col-span-1 md:col-span-2 mt-6 flex justify-center">
             <Button type="submit" className="max-w-md">
               Save changes

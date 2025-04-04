@@ -40,7 +40,6 @@ const Login = () => {
       console.log('Login response:', data);
 
       if (response.ok) {
-        // Save token to localStorage
         if (data.access) {
           localStorage.setItem('access_token', data.access);
           

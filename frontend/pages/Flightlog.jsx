@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar, Alert, Button } from '../components';
-import ResponsiveTable from '../components/Table';
-import CSVImporter from '../helper/CSVImporter'; // <-- added CSVImporter import
+import { Sidebar, Alert, Button, ResponsiveTable } from '../components';
+import CSVImporter from '../helper/CSVImporter';
 
 // Utility functions
 const calculateFlightDuration = (deptTime, landTime) => {
@@ -514,6 +513,11 @@ const Flightlog = () => {
           availableOptions={{
             availableUAVs: availableUAVs
           }}
+          
+          rowClickable={false}
+          showActionColumn={true}
+          actionColumnText="Actions"
+          titleField="uav" 
         />
         <div className="mt-4">
           <button 

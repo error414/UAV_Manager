@@ -14,7 +14,7 @@ const UAVImporter = ({
       return;
     }
     
-    console.log('CSV data before processing:', data); // Debug raw data
+    console.log('CSV data before processing:', data);
     
     try {
       const token = localStorage.getItem('access_token');
@@ -35,7 +35,7 @@ const UAVImporter = ({
           // Check for truly required fields per Django model
           if (!row['DroneName'] || !row['Type'] || !row['Motors']) {
             console.log('Skipping entry due to missing required field:', row);
-            return null; // Will be filtered out below
+            return null;
           }
           
           // Create UAV object with proper defaults for required fields
@@ -43,8 +43,8 @@ const UAVImporter = ({
             user: user_id,
             drone_name: row['DroneName'],
             manufacturer: row['Manufacturer'] || '',
-            type: row['Type'], // Required
-            motors: parseInt(row['Motors'], 10) || 1, // Required, ensure it's a number
+            type: row['Type'],
+            motors: parseInt(row['Motors'], 10) || 1,
             motor_type: row['MotorType'] || '',
             video: row['Video'] || '',
             video_system: row['VideoSystem'] || '',
@@ -67,7 +67,7 @@ const UAVImporter = ({
         })
         .filter(uav => uav !== null);
 
-      console.log('After mapping and filtering, UAVs to import:', newUAVs.length); // Debug filtered data
+      console.log('After mapping and filtering, UAVs to import:', newUAVs.length);
       
       // Fetch existing UAVs to check for duplicates
       const existingUAVs = await fetch(`${API_URL}/api/uavs/?user=${user_id}`, {
@@ -117,7 +117,7 @@ const UAVImporter = ({
             }
             duplicateDroneNames[uav.drone_name]++;
             skippedCount++;
-            continue; // Skip to next UAV
+            continue;
           }
           
           console.log("Sending UAV to API:", uav);
@@ -144,7 +144,6 @@ const UAVImporter = ({
         }
       }
 
-      // Refresh the UAV list
       fetchAircrafts();
 
       // Create message about duplicate serial numbers

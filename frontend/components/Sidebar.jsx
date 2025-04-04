@@ -54,7 +54,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     };
     
     fetchUserData();
-  }, [API_URL]); // Added API_URL to dependencies
+  }, [API_URL]);
   
   const handleLogout = () => {
     localStorage.removeItem('access_token');
@@ -76,13 +76,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       } transform transition-transform duration-300 ease-in-out fixed w-64 bg-gray-900 text-gray-300 h-full z-10 flex flex-col overflow-y-auto`}
     >
       <div className="p-3 text-lg font-bold border-b border-gray-800 flex items-center">
-        {/* Remove the button from here - we'll use the one in Flightlog.jsx */}
-        {/* <button onClick={toggleSidebar} className="lg:hidden text-white mr-3">...</button> */}
-        
-        {/* Added ml-10 (margin-left) to push the text to the right of where the button would be */}
         <span className="ml-10">UAV Manager</span>
-      </div>
-      
+      </div>     
       <nav className="flex-1 py-1">
         {menuItems.map((item) => {
           const isActive = 

@@ -43,7 +43,6 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
             )}
           </td>
         ))}
-        {/* Extra cell for actions column alignment */}
         <td className="p-2"></td>
       </tr>
     );

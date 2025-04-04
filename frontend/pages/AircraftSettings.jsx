@@ -35,7 +35,7 @@ const AircraftSettings = () => {
         formData.append('event_date', logData.event_date);
         formData.append('event_type', 'LOG');
         formData.append('uav', uavId);
-        formData.append('file', file); // Attach file
+        formData.append('file', file);
         
         response = await fetch(endpoint, {
           method,
@@ -115,9 +115,6 @@ const AircraftSettings = () => {
         });
       }
 
-      // Flight statistics are now included in the UAV detail response
-      // No need to make separate API calls
-
       setAircraft(data);
     } catch (error) {
       console.error(error);
@@ -176,7 +173,7 @@ const AircraftSettings = () => {
       setEditingLogId(logId);
       setEditingLog({ 
         ...logToEdit,
-        file: null // Initialize file as null when editing
+        file: null
       });
     }
   };

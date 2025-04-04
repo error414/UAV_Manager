@@ -40,7 +40,7 @@ const useAircraftForm = (isEditMode, uavId) => {
     props_reminder_date: '',
     motor_reminder_date: '',
     frame_reminder_date: '',
-    is_active: true  // Default to active
+    is_active: true  
   };
   
   const [formData, setFormData] = useState(defaultFormData);
@@ -77,7 +77,6 @@ const useAircraftForm = (isEditMode, uavId) => {
   // Handle setting today's date for all maintenance fields
   const handleSetTodayMaintDates = () => {
     const today = new Date().toISOString().split('T')[0];
-    // Calculate one year from today for reminder dates
     const nextYear = new Date();
     nextYear.setFullYear(nextYear.getFullYear() + 1);
     const nextYearStr = nextYear.toISOString().split('T')[0];
@@ -437,7 +436,6 @@ const NewAircraftPage = () => {
 
   return (
     <div className="flex h-screen relative">
-      {/* Mobile Sidebar Toggle */}
       <button
         onClick={toggleSidebar}
         className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
@@ -448,7 +446,6 @@ const NewAircraftPage = () => {
         </svg>
       </button>
       
-      {/* Desktop toggle */}
       <button
         onClick={toggleSidebar}
         className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
@@ -463,13 +460,11 @@ const NewAircraftPage = () => {
       
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
-      {/* Main Content */}
       <div 
         className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
           sidebarOpen ? 'lg:ml-64' : ''
         }`}
       >
-        {/* Title with spacing */}
         <div className="flex items-center h-10 mb-4">
           <div className="w-10 lg:hidden"></div>
           <h1 className="text-2xl font-semibold text-center flex-1">
@@ -477,7 +472,6 @@ const NewAircraftPage = () => {
           </h1>
         </div>
 
-        {/* Back Button */}
         {isEditMode && (
           <div className="mb-4">
             <Button onClick={() => navigate(`/aircraft-settings/${uavId}`)} className="bg-gray-500 hover:bg-gray-600">
@@ -486,7 +480,6 @@ const NewAircraftPage = () => {
           </div>
         )}
         
-        {/* Inactive Aircraft Alert */}
         {isEditMode && formData.is_active === false && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4">
             <div className="flex items-center">
@@ -498,11 +491,9 @@ const NewAircraftPage = () => {
           </div>
         )}
         
-        {/* Alerts */}
         {error && <Alert type="error" message={error} />}
         {success && <Alert type="success" message={success} />}
         
-        {/* Use the extracted AircraftForm component */}
         <AircraftForm
           formData={formData}
           handleChange={handleChange}

@@ -1,7 +1,6 @@
 import React from 'react';
 import { FormInput, Button } from './index';
 
-// Dropdown options as constant data
 const DROPDOWN_OPTIONS = {
   aircraftTypes: [
     { value: 'Quad', label: 'Quad' },
@@ -52,11 +51,10 @@ const DROPDOWN_OPTIONS = {
   ]
 };
 
-// Reusable component for maintenance date pairs
 const MaintenanceDatePair = ({ label, maintDate, reminderDate, onChange, formatDate, reminderDateValue, disabled }) => (
   <div className="grid grid-cols-2 gap-4">
     <div>
-      <label className="">{label} Maint:</label>
+      <label>{label} Maint:</label>
       <FormInput
         type="date"
         name={`${maintDate}_maint_date`}
@@ -67,7 +65,7 @@ const MaintenanceDatePair = ({ label, maintDate, reminderDate, onChange, formatD
       />
     </div>
     <div>
-      <label className="">Next:</label>
+      <label>Next:</label>
       <FormInput
         type="date"
         name={`${maintDate}_reminder_date`}
@@ -96,9 +94,7 @@ const AircraftForm = ({
 }) => {
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Left Column */}
       <div className="space-y-4">
-        {/* Basic Information */}
         <div>
           <label>Drone Name</label>
           <FormInput
@@ -138,7 +134,6 @@ const AircraftForm = ({
           disabled={isEditMode && formData.is_active === false}
         />
         
-        {/* Motors section */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label>Motors</label>
@@ -169,7 +164,6 @@ const AircraftForm = ({
           </div>
         </div>
         
-        {/* Video section */}
         <FormInput
           type="select"
           label="Video"
@@ -192,7 +186,6 @@ const AircraftForm = ({
           disabled={isEditMode && formData.is_active === false}
         />
         
-        {/* Components section */}
         <div>
           <label>ESC</label>
           <FormInput
@@ -246,9 +239,7 @@ const AircraftForm = ({
         </div>
       </div>
       
-      {/* Right Column */}
       <div className="space-y-4">
-        {/* Flight Controller section */}
         <div>
           <label>Flight Controller</label>
           <FormInput
@@ -286,7 +277,6 @@ const AircraftForm = ({
           />
         </div>
         
-        {/* Sensors section */}
         <div className="grid grid-cols-5 gap-1">
           {['gps', 'mag', 'baro', 'gyro', 'acc'].map(sensor => (
             <div key={sensor}>
@@ -305,7 +295,6 @@ const AircraftForm = ({
           ))}
         </div>
         
-        {/* Registration section */}
         <div>
           <label>Registration Number</label>
           <FormInput
@@ -332,7 +321,6 @@ const AircraftForm = ({
           />
         </div>
         
-        {/* Maintenance Dates */}
         <div className="flex items-center gap-2 pt-2">
           <h3 className="text-lg font-medium text-black">Last Maintenance:</h3>
           <button
@@ -345,7 +333,6 @@ const AircraftForm = ({
           </button>
         </div>
         
-        {/* Use the component for all maintenance types */}
         {['props', 'motor', 'frame'].map(item => (
           <MaintenanceDatePair 
             key={item}
@@ -360,9 +347,7 @@ const AircraftForm = ({
         ))}
       </div>
       
-      {/* Submit and Delete Buttons */}
       <div className="col-span-1 md:col-span-2 mt-6 flex justify-center gap-4">
-        {/* Show reactivate button for inactive aircraft */}
         {isEditMode && formData.is_active === false && (
           <Button 
             type="button" 
@@ -373,7 +358,6 @@ const AircraftForm = ({
           </Button>
         )}
         
-        {/* Only show Delete button if the aircraft is active and can be deleted */}
         {isEditMode && formData.is_active !== false && canDelete && (
           <Button 
             type="button" 
@@ -384,7 +368,6 @@ const AircraftForm = ({
           </Button>
         )}
         
-        {/* Show Set Inactive button if the aircraft is active but cannot be deleted */}
         {isEditMode && formData.is_active !== false && !canDelete && (
           <Button 
             type="button" 
@@ -395,7 +378,6 @@ const AircraftForm = ({
           </Button>
         )}
         
-        {/* Submit button - only show for active aircraft or new aircraft */}
         {(!isEditMode || formData.is_active !== false) && (
           <Button type="submit" className="max-w-md">
             {isEditMode ? 'Update Aircraft' : 'Save Aircraft'}

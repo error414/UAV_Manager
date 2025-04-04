@@ -48,7 +48,7 @@ const CSVImporter = ({
               }
               unmappedModelLogs[row['ModelName']]++;
             }
-            return null; // Will be filtered out below
+            return null;
           }
           
           let duration = '';
@@ -85,7 +85,7 @@ const CSVImporter = ({
             user: user_id
           };
         })
-        .filter(log => log !== null); // Filter out null entries (unmapped UAVs)
+        .filter(log => log !== null); 
 
       // First, fetch existing logs to compare against
       const existingLogs = await fetch(`${API_URL}/api/flightlogs/?user=${user_id}`, {
@@ -100,7 +100,7 @@ const CSVImporter = ({
       })
       .catch(err => {
         console.error("Error fetching existing logs:", err);
-        return []; // Return empty array if fetch fails - will proceed with import
+        return [];
       });
 
       // Then update the import process with duplicate detection
@@ -126,7 +126,6 @@ const CSVImporter = ({
           log.takeoffs = parseInt(log.takeoffs, 10) || 1;
           log.landings = parseInt(log.landings, 10) || 1;
 
-          // Check if this log already exists
           const isDuplicate = existingLogs.some(existingLog => 
             existingLog.departure_date === log.departure_date &&
             existingLog.departure_time === log.departure_time &&
@@ -136,7 +135,7 @@ const CSVImporter = ({
           if (isDuplicate) {
             console.log("Skipping duplicate log:", log);
             skippedCount++;
-            continue; // Skip to next log
+            continue;
           }
           
           console.log("Sending log to API:", log);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar, Alert, Button } from '../components';
+import { Sidebar, Alert, Button, ResponsiveTable } from '../components';
 import UAVImporter from '../helper/UAVImporter';
 
 const AircraftList = () => {
@@ -70,7 +70,6 @@ const AircraftList = () => {
         throw new Error('Failed to fetch aircraft data');
       }
       
-      // The flight statistics are now included in the UAV data
       const data = await response.json();
       setAircrafts(data);
     } catch (err) {
@@ -132,7 +131,7 @@ const AircraftList = () => {
     { header: 'Type', accessor: 'type' },
     { header: 'Motors', accessor: 'motors' },
     { header: 'Type of Motor', accessor: 'motor_type' },
-    { header: 'Flight Time', accessor: 'total_flight_time', format: formatFlightTime },
+    { header: 'Flight Time', accessor: 'total_flight_time', render: formatFlightTime },
     { header: 'TO', accessor: 'total_takeoffs' },
     { header: 'LDG', accessor: 'total_landings' },
     { header: 'Firmware', accessor: 'firmware_version' },
@@ -215,6 +214,11 @@ const AircraftList = () => {
     }, 100);
   };
 
+  const modifiedAircrafts = filteredAircrafts.map(aircraft => ({
+    ...aircraft,
+    flightlog_id: aircraft.uav_id
+  }));
+
   return (
     <div className="flex h-screen relative">
       <button
@@ -234,7 +238,7 @@ const AircraftList = () => {
         }`}
         aria-label="Toggle sidebar for desktop"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
@@ -254,81 +258,19 @@ const AircraftList = () => {
         
         <Alert type="error" message={error} />
 
-        <div className="hidden sm:block">
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left text-gray-500">
-                <thead>
-                  <tr className="bg-gray-50 border-b">
-                    {tableColumns.map(column => (
-                      <th key={column.accessor} className="p-2">
-                        <input
-                          type="text"
-                          name={column.accessor}
-                          placeholder="Filter"
-                          value={filters[column.accessor] || ''}
-                          onChange={handleFilterChange}
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
-                        />
-                      </th>
-                    ))}
-                  </tr>
-                  <tr className="bg-gray-100">
-                    {tableColumns.map(column => (
-                      <th key={column.accessor} className="p-2 text-xs font-medium uppercase tracking-wider text-gray-700">
-                        {column.header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAircrafts.map(aircraft => (
-                    <tr 
-                      key={aircraft.uav_id} 
-                      className={`border-b hover:bg-gray-50 cursor-pointer ${aircraft.is_active === false ? 'bg-red-100' : 'bg-white'}`}
-                      onClick={() => handleAircraftClick(aircraft.uav_id)}
-                    >
-                      {tableColumns.map(column => (
-                        <td key={column.accessor} className="p-3">
-                          {column.format 
-                            ? column.format(aircraft[column.accessor])
-                            : (aircraft[column.accessor] || 'N/A')}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div className="sm:hidden">
-          {filteredAircrafts.map(aircraft => (
-            <div 
-              key={aircraft.uav_id}
-              className={`rounded-lg shadow mb-4 p-4 ${aircraft.is_active === false ? 'bg-red-100' : 'bg-white'}`}
-              onClick={() => handleAircraftClick(aircraft.uav_id)}
-            >
-              <h3 className="font-bold text-lg mb-2">{aircraft.drone_name || 'Unnamed Aircraft'}</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-sm"><span className="font-medium">Manufacturer:</span> {aircraft.manufacturer || 'N/A'}</p>
-                  <p className="text-sm"><span className="font-medium">Type:</span> {aircraft.type || 'N/A'}</p>
-                  <p className="text-sm"><span className="font-medium">Motors:</span> {aircraft.motors || 'N/A'}</p>
-                  <p className="text-sm"><span className="font-medium">Motor Type:</span> {aircraft.motor_type || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm"><span className="font-medium">Firmware:</span> {aircraft.firmware_version || 'N/A'}</p>
-                  <p className="text-sm"><span className="font-medium">Video:</span> {aircraft.video_system || 'N/A'}</p>
-                  <p className="text-sm"><span className="font-medium">TO/LDG:</span> {aircraft.total_takeoffs || 0}/{aircraft.total_landings || 0}</p>
-                  <p className="text-sm"><span className="font-medium">Flight Time:</span> {formatFlightTime(aircraft.total_flight_time)}</p>
-                  <p className="text-sm"><span className="font-medium">Serial:</span> {aircraft.serial_number || 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ResponsiveTable
+          columns={tableColumns}
+          data={modifiedAircrafts || []}
+          filterFields={tableColumns}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onEdit={handleAircraftClick}
+          hideDesktopFilters={false}
+          rowClickable={true}
+          showActionColumn={false}
+          idField="flightlog_id"
+          titleField="drone_name"
+        />
 
         <div className="flex justify-center gap-4 p-4 mt-4">
           <Button 
