@@ -7,25 +7,124 @@ const AircraftSettings = () => {
   const navigate = useNavigate();
   const [aircraft, setAircraft] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [newLog, setNewLog] = useState({ 
+    event_type: 'LOG', 
+    description: '', 
+    event_date: '',
+    file: null 
+  });
+  const [editingLogId, setEditingLogId] = useState(null);
+  const [editingLog, setEditingLog] = useState(null);
 
   const API_URL = import.meta.env.VITE_API_URL;
 
-  useEffect(() => {
-    const fetchAircraft = async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
-          headers: { Authorization: `Bearer ${token}` },
+  // Helper function to handle maintenance log submissions
+  const submitMaintenanceLog = async (logData, file, method, logId = null) => {
+    const token = localStorage.getItem('access_token');
+    const endpoint = logId 
+      ? `${API_URL}/api/maintenance/${logId}/` 
+      : `${API_URL}/api/maintenance/`;
+    
+    try {
+      let response;
+      
+      if (file) {
+        // Use FormData when submitting files
+        const formData = new FormData();
+        formData.append('description', logData.description);
+        formData.append('event_date', logData.event_date);
+        formData.append('event_type', 'LOG');
+        formData.append('uav', uavId);
+        formData.append('file', file); // Attach file
+        
+        response = await fetch(endpoint, {
+          method,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
         });
-
-        if (!response.ok) throw new Error('Failed to fetch aircraft data');
-        const data = await response.json();
-        setAircraft(data);
-      } catch (error) {
-        console.error(error);
+      } else {
+        // Use JSON when no file is being submitted
+        response = await fetch(endpoint, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...logData,
+            event_type: 'LOG',
+            uav: uavId,
+          }),
+        });
       }
-    };
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
+        throw new Error(`Failed to ${method === 'POST' ? 'add' : 'update'} maintenance log`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  };
+
+  const fetchAircraft = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch aircraft data');
+      const data = await response.json();
+
+      // Fetch maintenance logs
+      const logsResponse = await fetch(`${API_URL}/api/maintenance/?uav=${uavId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (logsResponse.ok) {
+        const logsData = await logsResponse.json();
+        data.maintenance_logs = logsData;
+      }
+
+      // Fetch maintenance reminders
+      const remindersResponse = await fetch(`${API_URL}/api/maintenance-reminders/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (remindersResponse.ok) {
+        const remindersData = await remindersResponse.json();
+        const uavReminders = remindersData.filter(reminder =>
+          reminder.uav === parseInt(uavId)
+        );
+
+        uavReminders.forEach(reminder => {
+          if (reminder.component === 'props') {
+            data.next_props_maint_date = reminder.next_maintenance;
+          } else if (reminder.component === 'motor') {
+            data.next_motor_maint_date = reminder.next_maintenance;
+          } else if (reminder.component === 'frame') {
+            data.next_frame_maint_date = reminder.next_maintenance;
+          }
+        });
+      }
+
+      // Flight statistics are now included in the UAV detail response
+      // No need to make separate API calls
+
+      setAircraft(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
     fetchAircraft();
   }, [uavId, API_URL]);
 
@@ -56,11 +155,101 @@ const AircraftSettings = () => {
     return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const handleLogChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === 'file') {
+      setNewLog({ ...newLog, file: files[0] });
+    } else {
+      setNewLog({ ...newLog, [name]: value });
+    }
+  };
+
+  const handleEditLog = (logId) => {
+    const logToEdit = aircraft.maintenance_logs.find(log => log.maintenance_id === logId);
+    if (logToEdit) {
+      setEditingLogId(logId);
+      setEditingLog({ 
+        ...logToEdit,
+        file: null // Initialize file as null when editing
+      });
+    }
+  };
+
+  const handleEditLogChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === 'file') {
+      setEditingLog({ ...editingLog, file: files[0] });
+    } else {
+      setEditingLog({ ...editingLog, [name]: value });
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    const success = await submitMaintenanceLog(
+      editingLog,
+      editingLog.file,
+      'PUT',
+      editingLogId
+    );
+    
+    if (success) {
+      await fetchAircraft();
+      setEditingLogId(null);
+      setEditingLog(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLogId(null);
+    setEditingLog(null);
+  };
+
+  const handleAddLog = async () => {
+    const success = await submitMaintenanceLog(
+      newLog,
+      newLog.file,
+      'POST'
+    );
+    
+    if (success) {
+      await fetchAircraft();
+      setNewLog({ event_type: 'LOG', description: '', event_date: '', file: null });
+    }
+  };
+
+  const handleDeleteLog = async (logId) => {
+    if (!window.confirm('Are you sure you want to delete this maintenance log?')) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_URL}/api/maintenance/${logId}/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete maintenance log');
+      
+      await fetchAircraft();
+      
+      setEditingLogId(null);
+      setEditingLog(null);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   if (!aircraft) return <div>Loading...</div>;
 
   return (
     <div className="flex h-screen relative">
-      {/* Mobile Sidebar Toggle */}
       <button
         onClick={toggleSidebar}
         className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
@@ -71,7 +260,6 @@ const AircraftSettings = () => {
         </svg>
       </button>
 
-      {/* Desktop Sidebar Toggle */}
       <button
         onClick={toggleSidebar}
         className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
@@ -91,7 +279,6 @@ const AircraftSettings = () => {
           <h1 className="text-2xl font-semibold text-center flex-1">Aircraft Settings</h1>
         </div>
         
-        {/* Inactive Aircraft Alert */}
         {aircraft.is_active === false && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4">
             <div className="flex items-center">
@@ -104,9 +291,7 @@ const AircraftSettings = () => {
         )}
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column */}
           <div className="space-y-6">
-            {/* Section: General Information */}
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">General Information</h3>
               <div className="space-y-2">
@@ -125,7 +310,6 @@ const AircraftSettings = () => {
               </div>
             </div>
 
-            {/* Section: Motors */}
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Motors</h3>
               <div className="space-y-2">
@@ -140,7 +324,6 @@ const AircraftSettings = () => {
               </div>
             </div>
 
-            {/* Section: Video Information */}
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Video Information</h3>
               <div className="space-y-2">
@@ -155,7 +338,6 @@ const AircraftSettings = () => {
               </div>
             </div>
 
-            {/* Section: Firmware and Components */}
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Firmware and Components</h3>
               <div className="space-y-2">
@@ -189,38 +371,35 @@ const AircraftSettings = () => {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Section: Sensors */}
+            
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Sensors</h3>
               <div className="grid grid-cols-5 gap-4">
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
                   <span className="font-semibold text-gray-700">GPS</span>
                   <span className="text-gray-900">{aircraft.gps || 'N/A'}</span>
                 </div>
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
                   <span className="font-semibold text-gray-700">MAG</span>
                   <span className="text-gray-900">{aircraft.mag || 'N/A'}</span>
                 </div>
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
                   <span className="font-semibold text-gray-700">BARO</span>
                   <span className="text-gray-900">{aircraft.baro || 'N/A'}</span>
                 </div>
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
                   <span className="font-semibold text-gray-700">GYRO</span>
                   <span className="text-gray-900">{aircraft.gyro || 'N/A'}</span>
                 </div>
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
                   <span className="font-semibold text-gray-700">ACC</span>
                   <span className="text-gray-900">{aircraft.acc || 'N/A'}</span>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Section: Registration and Serial Number */}
+          <div className="space-y-6">
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Registration and Serial</h3>
               <div className="space-y-2">
@@ -235,7 +414,6 @@ const AircraftSettings = () => {
               </div>
             </div>
 
-            {/* Section: Statistics */}
             <div className="bg-white shadow rounded-lg p-6">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Statistics</h3>
               <div className="space-y-2">
@@ -244,17 +422,56 @@ const AircraftSettings = () => {
                   <span className="text-gray-900">{aircraft.total_flights || 'N/A'}</span>
                 </div>
                 <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Total Flight Hours:</span>
-                  <span className="text-gray-900">{formatFlightHours(aircraft.total_flight_hours)}</span>
+                  <span className="font-semibold text-gray-700 w-40">Total Flight Time:</span>
+                  <span className="text-gray-900">{formatFlightHours(aircraft.total_flight_time / 3600)}</span>
                 </div>
                 <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Last Maintenance:</span>
-                  <span className="text-gray-900">{aircraft.last_maintenance || 'N/A'}</span>
+                  <span className="font-semibold text-gray-700 w-40">Total Takeoffs (TO):</span>
+                  <span className="text-gray-900">{aircraft.total_takeoffs || 'N/A'}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="font-semibold text-gray-700 w-40">Total Landings (LDG):</span>
+                  <span className="text-gray-900">{aircraft.total_landings || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white shadow rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-800 mb-3">Maintenance Information</h3>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="font-semibold text-gray-700 block">Last Props Maintenance:</span>
+                    <span className="text-gray-900">{formatDate(aircraft.props_maint_date)}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-700 block">Next Props Maintenance:</span>
+                    <span className="text-gray-900">{formatDate(aircraft.next_props_maint_date)}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="font-semibold text-gray-700 block">Last Motor Maintenance:</span>
+                    <span className="text-gray-900">{formatDate(aircraft.motor_maint_date)}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-700 block">Next Motor Maintenance:</span>
+                    <span className="text-gray-900">{formatDate(aircraft.next_motor_maint_date)}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="font-semibold text-gray-700 block">Last Frame Maintenance:</span>
+                    <span className="text-gray-900">{formatDate(aircraft.frame_maint_date)}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-700 block">Next Frame Maintenance:</span>
+                    <span className="text-gray-900">{formatDate(aircraft.next_frame_maint_date)}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Section: Maintenance Logs */}
             <div className="bg-white shadow rounded-lg p-6">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Maintenance Logs</h3>
               <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
@@ -263,47 +480,135 @@ const AircraftSettings = () => {
                     <th className="px-4 py-2">Date</th>
                     <th className="px-4 py-2">Log</th>
                     <th className="px-4 py-2">File</th>
+                    <th className="px-4 py-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {aircraft.maintenance_logs?.map((log, index) => (
                     <tr key={index} className="bg-white border-b hover:bg-gray-50">
-                      <td className="px-4 py-2">{log.date || 'N/A'}</td>
-                      <td className="px-4 py-2">{log.description || 'N/A'}</td>
-                      <td className="px-4 py-2">
-                        {log.file ? (
-                          <a href={log.file} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                            View File
-                          </a>
-                        ) : (
-                          'N/A'
-                        )}
-                      </td>
+                      {editingLogId === log.maintenance_id ? (
+                        <>
+                          <td className="px-4 py-2">
+                            <input
+                              type="date"
+                              name="event_date"
+                              value={editingLog.event_date}
+                              onChange={handleEditLogChange}
+                              className="w-full px-2 py-1 border border-gray-300 rounded"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              name="description"
+                              value={editingLog.description}
+                              onChange={handleEditLogChange}
+                              className="w-full px-2 py-1 border border-gray-300 rounded"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="file"
+                              name="file"
+                              onChange={handleEditLogChange}
+                              className="w-full px-2 py-1 border border-gray-300 rounded"
+                            />
+                          </td>
+                          <td className="px-4 py-2 space-x-2 flex">
+                            <Button
+                              onClick={handleSaveEdit}
+                              className="bg-green-500 hover:bg-green-600 text-white"
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              onClick={handleCancelEdit}
+                              className="bg-gray-500 hover:bg-gray-600 text-white"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteLog(log.maintenance_id)}
+                              className="bg-red-500 hover:bg-red-600 text-white"
+                            >
+                              Delete
+                            </Button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-2">{log.event_date || 'N/A'}</td>
+                          <td className="px-4 py-2">{log.description || 'N/A'}</td>
+                          <td className="px-4 py-2">
+                            {log.file ? (
+                              <a 
+                                href={log.file} 
+                                download 
+                                className="text-blue-500 hover:underline"
+                              >
+                                Download File
+                              </a>
+                            ) : 'N/A'}
+                          </td>
+                          <td className="px-4 py-2">
+                            <Button
+                              onClick={() => handleEditLog(log.maintenance_id)}
+                              className="bg-blue-500 hover:bg-blue-600 text-white"
+                            >
+                              Edit
+                            </Button>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
+                  <tr className="bg-gray-50">
+                    <td className="px-4 py-2">
+                      <input
+                        type="date"
+                        name="event_date"
+                        value={newLog.event_date}
+                        onChange={handleLogChange}
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="text"
+                        name="description"
+                        value={newLog.description}
+                        onChange={handleLogChange}
+                        placeholder="Description"
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="file"
+                        name="file"
+                        onChange={handleLogChange}
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <Button
+                        onClick={handleAddLog}
+                        className="bg-green-500 hover:bg-green-600 text-white"
+                      >
+                        Add
+                      </Button>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="mt-6 flex justify-end space-x-4">
-          <Button
-            onClick={() => alert('Add Log')}
-            className="bg-green-500 hover:bg-green-600 text-white"
-          >
-            Add Log
-          </Button>
-          <Button
-            onClick={() => alert('Export Logs')}
-            className="bg-gray-500 hover:bg-gray-600 text-white"
-          >
-            Export Logs
-          </Button>
+        <div className="mt-6 flex justify-center space-x-4">
           <Button
             onClick={handleModifyClick}
-            className="bg-blue-500 hover:bg-blue-600 text-white"
+            className="max-w-md bg-blue-500 hover:bg-blue-600 text-white"
           >
             Modify Aircraft
           </Button>

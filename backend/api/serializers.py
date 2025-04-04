@@ -96,7 +96,21 @@ class FlightLogSerializer(serializers.ModelSerializer):
 class MaintenanceLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = MaintenanceLog
-        fields = '__all__'
+        fields = '__all__'  # Ensure 'file' is included
+        extra_kwargs = {
+            'uav': {'required': True},  # Ensure UAV is required
+            'event_type': {'required': True},
+            'description': {'required': True},
+            'event_date': {'required': True},
+            'user': {'read_only': True},  # Make user field read-only
+        }
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        request = self.context.get('request')
+        if instance.file and request:
+            representation['file'] = request.build_absolute_uri(instance.file.url)
+        return representation
 
 class MaintenanceReminderSerializer(serializers.ModelSerializer):
     class Meta:

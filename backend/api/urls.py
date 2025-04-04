@@ -7,7 +7,6 @@ from .views import (
     FileListCreateView, FileDetailView,
     UserListCreateView, UserDetailView,
     UserSettingsListCreateView, UserSettingsDetailView,
-    total_landings,
 )
 
 urlpatterns = [
@@ -38,7 +37,4 @@ urlpatterns = [
     # Optional: Endpunkte für Benutzereinstellungen
     path('user-settings/', UserSettingsListCreateView.as_view(), name='user-settings-list'),
     path('user-settings/<int:pk>/', UserSettingsDetailView.as_view(), name='user-settings-detail'),
-
-    # Endpunkt für Gesamtlandungen
-    path('flightlogs/total-landings/', total_landings, name='total_landings'),
 ]

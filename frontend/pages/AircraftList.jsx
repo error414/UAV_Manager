@@ -6,20 +6,15 @@ import UAVImporter from '../helper/UAVImporter';
 const AircraftList = () => {
   const navigate = useNavigate();
   const [aircrafts, setAircrafts] = useState([]);
-  // Initialize sidebarOpen based on screen size - same as Flightlog
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   
-  // Add resize handler to match Flightlog behavior
   useEffect(() => {
     const handleResize = () => {
-      // For desktop: automatically show sidebar
       if (window.innerWidth >= 1024) {
         setSidebarOpen(true);
-      } 
-      // For mobile: automatically hide sidebar
-      else {
+      } else {
         setSidebarOpen(false);
       }
     };
@@ -28,23 +23,20 @@ const AircraftList = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Get API URL from environment variables
   const API_URL = import.meta.env.VITE_API_URL;
   
-  // Function to get auth headers
   const getAuthHeaders = () => {
     const token = localStorage.getItem('access_token');
     return { Authorization: `Bearer ${token}` };
   };
   
-  // State for filters - based on UAV model fields
   const [filters, setFilters] = useState({
     drone_name: '',
     manufacturer: '',
     type: '',
     motors: '',
     motor_type: '',
-    ldg: '', // This might need to be calculated or added to the model
+    ldg: '',
     firmware_version: '',
     video_system: '',
     gps: '',
@@ -54,7 +46,6 @@ const AircraftList = () => {
     acc: ''
   });
 
-  // Function to fetch aircraft data - MOVED UP before it's used
   const fetchAircrafts = async () => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
@@ -79,25 +70,15 @@ const AircraftList = () => {
         throw new Error('Failed to fetch aircraft data');
       }
       
+      // The flight statistics are now included in the UAV data
       const data = await response.json();
-      // Fetch total landings for each UAV
-      const aircraftsWithLandings = await Promise.all(
-        data.map(async (aircraft) => {
-          const landingsResponse = await fetch(`${API_URL}/api/flightlogs/total-landings/?uav=${aircraft.uav_id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const landingsData = await landingsResponse.json();
-          return { ...aircraft, total_landings: landingsData.total_landings || 0 };
-        })
-      );
-      setAircrafts(aircraftsWithLandings);
+      setAircrafts(data);
     } catch (err) {
       console.error(err);
       setError('Could not load aircraft data.');
     }
   };
 
-  // Initialize the UAV importer - MOVED AFTER fetchAircrafts is defined
   const { handleFileUpload } = UAVImporter({
     setError,
     navigate,
@@ -106,37 +87,29 @@ const AircraftList = () => {
     fetchAircrafts
   });
 
-  // Fetch aircraft data
   useEffect(() => {
     fetchAircrafts();
   }, [navigate]);
 
-  // Function to handle filter changes
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  // Function to navigate to new aircraft page
   const handleNewAircraft = () => {
     navigate('/new-aircraft');
   };
 
-  // Function to handle CSV import
   const handleImportCSV = () => {
-    // Trigger file input click
     fileInputRef.current.click();
   };
 
-  // Function to handle clicking on an aircraft (navigate to settings view)
   const handleAircraftClick = (uavId) => {
     navigate(`/aircraft-settings/${uavId}`);
   };
 
-  // Toggle sidebar for mobile view
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Filter aircrafts based on filter criteria
   const filteredAircrafts = aircrafts.filter(aircraft => {
     return Object.entries(filters).every(([key, filterValue]) => {
       if (!filterValue) return true;
@@ -146,14 +119,22 @@ const AircraftList = () => {
     });
   });
 
-  // Define columns for the aircraft table to match the wireframe
+  const formatFlightTime = (seconds) => {
+    if (!seconds) return 'N/A';
+    const hh = Math.floor(seconds / 3600);
+    const mm = Math.floor((seconds % 3600) / 60);
+    return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+  };
+
   const tableColumns = [
     { header: 'Aircraft', accessor: 'drone_name' },
     { header: 'Manufacturer', accessor: 'manufacturer' },
     { header: 'Type', accessor: 'type' },
     { header: 'Motors', accessor: 'motors' },
     { header: 'Type of Motor', accessor: 'motor_type' },
-    { header: 'LDG', accessor: 'total_landings' }, // Updated to show total landings
+    { header: 'Flight Time', accessor: 'total_flight_time', format: formatFlightTime },
+    { header: 'TO', accessor: 'total_takeoffs' },
+    { header: 'LDG', accessor: 'total_landings' },
     { header: 'Firmware', accessor: 'firmware_version' },
     { header: 'Video System', accessor: 'video_system' },
     { header: 'GPS', accessor: 'gps' },
@@ -163,14 +144,12 @@ const AircraftList = () => {
     { header: 'ACC', accessor: 'acc' }
   ];
 
-  // Function to handle CSV export
   const handleExportCSV = () => {
     if (aircrafts.length === 0) {
       alert('No aircraft data to export.');
       return;
     }
     
-    // CSV header row - MUST match exactly what the importer expects
     const headers = [
       'DroneName', 'Manufacturer', 'Type', 'Motors', 'MotorType',
       'Video', 'VideoSystem', 'ESC', 'ESCFirmware', 'Receiver',
@@ -178,7 +157,6 @@ const AircraftList = () => {
       'GPS', 'MAG', 'BARO', 'GYRO', 'ACC', 'RegistrationNumber', 'SerialNumber'
     ];
     
-    // Map data fields to CSV rows - ensure field names match the importer
     const csvData = aircrafts.map(aircraft => [
       aircraft.drone_name || '',
       aircraft.manufacturer || '',
@@ -203,36 +181,28 @@ const AircraftList = () => {
       aircraft.serial_number || ''
     ]);
     
-    // Add header row to CSV data
     csvData.unshift(headers);
     
-    // Convert to CSV format with proper handling of special characters
     const csvContent = csvData.map(row => {
       return row.map(cell => {
-        // Handle null/undefined values
         if (cell === null || cell === undefined) {
           return '';
         }
         
-        // Convert numbers to strings
         const cellStr = String(cell);
         
-        // Handle fields with commas, quotes, or newlines
         if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
-          // Escape quotes with double quotes and wrap in quotes
           return `"${cellStr.replace(/"/g, '""')}"`;
         }
         return cellStr;
       }).join(',');
     }).join('\n');
     
-    // Create blob and download link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').substring(0, 15);
     
-    // Set download attributes and trigger click
     link.setAttribute('href', url);
     link.setAttribute('download', `uav-export-${timestamp}.csv`);
     link.style.visibility = 'hidden';
@@ -240,7 +210,6 @@ const AircraftList = () => {
     link.click();
     document.body.removeChild(link);
     
-    // Clean up by revoking the object URL
     setTimeout(() => {
       URL.revokeObjectURL(url);
     }, 100);
@@ -248,7 +217,6 @@ const AircraftList = () => {
 
   return (
     <div className="flex h-screen relative">
-      {/* Mobile Sidebar Toggle - match Flightlog */}
       <button
         onClick={toggleSidebar}
         className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
@@ -259,7 +227,6 @@ const AircraftList = () => {
         </svg>
       </button>
       
-      {/* Desktop toggle - match Flightlog */}
       <button
         onClick={toggleSidebar}
         className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
@@ -274,27 +241,21 @@ const AircraftList = () => {
       
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
-      {/* Update container classes to match Flightlog */}
       <div 
         className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
           sidebarOpen ? 'lg:ml-64' : ''
         }`}
       >
-        {/* Add title styling to match Flightlog */}
         <div className="flex items-center h-10 mb-4">
-          {/* Empty div for spacing on mobile (same width as toggle button) */}
           <div className="w-10 lg:hidden"></div>
           
-          {/* Centered title */}
           <h1 className="text-2xl font-semibold text-center flex-1">Aircraft List</h1>
         </div>
         
         <Alert type="error" message={error} />
 
-        {/* Desktop view */}
         <div className="hidden sm:block">
           <div className="bg-white shadow rounded-lg overflow-hidden">
-            {/* Filter Row */}
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left text-gray-500">
                 <thead>
@@ -329,7 +290,9 @@ const AircraftList = () => {
                     >
                       {tableColumns.map(column => (
                         <td key={column.accessor} className="p-3">
-                          {aircraft[column.accessor] || 'N/A'}
+                          {column.format 
+                            ? column.format(aircraft[column.accessor])
+                            : (aircraft[column.accessor] || 'N/A')}
                         </td>
                       ))}
                     </tr>
@@ -340,7 +303,6 @@ const AircraftList = () => {
           </div>
         </div>
 
-        {/* Mobile view - card-based display */}
         <div className="sm:hidden">
           {filteredAircrafts.map(aircraft => (
             <div 
@@ -359,6 +321,8 @@ const AircraftList = () => {
                 <div>
                   <p className="text-sm"><span className="font-medium">Firmware:</span> {aircraft.firmware_version || 'N/A'}</p>
                   <p className="text-sm"><span className="font-medium">Video:</span> {aircraft.video_system || 'N/A'}</p>
+                  <p className="text-sm"><span className="font-medium">TO/LDG:</span> {aircraft.total_takeoffs || 0}/{aircraft.total_landings || 0}</p>
+                  <p className="text-sm"><span className="font-medium">Flight Time:</span> {formatFlightTime(aircraft.total_flight_time)}</p>
                   <p className="text-sm"><span className="font-medium">Serial:</span> {aircraft.serial_number || 'N/A'}</p>
                 </div>
               </div>
@@ -366,7 +330,6 @@ const AircraftList = () => {
           ))}
         </div>
 
-        {/* Action Buttons */}
         <div className="flex justify-center gap-4 p-4 mt-4">
           <Button 
             onClick={handleNewAircraft} 
@@ -387,7 +350,6 @@ const AircraftList = () => {
             Export CSV
           </Button>
           
-          {/* Hidden file input for CSV import */}
           <input
             type="file"
             ref={fileInputRef}

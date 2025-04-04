@@ -3,6 +3,7 @@ from rest_framework import generics, permissions
 from datetime import datetime
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
+from django.db import models
 from .models import (
     UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings
 )
@@ -58,6 +59,21 @@ class UAVListCreateView(generics.ListCreateAPIView):
                         'reminder_active': True
                     }
                 )
+    
+    # Add a method to list response with flight stats
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        
+        # Add flight statistics to each UAV in the response
+        for uav_data in response.data:
+            uav_id = uav_data['uav_id']
+            uav_data['total_flights'] = FlightLog.objects.filter(uav_id=uav_id).count()
+            uav_data['total_flight_hours'] = FlightLog.get_total_flight_hours(uav_id)
+            uav_data['total_flight_time'] = FlightLog.get_total_flight_hours(uav_id) * 3600  # Convert hours to seconds
+            uav_data['total_landings'] = FlightLog.get_total_landings(uav_id)
+            uav_data['total_takeoffs'] = FlightLog.get_total_takeoffs(uav_id)
+            
+        return response
 
 class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UAVSerializer
@@ -112,8 +128,14 @@ class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
         uav_id = self.get_object().uav_id
+        
+        # Fügt alle Flugstatistiken hinzu, die auch in der list-Methode vorhanden sind
         response.data['total_flights'] = FlightLog.objects.filter(uav_id=uav_id).count()
         response.data['total_flight_hours'] = FlightLog.get_total_flight_hours(uav_id)
+        response.data['total_flight_time'] = FlightLog.get_total_flight_hours(uav_id) * 3600  # Konvertiert Stunden in Sekunden
+        response.data['total_landings'] = FlightLog.get_total_landings(uav_id)
+        response.data['total_takeoffs'] = FlightLog.get_total_takeoffs(uav_id)
+        
         return response
 
 # Endpunkte für Fluglogs
@@ -140,10 +162,14 @@ class MaintenanceLogListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        return MaintenanceLog.objects.filter(user=self.request.user)
+        uav_id = self.request.query_params.get('uav')
+        queryset = MaintenanceLog.objects.filter(user=self.request.user)
+        if uav_id:
+            queryset = queryset.filter(uav_id=uav_id)
+        return queryset
     
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save(user=self.request.user)  # Automatically set the user field
 
 class MaintenanceLogDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = MaintenanceLogSerializer
@@ -218,12 +244,3 @@ class UserSettingsDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def get_queryset(self):
         return UserSettings.objects.filter(user=self.request.user)
-
-@api_view(['GET'])
-def total_landings(request):
-    uav_id = request.GET.get('uav')
-    if not uav_id:
-        return JsonResponse({'error': 'UAV ID is required'}, status=400)
-    
-    total_landings = FlightLog.get_total_landings(uav_id)
-    return JsonResponse({'total_landings': total_landings})

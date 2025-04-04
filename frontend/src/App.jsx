@@ -3,13 +3,12 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import Register from '../pages/Register.jsx';
 import Login from '../pages/Login.jsx';
 import AdditionalDetails from '../pages/AdditionalDetails.jsx';
-import Dashboard from '../pages/Dashboard.jsx';
 import Flightlog from '../pages/Flightlog.jsx';
 import AircraftList from '../pages/AircraftList.jsx'; 
-import NewAircraftForm from '../pages/NewAircraft.jsx'; // Import the new component
-import UserSettings from '../pages/UserSettings.jsx'; // Import the new component
-import NewAircraftPage from '../pages/NewAircraft.jsx'; // Import the new component
-import AircraftSettings from '../pages/AircraftSettings.jsx'; // Import the new component
+import NewAircraftForm from '../pages/NewAircraft.jsx';
+import UserSettings from '../pages/UserSettings.jsx';
+import NewAircraftPage from '../pages/NewAircraft.jsx';
+import AircraftSettings from '../pages/AircraftSettings.jsx';
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 
@@ -83,7 +82,7 @@ function Home() {
           <img src={reactLogo} className="h-16 w-16" alt="React logo" />
         </a>
       </div>
-      <h1 className="text-4xl font-bold text-center mb-4">UAV Manager</h1>
+      <h1 className="text-4xl font-bold text-center mb-4">⚠️ UAV Manager Dev Tools ⚠️</h1>
       <div className="bg-white shadow rounded p-6 mb-4">
         <button 
           onClick={() => setCount((prevCount) => prevCount + 1)}
@@ -104,13 +103,6 @@ function Home() {
           className="block mx-auto bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-10 rounded mt-4"
         >
           Login
-        </Link>
-        {/* Dashboard button */}
-        <Link 
-          to="/dashboard"
-          className="block mx-auto bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-10 rounded mt-4"
-        >
-          Dashboard
         </Link>
         {/* Flightlog button */}
         <Link 
@@ -172,8 +164,6 @@ function App() {
         <Route path="/login" element={<Login />} />
         {/* Additional Details Route */}
         <Route path="/additionalDetails" element={<AdditionalDetails />} />
-        {/* Dashboard Route */}
-        <Route path="/dashboard" element={<Dashboard />} />
         {/* Flightlog Route */}
         <Route path="/flightlog" element={<Flightlog />} />
         {/* Aircraft List Route */}

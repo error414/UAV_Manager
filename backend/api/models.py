@@ -1,5 +1,8 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+import os
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -136,6 +139,10 @@ class FlightLog(models.Model):
         return FlightLog.objects.filter(uav_id=uav_id).aggregate(total_landings=models.Sum('landings'))['total_landings'] or 0
 
     @staticmethod
+    def get_total_takeoffs(uav_id):
+        return FlightLog.objects.filter(uav_id=uav_id).aggregate(total_takeoffs=models.Sum('takeoffs'))['total_takeoffs'] or 0
+
+    @staticmethod
     def get_total_flight_hours(uav_id):
         total_seconds = FlightLog.objects.filter(uav_id=uav_id).aggregate(
             total_duration=models.Sum('flight_duration')
@@ -153,10 +160,34 @@ class MaintenanceLog(models.Model):
     event_type = models.CharField(max_length=100)
     description = models.TextField()
     event_date = models.DateField()
+    file = models.FileField(upload_to='', null=True, blank=True)  # Store files directly under MEDIA_ROOT
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        # Check if a new file is being uploaded
+        if self.pk:
+            old_instance = MaintenanceLog.objects.filter(pk=self.pk).first()
+            if old_instance and old_instance.file and old_instance.file != self.file:
+                if os.path.isfile(old_instance.file.path):
+                    os.remove(old_instance.file.path)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Delete the file from the filesystem
+        if self.file:
+            if os.path.isfile(self.file.path):
+                os.remove(self.file.path)
+        super().delete(*args, **kwargs)
     
     def __str__(self):
         return f"Maintenance {self.event_type} on {self.event_date} for UAV {self.uav}"
+
+# Optional: Use a signal to ensure file deletion when using bulk delete
+@receiver(post_delete, sender=MaintenanceLog)
+def delete_file_on_log_delete(sender, instance, **kwargs):
+    if instance.file:
+        if os.path.isfile(instance.file.path):
+            os.remove(instance.file.path)
 
 
 # Wartungserinnerungen (MAINTENANCE_REMINDERS)
