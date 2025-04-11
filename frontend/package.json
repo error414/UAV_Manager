@@ -21,11 +21,14 @@
     ]
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@tailwindcss/vite": "^4.0.12",
+    "leaflet": "^1.9.4",
     "papaparse": "^5.5.2",
-    "react": "^19.0.0",
+    "react": "^19.0.0-rc.1",
     "react-country-region-selector": "^4.0.2",
-    "react-dom": "^19.0.0",
+    "react-dom": "^19.0.0-rc.1",
+    "react-leaflet": "^5.0.0-rc.2",
     "react-router-dom": "^7.4.0",
     "react-select": "^5.10.1",
     "react-select-country-list": "^2.2.3",

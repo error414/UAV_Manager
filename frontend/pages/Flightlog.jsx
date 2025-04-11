@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button, ResponsiveTable } from '../components';
-import CSVImporter from '../helper/CSVImporter';
+import LogImporter from '../helper/LogImporter';
 
 // Utility functions
 const calculateFlightDuration = (deptTime, landTime) => {
@@ -64,27 +64,6 @@ const INITIAL_FLIGHT_STATE = {
   comments: ''
 };
 
-// Function to generate form fields (need to define this since it's referenced)
-const getFormFields = (isFilter = false) => {
-  const fields = [
-    { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
-    { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },
-    { name: 'departure_time', label: 'Departure Time', type: 'time', placeholder: 'Departure Time', step: '1' },
-    { name: 'landing_time', label: 'LDG Time', type: 'time', placeholder: 'LDG Time', step: '1' },
-    { name: 'landing_place', label: 'LDG Place', type: 'text', placeholder: 'LDG Place' },
-    { name: 'flight_duration', label: 'Duration', type: 'number', placeholder: 'Duration (s)', step: '1', min: '0' },
-    { name: 'takeoffs', label: 'T/O', type: 'number', placeholder: 'T/O', step: '1', min: '0' },
-    { name: 'landings', label: 'LDG', type: 'number', placeholder: 'LDG', step: '1', min: '0' },
-    { name: 'light_conditions', label: 'Light', type: 'select', placeholder: 'Light', options: OPTIONS.light_conditions },
-    { name: 'ops_conditions', label: 'OPS', type: 'select', placeholder: 'OPS', options: OPTIONS.ops_conditions },
-    { name: 'pilot_type', label: 'Pilot Type', type: 'select', placeholder: 'Pilot Type', options: OPTIONS.pilot_type },
-    { name: 'uav', label: 'UAV', type: 'select', placeholder: 'Select UAV' },
-    { name: 'comments', label: 'Comments', type: 'text', placeholder: 'Comments' }
-  ];
-  
-  return fields;
-};
-
 const Flightlog = () => {
   const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
@@ -99,8 +78,19 @@ const Flightlog = () => {
   const [filters, setFilters] = useState({...INITIAL_FLIGHT_STATE});
   const [newFlight, setNewFlight] = useState({...INITIAL_FLIGHT_STATE});
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sortField, setSortField] = useState('-departure_date');
+
   // CSV Importer: create a ref for the hidden file input
   const fileInputRef = useRef(null);
+
+  // Add debounce timer for filters
+  const [debouncedFilters, setDebouncedFilters] = useState({});
+  const filterTimer = useRef(null);
 
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('access_token');
@@ -125,7 +115,31 @@ const Flightlog = () => {
       return;
     }
     
-    fetch(`${API_URL}/api/flightlogs/?user=${user_id}`, {
+    setIsLoading(true);
+    
+    // Build query parameters for filtering and pagination
+    const queryParams = new URLSearchParams();
+    
+    // Add filter parameters - use debouncedFilters instead of filters
+    Object.entries(debouncedFilters).forEach(([key, value]) => {
+      if (value) {
+        // For UAV field, we need to handle it differently as it might be an object
+        if (key === 'uav' && typeof value === 'object' && value.uav_id) {
+          queryParams.append(key, value.uav_id);
+        } else {
+          queryParams.append(key, value);
+        }
+      }
+    });
+    
+    // Add pagination parameters
+    queryParams.append('page', currentPage);
+    queryParams.append('page_size', pageSize);
+    
+    // Add sorting parameter
+    queryParams.append('ordering', sortField);
+    
+    fetch(`${API_URL}/api/flightlogs/?${queryParams.toString()}`, {
       headers: getAuthHeaders()
     })
       .then((res) => {
@@ -135,14 +149,20 @@ const Flightlog = () => {
         }
         return res.json();
       })
-      .then((data) => setLogs(data))
+      .then((data) => {
+        // Handle paginated response
+        setLogs(data.results || []);
+        setTotalPages(Math.ceil((data.count || 0) / pageSize));
+        setIsLoading(false);
+      })
       .catch((err) => {
         console.error(err);
         setError('Could not load flight logs.');
+        setIsLoading(false);
       });
-  }, [API_URL, getAuthHeaders, handleAuthError, navigate]);
+  }, [API_URL, getAuthHeaders, handleAuthError, navigate, debouncedFilters, currentPage, pageSize, sortField]);
 
-  const { handleFileUpload } = CSVImporter({
+  const { handleFileUpload } = LogImporter({
     setError,
     navigate,
     API_URL,
@@ -160,23 +180,44 @@ const Flightlog = () => {
   const fetchUAVs = useCallback(() => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
-    if (!token || !user_id) return;
+    if (!token || !user_id) {
+      navigate('/login');
+      return;
+    }
     
-    fetch(`${API_URL}/api/uavs/?user=${user_id}`, {
+    fetch(`${API_URL}/api/uavs/`, {
       headers: getAuthHeaders()
     })
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch UAVs');
+        if (!res.ok) {
+          if (handleAuthError(res)) return;
+          throw new Error('Failed to fetch UAVs');
+        }
         return res.json();
       })
-      .then((data) => setAvailableUAVs(data))
-      .catch((err) => console.error(err));
-  }, [API_URL, getAuthHeaders]);
+      .then((data) => {
+        // Log UAV data for debugging
+        console.log("Fetched UAVs:", data);
+        
+        // Make sure we're handling both paginated and non-paginated responses
+        const uavArray = Array.isArray(data) ? data : (data.results || []);
+        setAvailableUAVs(uavArray);
+      })
+      .catch((err) => {
+        console.error("Error fetching UAVs:", err);
+        setError('Could not load UAVs.');
+      });
+  }, [API_URL, getAuthHeaders, navigate, handleAuthError]);
 
   useEffect(() => {
     fetchFlightLogs();
     fetchUAVs();
   }, [fetchFlightLogs, fetchUAVs]);
+
+  // Ensure availableUAVs is always an array
+  const safeAvailableUAVs = useMemo(() => {
+    return Array.isArray(availableUAVs) ? availableUAVs : [];
+  }, [availableUAVs]);
 
   const tableColumns = useMemo(() => [
     { header: 'Dept Place', accessor: 'departure_place' },
@@ -194,13 +235,16 @@ const Flightlog = () => {
       header: 'UAV', 
       accessor: 'uav', 
       render: (value, row) => {
+        // Log the UAV value for debugging
+        console.log("UAV value in table:", value);
+        
         if (value && typeof value === 'object' && value.drone_name) {
           return value.drone_name;
         }
         
         if (value) {
           const uavId = typeof value === 'object' ? value.uav_id : value;
-          const foundUav = availableUAVs.find(uav => uav.uav_id == uavId);
+          const foundUav = safeAvailableUAVs.find(uav => uav.uav_id == uavId);
           return foundUav ? foundUav.drone_name : `UAV #${uavId}`;
         }
         
@@ -208,10 +252,43 @@ const Flightlog = () => {
       } 
     },
     { header: 'Comments', accessor: 'comments' }
-  ], [availableUAVs]);
+  ], [safeAvailableUAVs]);
 
-  const filterFormFields = useMemo(() => getFormFields(true), []);
-  const addFormFields = useMemo(() => getFormFields(false), []);
+  const handleRowClick = useCallback((id) => {
+    navigate(`/flightdetails/${id}`);
+  }, [navigate]);
+
+  const getFormFields = useCallback((isFilter = false) => {
+    const fields = [
+      { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
+      { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },
+      { name: 'departure_time', label: 'Departure Time', type: 'time', placeholder: 'Departure Time', step: '1' },
+      { name: 'landing_time', label: 'LDG Time', type: 'time', placeholder: 'LDG Time', step: '1' },
+      { name: 'landing_place', label: 'LDG Place', type: 'text', placeholder: 'LDG Place' },
+      { name: 'flight_duration', label: 'Duration', type: 'number', placeholder: 'Duration (s)', step: '1', min: '0' },
+      { name: 'takeoffs', label: 'T/O', type: 'number', placeholder: 'T/O', step: '1', min: '0' },
+      { name: 'landings', label: 'LDG', type: 'number', placeholder: 'LDG', step: '1', min: '0' },
+      { name: 'light_conditions', label: 'Light', type: 'select', placeholder: 'Light', options: OPTIONS.light_conditions },
+      { name: 'ops_conditions', label: 'OPS', type: 'select', placeholder: 'OPS', options: OPTIONS.ops_conditions },
+      { name: 'pilot_type', label: 'Pilot Type', type: 'select', placeholder: 'Pilot Type', options: OPTIONS.pilot_type },
+      { 
+        name: 'uav', 
+        label: 'UAV', 
+        type: 'select', 
+        placeholder: 'Select UAV',
+        options: safeAvailableUAVs.map(uav => ({ 
+          value: uav.uav_id, 
+          label: uav.drone_name 
+        }))
+      },
+      { name: 'comments', label: 'Comments', type: 'text', placeholder: 'Comments' }
+    ];
+    
+    return fields;
+  }, [safeAvailableUAVs]);
+
+  const filterFormFields = useMemo(() => getFormFields(true), [getFormFields]);
+  const addFormFields = useMemo(() => getFormFields(false), [getFormFields]);
 
   const handleFormChange = useCallback((setter, e) => {
     const { name, value } = e.target;
@@ -233,7 +310,31 @@ const Flightlog = () => {
     });
   }, []);
 
-  const handleFilterChange = useCallback((e) => handleFormChange(setFilters, e), [handleFormChange]);
+  const handleFilterChange = useCallback((e) => {
+    const { name, value } = e.target;
+    
+    // Update the local filter state immediately for UI responsiveness
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear any existing timer
+    if (filterTimer.current) {
+      clearTimeout(filterTimer.current);
+    }
+    
+    // Set a new timer to update the debounced filters after 500ms
+    filterTimer.current = setTimeout(() => {
+      // Reset to page 1 when filters change
+      setCurrentPage(1);
+      setDebouncedFilters(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }, 500);
+  }, []);
+
   const handleNewFlightChange = useCallback((e) => handleFormChange(setNewFlight, e), [handleFormChange]);
   const handleEditChange = useCallback((e) => handleFormChange(setEditingLog, e), [handleFormChange]);
 
@@ -419,35 +520,34 @@ const Flightlog = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      return Object.entries(filters).every(([key, filterValue]) => {
-        if (!filterValue) return true;
+  // Handle pagination
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
 
-        let logValue = '';
-        switch (key) {
-          case 'departure_date':
-          case 'departure_time':
-          case 'landing_time':
-            logValue = log[key] || '';
-            break;
-          case 'flight_duration':
-          case 'takeoffs':
-          case 'landings':
-            logValue = log[key] ? log[key].toString() : '';
-            break;
-          case 'uav':
-            logValue = log.uav?.drone_name ? log.uav.drone_name.toLowerCase() : '';
-            filterValue = filterValue.toLowerCase();
-            break;
-          default:
-            logValue = log[key] ? log[key].toString().toLowerCase() : '';
-            filterValue = filterValue.toLowerCase();
-        }
-        return logValue.includes(filterValue);
-      });
+  // Handle sorting
+  const handleSortChange = useCallback((field) => {
+    setSortField(prevSort => {
+      // If already sorting by this field, toggle direction
+      if (prevSort === field) return `-${field}`;
+      if (prevSort === `-${field}`) return field;
+      // Default to ascending for new field
+      return field;
     });
-  }, [logs, filters]);
+  }, []);
+
+  useEffect(() => {
+    fetchFlightLogs();
+  }, [fetchFlightLogs, debouncedFilters, currentPage, sortField]);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (filterTimer.current) {
+        clearTimeout(filterTimer.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex h-screen relative">
@@ -468,7 +568,7 @@ const Flightlog = () => {
         }`}
         aria-label="Toggle sidebar for desktop"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
@@ -488,37 +588,109 @@ const Flightlog = () => {
         
         <Alert type="error" message={error} />
         
-        <ResponsiveTable 
-          columns={tableColumns}
-          data={filteredLogs}
-          
-          filterFields={filterFormFields}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          
-          addFields={addFormFields}
-          newItem={newFlight}
-          onNewItemChange={handleNewFlightChange}
-          onAdd={handleNewFlightAdd}
-          
-          editingId={editingLogId}
-          editingData={editingLog}
-          onEditChange={handleEditChange}
-          onSaveEdit={handleSaveEdit}
-          onCancelEdit={handleCancelEdit}
-          
-          onEdit={handleEdit}
-          onDelete={handleDeleteLog}
-          
-          availableOptions={{
-            availableUAVs: availableUAVs
-          }}
-          
-          rowClickable={false}
-          showActionColumn={true}
-          actionColumnText="Actions"
-          titleField="uav" 
-        />
+        {isLoading ? (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <ResponsiveTable 
+            columns={tableColumns}
+            data={logs}
+            onEdit={handleEdit}
+            onRowClick={handleRowClick}
+            filterFields={filterFormFields}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            addFields={addFormFields}
+            newItem={newFlight}
+            onNewItemChange={handleNewFlightChange}
+            onAdd={handleNewFlightAdd}
+            editingId={editingLogId}
+            editingData={editingLog}
+            onEditChange={handleEditChange}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={handleCancelEdit}
+            onDelete={handleDeleteLog}
+            availableOptions={{
+              availableUAVs: safeAvailableUAVs
+            }}
+            rowClickable={true}
+            showActionColumn={true}
+            actionColumnText="Actions"
+            titleField="uav"
+          />
+        )}
+        
+        {/* Pagination controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center mt-4 gap-2">
+            <button 
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+            >
+              &laquo; Prev
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {/* First page */}
+              {currentPage > 3 && (
+                <>
+                  <button 
+                    onClick={() => handlePageChange(1)}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                  >
+                    1
+                  </button>
+                  {currentPage > 4 && <span className="px-1">...</span>}
+                </>
+              )}
+              
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => {
+                  // Don't show page 1 or last page in the middle section if they're already shown separately
+                  if ((currentPage > 3 && page === 1) || (currentPage < totalPages - 2 && page === totalPages)) {
+                    return false;
+                  }
+                  // Show pages around current page
+                  return page >= currentPage - 1 && page <= currentPage + 1;
+                })
+                .map(page => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                  >
+                    {page}
+                  </button>
+                ))
+              }
+              
+              {/* Last page */}
+              {currentPage < totalPages - 2 && (
+                <>
+                  {currentPage < totalPages - 3 && <span className="px-1">...</span>}
+                  <button 
+                    onClick={() => handlePageChange(totalPages)}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
+            </div>
+            
+            <button 
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Next &raquo;
+            </button>
+          </div>
+        )}
+        
         <div className="mt-4">
           <button 
             className="px-4 py-2 bg-blue-600 text-white rounded"

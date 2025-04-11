@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button, ResponsiveTable } from '../components';
 import UAVImporter from '../helper/UAVImporter';
@@ -9,6 +9,17 @@ const AircraftList = () => {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const [sortField, setSortField] = useState('drone_name');
+
+  // Add debounce timer for filters
+  const [debouncedFilters, setDebouncedFilters] = useState({});
+  const filterTimer = useRef(null);
   
   useEffect(() => {
     const handleResize = () => {
@@ -25,10 +36,20 @@ const AircraftList = () => {
   
   const API_URL = import.meta.env.VITE_API_URL;
   
-  const getAuthHeaders = () => {
+  const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('access_token');
     return { Authorization: `Bearer ${token}` };
-  };
+  }, []);
+  
+  const handleAuthError = useCallback((res) => {
+    if (res.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_id');
+      navigate('/login');
+      return true;
+    }
+    return false;
+  }, [navigate]);
   
   const [filters, setFilters] = useState({
     drone_name: '',
@@ -36,17 +57,18 @@ const AircraftList = () => {
     type: '',
     motors: '',
     motor_type: '',
-    ldg: '',
     firmware_version: '',
     video_system: '',
     gps: '',
     mag: '',
     baro: '',
     gyro: '',
-    acc: ''
+    acc: '',
+    registration_number: '',
+    serial_number: ''
   });
 
-  const fetchAircrafts = async () => {
+  const fetchAircrafts = useCallback(async () => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
     
@@ -55,28 +77,45 @@ const AircraftList = () => {
       return;
     }
     
+    setIsLoading(true);
+    
+    // Build query parameters for filtering and pagination
+    const queryParams = new URLSearchParams();
+    
+    // Add filter parameters - use debouncedFilters instead of filters
+    Object.entries(debouncedFilters).forEach(([key, value]) => {
+      if (value) {
+        queryParams.append(key, value);
+      }
+    });
+    
+    // Add pagination parameters
+    queryParams.append('page', currentPage);
+    queryParams.append('page_size', pageSize);
+    
+    // Add sorting parameter
+    queryParams.append('ordering', sortField);
+    
     try {
-      const response = await fetch(`${API_URL}/api/uavs/?user=${user_id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await fetch(`${API_URL}/api/uavs/?${queryParams.toString()}`, {
+        headers: getAuthHeaders()
       });
       
       if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user_id');
-          navigate('/login');
-          return;
-        }
+        if (handleAuthError(response)) return;
         throw new Error('Failed to fetch aircraft data');
       }
       
       const data = await response.json();
-      setAircrafts(data);
+      setAircrafts(data.results || []);
+      setTotalPages(Math.ceil((data.count || 0) / pageSize));
+      setIsLoading(false);
     } catch (err) {
       console.error(err);
       setError('Could not load aircraft data.');
+      setIsLoading(false);
     }
-  };
+  }, [API_URL, getAuthHeaders, handleAuthError, navigate, debouncedFilters, currentPage, pageSize, sortField]);
 
   const { handleFileUpload } = UAVImporter({
     setError,
@@ -88,12 +127,32 @@ const AircraftList = () => {
 
   useEffect(() => {
     fetchAircrafts();
-  }, [navigate]);
+  }, [fetchAircrafts]);
 
-  const handleFilterChange = (e) => {
+  const handleFilterChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-  };
+    
+    // Update the local filter state immediately for UI responsiveness
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear any existing timer
+    if (filterTimer.current) {
+      clearTimeout(filterTimer.current);
+    }
+    
+    // Set a new timer to update the debounced filters after 500ms
+    filterTimer.current = setTimeout(() => {
+      // Reset to page 1 when filters change
+      setCurrentPage(1);
+      setDebouncedFilters(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }, 500);
+  }, []);
 
   const handleNewAircraft = () => {
     navigate('/new-aircraft');
@@ -109,14 +168,21 @@ const AircraftList = () => {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  const filteredAircrafts = aircrafts.filter(aircraft => {
-    return Object.entries(filters).every(([key, filterValue]) => {
-      if (!filterValue) return true;
-      
-      const aircraftValue = String(aircraft[key] || '').toLowerCase();
-      return aircraftValue.includes(filterValue.toLowerCase());
+  // Handle pagination
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Handle sorting
+  const handleSortChange = useCallback((field) => {
+    setSortField(prevSort => {
+      // If already sorting by this field, toggle direction
+      if (prevSort === field) return `-${field}`;
+      if (prevSort === `-${field}`) return field;
+      // Default to ascending for new field
+      return field;
     });
-  });
+  }, []);
 
   const formatFlightTime = (seconds) => {
     if (!seconds) return 'N/A';
@@ -214,7 +280,16 @@ const AircraftList = () => {
     }, 100);
   };
 
-  const modifiedAircrafts = filteredAircrafts.map(aircraft => ({
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (filterTimer.current) {
+        clearTimeout(filterTimer.current);
+      }
+    };
+  }, []);
+
+  const modifiedAircrafts = aircrafts.map(aircraft => ({
     ...aircraft,
     flightlog_id: aircraft.uav_id
   }));
@@ -257,20 +332,97 @@ const AircraftList = () => {
         </div>
         
         <Alert type="error" message={error} />
-
-        <ResponsiveTable
-          columns={tableColumns}
-          data={modifiedAircrafts || []}
-          filterFields={tableColumns}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onEdit={handleAircraftClick}
-          hideDesktopFilters={false}
-          rowClickable={true}
-          showActionColumn={false}
-          idField="flightlog_id"
-          titleField="drone_name"
-        />
+        
+        {isLoading ? (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <ResponsiveTable
+            columns={tableColumns}
+            data={modifiedAircrafts || []}
+            filterFields={tableColumns}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onEdit={handleAircraftClick}
+            onRowClick={handleAircraftClick}
+            hideDesktopFilters={false}
+            rowClickable={true}
+            showActionColumn={false}
+            idField="flightlog_id"
+            titleField="drone_name"
+          />
+        )}
+        
+        {/* Pagination controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center mt-4 gap-2">
+            <button 
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+            >
+              &laquo; Prev
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {/* First page */}
+              {currentPage > 3 && (
+                <>
+                  <button 
+                    onClick={() => handlePageChange(1)}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                  >
+                    1
+                  </button>
+                  {currentPage > 4 && <span className="px-1">...</span>}
+                </>
+              )}
+              
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => {
+                  // Don't show page 1 or last page in the middle section if they're already shown separately
+                  if ((currentPage > 3 && page === 1) || (currentPage < totalPages - 2 && page === totalPages)) {
+                    return false;
+                  }
+                  // Show pages around current page
+                  return page >= currentPage - 1 && page <= currentPage + 1;
+                })
+                .map(page => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                  >
+                    {page}
+                  </button>
+                ))
+              }
+              
+              {/* Last page */}
+              {currentPage < totalPages - 2 && (
+                <>
+                  {currentPage < totalPages - 3 && <span className="px-1">...</span>}
+                  <button 
+                    onClick={() => handlePageChange(totalPages)}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
+            </div>
+            
+            <button 
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Next &raquo;
+            </button>
+          </div>
+        )}
 
         <div className="flex justify-center gap-4 p-4 mt-4">
           <Button 

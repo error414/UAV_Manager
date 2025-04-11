@@ -16,11 +16,13 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
               >
                 <option value="">{field.placeholder}</option>
                 {field.name === 'uav' ? (
-                  availableOptions?.availableUAVs?.map(uav => (
-                    <option key={uav.uav_id} value={uav.uav_id}>
-                      {uav.drone_name}
-                    </option>
-                  ))
+                  Array.isArray(availableOptions?.availableUAVs) ? 
+                    availableOptions.availableUAVs.map((uav) => (
+                      <option key={uav.uav_id} value={uav.uav_id}>
+                        {uav.drone_name}
+                      </option>
+                    )) : 
+                    <option value="" disabled>No UAVs available</option>
                 ) : (
                   field.options?.map(option => (
                     <option key={option.value} value={option.value}>
@@ -63,11 +65,13 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
             >
               <option value="">{field.placeholder}</option>
               {field.name === 'uav' ? (
-                availableOptions?.availableUAVs?.map(uav => (
-                  <option key={uav.uav_id} value={uav.uav_id}>
-                    {uav.drone_name}
-                  </option>
-                ))
+                Array.isArray(availableOptions?.availableUAVs) ? 
+                  availableOptions.availableUAVs.map((uav) => (
+                    <option key={uav.uav_id} value={uav.uav_id}>
+                      {uav.drone_name}
+                    </option>
+                  )) : 
+                  <option value="" disabled>No UAVs available</option>
               ) : (
                 field.options?.map(option => (
                   <option key={option.value} value={option.value}>

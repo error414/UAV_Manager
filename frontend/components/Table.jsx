@@ -28,6 +28,11 @@ const renderFormField = (fieldConfig, data, onChange, availableOptions) => {
   
   // Handle UAV select field
   if (fieldName === 'uav') {
+    // Add Array.isArray check to prevent the error
+    const uavOptions = Array.isArray(availableOptions?.availableUAVs) 
+      ? availableOptions.availableUAVs 
+      : [];
+    
     return (
       <select
         name={fieldName}
@@ -36,7 +41,7 @@ const renderFormField = (fieldConfig, data, onChange, availableOptions) => {
         className="w-full px-2 py-1 border border-gray-300 rounded"
       >
         <option value="">{isEditing ? `Select UAV` : fieldConfig.placeholder}</option>
-        {availableOptions.availableUAVs?.map((uav) => (
+        {uavOptions.map((uav) => (
           <option key={uav.uav_id} value={uav.uav_id}>
             {uav.drone_name}
           </option>
@@ -126,6 +131,7 @@ const ResponsiveTable = ({
   actionButtons = null,
   customMobileView = null,
   titleField = null, 
+  onRowClick, // Add onRowClick prop for row navigation
 }) => {
   // Default action buttons rendering if not provided
   const defaultActionButtons = (itemId) => (
@@ -172,7 +178,7 @@ const ResponsiveTable = ({
     return (
       <div 
         className={`rounded-lg shadow mb-4 p-4 ${item.is_active === false ? 'bg-red-100' : 'bg-white'} ${rowClickable ? 'cursor-pointer' : ''}`}
-        onClick={rowClickable ? () => onEdit(item[idField]) : undefined}
+        onClick={rowClickable ? () => onRowClick(item[idField]) : undefined}
       >
         {editingId === item[idField] ? (
           /* Editing form for mobile */
@@ -291,7 +297,7 @@ const ResponsiveTable = ({
                 <tr 
                   key={item[idField]} 
                   className={`${item.is_active === false ? 'bg-red-100' : 'bg-white'} border-b hover:bg-gray-50 ${rowClickable ? 'cursor-pointer' : ''}`}
-                  onClick={rowClickable ? () => onEdit(item[idField]) : undefined}
+                  onClick={() => onRowClick(item[idField])}  // Navigate to FlightDetails on row click
                 >
                   {editingId === item[idField] ? (
                     <>

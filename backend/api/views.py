@@ -1,9 +1,11 @@
 # backend/api/views.py
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, filters
 from datetime import datetime
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from django.db import models
+from django.db.models import Q
+from rest_framework.pagination import PageNumberPagination
 from .models import (
     UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings
 )
@@ -12,13 +14,92 @@ from .serializers import (
     MaintenanceReminderSerializer, FileSerializer, UserSerializer, UserSettingsSerializer
 )
 
+# Pagination for UAVs
+class UAVPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 # Endpunkte für UAVs (USERS besitzt UAVs)
 class UAVListCreateView(generics.ListCreateAPIView):
     serializer_class = UAVSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = UAVPagination
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['drone_name', 'manufacturer', 'type', 'motors', 'registration_number', 'created_at']
+    ordering = ['drone_name']  # Default sorting
     
     def get_queryset(self):
-        return UAV.objects.filter(user=self.request.user)
+        queryset = UAV.objects.filter(user=self.request.user)
+        
+        # Apply filters from query parameters
+        params = self.request.query_params
+        
+        # Filter by drone name (partial match)
+        if params.get('drone_name'):
+            queryset = queryset.filter(drone_name__icontains=params['drone_name'])
+            
+        # Filter by manufacturer (partial match)
+        if params.get('manufacturer'):
+            queryset = queryset.filter(manufacturer__icontains=params['manufacturer'])
+            
+        # Filter by type (partial match)
+        if params.get('type'):
+            queryset = queryset.filter(type__icontains=params['type'])
+            
+        # Filter by motors (exact match)
+        if params.get('motors'):
+            try:
+                motors = int(params['motors'])
+                queryset = queryset.filter(motors=motors)
+            except (ValueError, TypeError):
+                pass
+                
+        # Filter by motor type (partial match)
+        if params.get('motor_type'):
+            queryset = queryset.filter(motor_type__icontains=params['motor_type'])
+            
+        # Filter by video system (partial match)
+        if params.get('video_system'):
+            queryset = queryset.filter(video_system__icontains=params['video_system'])
+            
+        # Filter by firmware (partial match)
+        if params.get('firmware'):
+            queryset = queryset.filter(firmware__icontains=params['firmware'])
+            
+        # Filter by firmware version (partial match)
+        if params.get('firmware_version'):
+            queryset = queryset.filter(firmware_version__icontains=params['firmware_version'])
+            
+        # Filter by GPS (partial match)
+        if params.get('gps'):
+            queryset = queryset.filter(gps__icontains=params['gps'])
+            
+        # Filter by MAG (partial match)
+        if params.get('mag'):
+            queryset = queryset.filter(mag__icontains=params['mag'])
+            
+        # Filter by BARO (partial match)
+        if params.get('baro'):
+            queryset = queryset.filter(baro__icontains=params['baro'])
+            
+        # Filter by GYRO (partial match)
+        if params.get('gyro'):
+            queryset = queryset.filter(gyro__icontains=params['gyro'])
+            
+        # Filter by ACC (partial match)
+        if params.get('acc'):
+            queryset = queryset.filter(acc__icontains=params['acc'])
+
+        # Filter by registration number (partial match)
+        if params.get('registration_number'):
+            queryset = queryset.filter(registration_number__icontains=params['registration_number'])
+            
+        # Filter by serial number (partial match)
+        if params.get('serial_number'):
+            queryset = queryset.filter(serial_number__icontains=params['serial_number'])
+        
+        return queryset
     
     def perform_create(self, serializer):
         uav = serializer.save(user=self.request.user)
@@ -60,20 +141,41 @@ class UAVListCreateView(generics.ListCreateAPIView):
                     }
                 )
     
-    # Add a method to list response with flight stats
+    # Modify the list method to correctly handle paginated responses
     def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
+        queryset = self.filter_queryset(self.get_queryset())
         
-        # Add flight statistics to each UAV in the response
-        for uav_data in response.data:
+        # Check if pagination is needed
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            response_data = serializer.data
+            
+            # Add flight statistics to each UAV
+            for uav_data in response_data:
+                uav_id = uav_data['uav_id']
+                uav_data['total_flights'] = FlightLog.objects.filter(uav_id=uav_id).count()
+                uav_data['total_flight_hours'] = FlightLog.get_total_flight_hours(uav_id)
+                uav_data['total_flight_time'] = FlightLog.get_total_flight_hours(uav_id) * 3600  # Convert hours to seconds
+                uav_data['total_landings'] = FlightLog.get_total_landings(uav_id)
+                uav_data['total_takeoffs'] = FlightLog.get_total_takeoffs(uav_id)
+            
+            return self.get_paginated_response(response_data)
+        
+        # If no pagination, use the original implementation
+        serializer = self.get_serializer(queryset, many=True)
+        response_data = serializer.data
+        
+        # Add flight statistics to each UAV
+        for uav_data in response_data:
             uav_id = uav_data['uav_id']
             uav_data['total_flights'] = FlightLog.objects.filter(uav_id=uav_id).count()
             uav_data['total_flight_hours'] = FlightLog.get_total_flight_hours(uav_id)
             uav_data['total_flight_time'] = FlightLog.get_total_flight_hours(uav_id) * 3600  # Convert hours to seconds
             uav_data['total_landings'] = FlightLog.get_total_landings(uav_id)
             uav_data['total_takeoffs'] = FlightLog.get_total_takeoffs(uav_id)
-            
-        return response
+        
+        return Response(response_data)
 
 class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UAVSerializer
@@ -138,13 +240,95 @@ class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
         
         return response
 
+# Paginierung für FlightLogs
+class FlightLogPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 # Endpunkte für Fluglogs
 class FlightLogListCreateView(generics.ListCreateAPIView):
     serializer_class = FlightLogSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = FlightLogPagination
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['departure_date', 'departure_time', 'landing_time', 'flight_duration']
+    ordering = ['-departure_date', '-departure_time']  # Default sorting
     
     def get_queryset(self):
-        return FlightLog.objects.filter(user=self.request.user)
+        queryset = FlightLog.objects.filter(user=self.request.user)
+        
+        # Apply filters from query parameters
+        params = self.request.query_params
+        
+        # Add debug logging
+        print(f"Filter parameters received: {params}")
+        
+        # Filter by departure place (partial match)
+        if params.get('departure_place'):
+            queryset = queryset.filter(departure_place__icontains=params['departure_place'])
+            
+        # Filter by landing place (partial match)
+        if params.get('landing_place'):
+            queryset = queryset.filter(landing_place__icontains=params['landing_place'])
+            
+        # Filter by specific date
+        if params.get('departure_date'):
+            queryset = queryset.filter(departure_date=params['departure_date'])
+        
+        # Filter by departure time (exact match)
+        if params.get('departure_time'):
+            queryset = queryset.filter(departure_time=params['departure_time'])
+            
+        # Filter by landing time (exact match)
+        if params.get('landing_time'):
+            queryset = queryset.filter(landing_time=params['landing_time'])
+            
+        # Filter by flight duration
+        if params.get('flight_duration'):
+            try:
+                duration = int(params['flight_duration'])
+                queryset = queryset.filter(flight_duration=duration)
+            except (ValueError, TypeError):
+                pass
+            
+        # Filter by takeoffs
+        if params.get('takeoffs'):
+            try:
+                takeoffs = int(params['takeoffs'])
+                queryset = queryset.filter(takeoffs=takeoffs)
+            except (ValueError, TypeError):
+                pass
+                
+        # Filter by landings
+        if params.get('landings'):
+            try:
+                landings = int(params['landings'])
+                queryset = queryset.filter(landings=landings)
+            except (ValueError, TypeError):
+                pass
+            
+        # Filter by UAV id
+        if params.get('uav'):
+            queryset = queryset.filter(uav__uav_id=params['uav'])
+            
+        # Filter by light conditions
+        if params.get('light_conditions'):
+            queryset = queryset.filter(light_conditions=params['light_conditions'])
+            
+        # Filter by ops conditions
+        if params.get('ops_conditions'):
+            queryset = queryset.filter(ops_conditions=params['ops_conditions'])
+            
+        # Filter by pilot type
+        if params.get('pilot_type'):
+            queryset = queryset.filter(pilot_type=params['pilot_type'])
+            
+        # Text search in comments
+        if params.get('comments'):
+            queryset = queryset.filter(comments__icontains=params['comments'])
+        
+        return queryset
     
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

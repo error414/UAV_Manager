@@ -146,7 +146,8 @@ const useAircraftForm = (isEditMode, uavId) => {
       const token = localStorage.getItem('access_token');
       
       try {
-        const checkResponse = await fetch(`${API_URL}/api/flightlogs/`, {
+        // Query specifically for flight logs related to this UAV
+        const checkResponse = await fetch(`${API_URL}/api/flightlogs/?uav=${uavId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -155,12 +156,17 @@ const useAircraftForm = (isEditMode, uavId) => {
         }
         
         const flightLogs = await checkResponse.json();
-        const hasReferences = flightLogs.some(log => 
-          (typeof log.uav === 'object' && log.uav?.uav_id === parseInt(uavId)) || 
-          log.uav === parseInt(uavId)
-        );
-        
-        setCanDelete(!hasReferences);
+        // Handle paginated response - check if results array is empty
+        if (flightLogs && Array.isArray(flightLogs.results)) {
+          setCanDelete(flightLogs.results.length === 0);
+        } else if (Array.isArray(flightLogs)) {
+          // Direct array response
+          setCanDelete(flightLogs.length === 0);
+        } else {
+          // Unexpected response format
+          console.error('Unexpected response format:', flightLogs);
+          setCanDelete(true); // Default to allowing deletion if we can't determine
+        }
       } catch (err) {
         console.error('Error checking if aircraft can be deleted:', err);
       }

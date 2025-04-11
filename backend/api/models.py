@@ -120,19 +120,25 @@ class FlightLog(models.Model):
     flightlog_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flightlogs')
     uav = models.ForeignKey(UAV, on_delete=models.CASCADE, related_name='flightlogs')
-    departure_place = models.CharField(max_length=255)
-    departure_date = models.DateField()
-    departure_time = models.TimeField()
-    landing_place = models.CharField(max_length=255)
+    departure_place = models.CharField(max_length=255, db_index=True)
+    departure_date = models.DateField(db_index=True)
+    departure_time = models.TimeField(db_index=True)
+    landing_place = models.CharField(max_length=255, db_index=True)
     landing_time = models.TimeField()
-    flight_duration = models.IntegerField()  # z.B. in Secounds
+    flight_duration = models.IntegerField(db_index=True)  # z.B. in Secounds
     takeoffs = models.IntegerField() 
     landings = models.IntegerField()
-    light_conditions = models.CharField(max_length=255, choices=LIGHT_CONDITIONS)
-    ops_conditions = models.CharField(max_length=255, choices=OPS_CONDITIONS)
-    pilot_type = models.CharField(max_length=255, choices=PILOT_TYPE)
+    light_conditions = models.CharField(max_length=255, choices=LIGHT_CONDITIONS, db_index=True)
+    ops_conditions = models.CharField(max_length=255, choices=OPS_CONDITIONS, db_index=True)
+    pilot_type = models.CharField(max_length=255, choices=PILOT_TYPE, db_index=True)
     comments = models.CharField(max_length=255, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'departure_date']),
+            models.Index(fields=['uav', 'departure_date']),
+        ]
     
     @staticmethod
     def get_total_landings(uav_id):
