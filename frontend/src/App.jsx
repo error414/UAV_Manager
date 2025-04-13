@@ -9,6 +9,7 @@ import NewAircraftForm from '../pages/NewAircraft.jsx';
 import UserSettings from '../pages/UserSettings.jsx';
 import NewAircraftPage from '../pages/NewAircraft.jsx';
 import AircraftSettings from '../pages/AircraftSettings.jsx';
+import FlightDetails from '../pages/FlightDetails.jsx';
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 
@@ -156,27 +157,17 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Home Route */}
         <Route path="/" element={<Home />} />
-        {/* Registration Route */}
         <Route path="/register" element={<Register />} />
-        {/* Login Route */}
         <Route path="/login" element={<Login />} />
-        {/* Additional Details Route */}
         <Route path="/additionalDetails" element={<AdditionalDetails />} />
-        {/* Flightlog Route */}
         <Route path="/flightlog" element={<Flightlog />} />
-        {/* Aircraft List Route */}
-        <Route path="/aircraft-list" element={<AircraftList />} />
-        {/* Add a route for the capitalized version too in case it's being used elsewhere */}
         <Route path="/AircraftList" element={<AircraftList />} />
-        {/* New Aircraft Form Route */}
         <Route path="/new-aircraft" element={<NewAircraftForm />} />
         <Route path="/UserSettings" element={<UserSettings />} />
-        {/* Edit Aircraft Route */}
         <Route path="/edit-aircraft/:uavId" element={<NewAircraftPage />} />
-        {/* Aircraft Settings Route */}
         <Route path="/aircraft-settings/:uavId" element={<AircraftSettings />} />
+        <Route path="/flightdetails/:flightId" element={<FlightDetails />} />
       </Routes>
     </BrowserRouter>
   );
