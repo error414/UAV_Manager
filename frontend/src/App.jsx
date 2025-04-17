@@ -10,6 +10,7 @@ import UserSettings from '../pages/UserSettings.jsx';
 import NewAircraftPage from '../pages/NewAircraft.jsx';
 import AircraftSettings from '../pages/AircraftSettings.jsx';
 import FlightDetails from '../pages/FlightDetails.jsx';
+import AdminPage from '../pages/AdminPage';
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 
@@ -168,6 +169,7 @@ function App() {
         <Route path="/edit-aircraft/:uavId" element={<NewAircraftPage />} />
         <Route path="/aircraft-settings/:uavId" element={<AircraftSettings />} />
         <Route path="/flightdetails/:flightId" element={<FlightDetails />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Routes>
     </BrowserRouter>
   );

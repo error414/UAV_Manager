@@ -7,6 +7,8 @@ from .views import (
     FileListCreateView, FileDetailView,
     UserListCreateView, UserDetailView,
     UserSettingsListCreateView, UserSettingsDetailView,
+    # Add the new admin views
+    AdminUserListView, AdminUserDetailView, AdminUAVListView,
 )
 
 urlpatterns = [
@@ -37,4 +39,9 @@ urlpatterns = [
     # Optional: Endpunkte für Benutzereinstellungen
     path('user-settings/', UserSettingsListCreateView.as_view(), name='user-settings-list'),
     path('user-settings/<int:pk>/', UserSettingsDetailView.as_view(), name='user-settings-detail'),
+
+    # Admin routes
+    path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
+    path('admin/users/<int:pk>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
+    path('admin/uavs/', AdminUAVListView.as_view(), name='admin-uavs-list'),
 ]

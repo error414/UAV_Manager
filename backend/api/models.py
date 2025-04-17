@@ -140,21 +140,6 @@ class FlightLog(models.Model):
             models.Index(fields=['uav', 'departure_date']),
         ]
     
-    @staticmethod
-    def get_total_landings(uav_id):
-        return FlightLog.objects.filter(uav_id=uav_id).aggregate(total_landings=models.Sum('landings'))['total_landings'] or 0
-
-    @staticmethod
-    def get_total_takeoffs(uav_id):
-        return FlightLog.objects.filter(uav_id=uav_id).aggregate(total_takeoffs=models.Sum('takeoffs'))['total_takeoffs'] or 0
-
-    @staticmethod
-    def get_total_flight_hours(uav_id):
-        total_seconds = FlightLog.objects.filter(uav_id=uav_id).aggregate(
-            total_duration=models.Sum('flight_duration')
-        )['total_duration'] or 0
-        return total_seconds / 3600  # Convert seconds to hours
-    
     def __str__(self):
         return f"FlightLog {self.flightlog_id} for UAV {self.uav}"
 
@@ -172,17 +157,16 @@ class MaintenanceLog(models.Model):
     def save(self, *args, **kwargs):
         # Check if a new file is being uploaded
         if self.pk:
+            from .services.maintenance_service import MaintenanceService
             old_instance = MaintenanceLog.objects.filter(pk=self.pk).first()
-            if old_instance and old_instance.file and old_instance.file != self.file:
-                if os.path.isfile(old_instance.file.path):
-                    os.remove(old_instance.file.path)
+            MaintenanceService.handle_file_update(self, old_instance)
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        # Delete the file from the filesystem
+        # Use maintenance service to handle file deletion
+        from .services.maintenance_service import MaintenanceService
         if self.file:
-            if os.path.isfile(self.file.path):
-                os.remove(self.file.path)
+            MaintenanceService.handle_file_deletion(self.file.path)
         super().delete(*args, **kwargs)
     
     def __str__(self):
@@ -191,9 +175,9 @@ class MaintenanceLog(models.Model):
 # Optional: Use a signal to ensure file deletion when using bulk delete
 @receiver(post_delete, sender=MaintenanceLog)
 def delete_file_on_log_delete(sender, instance, **kwargs):
+    from .services.maintenance_service import MaintenanceService
     if instance.file:
-        if os.path.isfile(instance.file.path):
-            os.remove(instance.file.path)
+        MaintenanceService.handle_file_deletion(instance.file.path)
 
 
 # Wartungserinnerungen (MAINTENANCE_REMINDERS)

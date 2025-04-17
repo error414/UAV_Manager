@@ -5,6 +5,7 @@ import Button from './Button';
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const [userName, setUserName] = useState('');
   const [activePath, setActivePath] = useState('');
+  const [isStaff, setIsStaff] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -45,8 +46,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         
         if (response.ok) {
           const userData = await response.json();
+          console.log("User data received:", userData); // Debug output
+          
           const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
           setUserName(fullName || userData.email);
+          
+          // Check if is_staff exists and set it
+          console.log("is_staff value:", userData.is_staff); // Debug output
+          setIsStaff(userData.is_staff === true);
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -68,6 +75,18 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { path: '/AircraftList', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', label: 'Aircraft List' },
     { path: '/UserSettings', icon: 'M4.5 12a7.5 7.5 0 0 0 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m14.095-5.13 1.41-.513M5.106 17.785l1.15-.964m11.49-9.642 1.149-.964M7.501 19.795l.75-1.3m7.5-12.99.75-1.3m-6.063 16.658.26-1.477m2.605-14.772.26-1.477m0 17.726-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205 12 12m6.894 5.785-1.149-.964M6.256 7.178l-1.15-.964m15.352 8.864-1.41-.513M4.954 9.435l-1.41-.514M12.002 12l-3.75 6.495', label: 'User Settings' }
   ];
+  
+  console.log("isStaff state:", isStaff); // Debug output
+  
+  // Add Admin link only for staff users
+  if (isStaff) {
+    console.log("Adding admin menu item"); // Debug output
+    menuItems.push({ 
+      path: '/admin', 
+      icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 
+      label: 'Admin Panel' 
+    });
+  }
 
   // Dynamically add Aircraft Settings if on the Aircraft Settings or Edit Aircraft page
   if (activePath.startsWith('/aircraft-settings/') || activePath.startsWith('/edit-aircraft/')) {
@@ -82,7 +101,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   if (activePath.includes('/flightdetails/')) {
     menuItems.push({
       path: activePath,
-      icon: 'M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z',
+      icon: 'M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317-.158.69-.158 1.006 0z',
       label: 'Flight Details'
     });
   }
