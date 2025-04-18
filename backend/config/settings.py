@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'djoser',
     'corsheaders',
+    'django_crontab',
 ]
 
 MIDDLEWARE = [
@@ -217,3 +218,16 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+CRONJOBS = [
+    ('0 7 * * *', 'api.services.user_service.UserService.check_license_expiry')
+]
+
+# E-Mail Backend Konfiguration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.example.com'           # z.B. smtp.gmail.com oder dein SMTP-Server
+EMAIL_PORT = 587                          # 587 für TLS, 465 für SSL
+EMAIL_USE_TLS = True                      # True für TLS, False für SSL
+EMAIL_HOST_USER = 'dein-benutzer@example.com'   # Deine Absenderadresse
+EMAIL_HOST_PASSWORD = 'dein-passwort'          # Dein SMTP-Passwort
+DEFAULT_FROM_EMAIL = 'DroneLogbook <dein-benutzer@example.com>'  # Absendername und Adresse

@@ -2,6 +2,71 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Sidebar, Alert, ResponsiveTable } from '../components';
 
+const Spinner = () => (
+  <div className="flex justify-center py-4">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+  </div>
+);
+
+const Pagination = ({ currentPage, totalPages, onPageChange }) => (
+  totalPages > 1 && (
+    <div className="flex justify-center items-center mt-4 gap-2">
+      <button
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+        disabled={currentPage === 1}
+        className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+      >
+        &laquo; Prev
+      </button>
+      <div className="flex items-center gap-1">
+        {currentPage > 3 && (
+          <>
+            <button
+              onClick={() => onPageChange(1)}
+              className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            >
+              1
+            </button>
+            {currentPage > 4 && <span className="px-1">...</span>}
+          </>
+        )}
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter(page => {
+            if ((currentPage > 3 && page === 1) || (currentPage < totalPages - 2 && page === totalPages)) return false;
+            return page >= currentPage - 1 && page <= currentPage + 1;
+          })
+          .map(page => (
+            <button
+              key={page}
+              onClick={() => onPageChange(page)}
+              className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            >
+              {page}
+            </button>
+          ))}
+        {currentPage < totalPages - 2 && (
+          <>
+            {currentPage < totalPages - 3 && <span className="px-1">...</span>}
+            <button
+              onClick={() => onPageChange(totalPages)}
+              className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
+      </div>
+      <button
+        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+      >
+        Next &raquo;
+      </button>
+    </div>
+  )
+);
+
 const AdminPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,6 +91,17 @@ const AdminPage = () => {
   const [uavCurrentPage, setUavCurrentPage] = useState(1);
   const [uavTotalPages, setUavTotalPages] = useState(0);
   const [uavPageSize] = useState(10);
+  const [editingUavId, setEditingUavId] = useState(null);
+  const [editingUav, setEditingUav] = useState(null);
+  const [uavError, setUavError] = useState(null);
+  const [userFlightLogs, setUserFlightLogs] = useState([]);
+  const [loadingFlightLogs, setLoadingFlightLogs] = useState(false);
+  const [flightLogsError, setFlightLogsError] = useState(null);
+  const [flightLogCurrentPage, setFlightLogCurrentPage] = useState(1);
+  const [flightLogTotalPages, setFlightLogTotalPages] = useState(0);
+  const [flightLogPageSize] = useState(10);
+  const [editingFlightLogId, setEditingFlightLogId] = useState(null);
+  const [editingFlightLog, setEditingFlightLog] = useState(null);
   const API_URL = import.meta.env.VITE_API_URL;
 
   const getAuthHeaders = useCallback(() => {
@@ -124,23 +200,23 @@ const AdminPage = () => {
 
   const fetchUserUAVs = useCallback(async (userId) => {
     if (!userId) return;
-    
+
     setLoadingUAVs(true);
     const queryParams = new URLSearchParams();
     queryParams.append('user_id', userId);
     queryParams.append('page', uavCurrentPage);
     queryParams.append('page_size', uavPageSize);
-    
+
     try {
       const response = await fetch(`${API_URL}/api/admin/uavs/?${queryParams.toString()}`, {
         headers: getAuthHeaders()
       });
-      
+
       if (!response.ok) {
         if (handleAuthError(response)) return;
         throw new Error('Failed to fetch user UAVs');
       }
-      
+
       const data = await response.json();
       if (data.results && data.count !== undefined) {
         setUserUAVs(data.results);
@@ -156,13 +232,49 @@ const AdminPage = () => {
     }
   }, [API_URL, getAuthHeaders, handleAuthError, uavCurrentPage, uavPageSize]);
 
+  const fetchUserFlightLogs = useCallback(async (userId) => {
+    if (!userId) return;
+    setLoadingFlightLogs(true);
+    setFlightLogsError(null);
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('user_id', userId);
+      queryParams.append('page', flightLogCurrentPage);
+      queryParams.append('page_size', flightLogPageSize);
+      const response = await fetch(`${API_URL}/api/flightlogs/?${queryParams.toString()}`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) {
+        if (handleAuthError(response)) return;
+        throw new Error('Failed to fetch user flight logs');
+      }
+      const data = await response.json();
+      const filteredLogs = (data.results || []).filter(log => log.user === userId || log.user === Number(userId));
+      setUserFlightLogs(filteredLogs);
+      if (data.count !== undefined) {
+        setFlightLogTotalPages(Math.ceil(data.count / flightLogPageSize));
+      } else {
+        setFlightLogTotalPages(1);
+      }
+    } catch (err) {
+      setFlightLogsError('Could not load user flight logs: ' + err.message);
+      setUserFlightLogs([]);
+      setFlightLogTotalPages(0);
+    } finally {
+      setLoadingFlightLogs(false);
+    }
+  }, [API_URL, getAuthHeaders, handleAuthError, flightLogCurrentPage, flightLogPageSize]);
+
   useEffect(() => {
     if (selectedUserId) {
       fetchUserUAVs(selectedUserId);
+      fetchUserFlightLogs(selectedUserId);
     } else {
       setUserUAVs([]);
+      setUserFlightLogs([]);
+      setFlightLogTotalPages(0);
     }
-  }, [fetchUserUAVs, selectedUserId, uavCurrentPage]);
+  }, [fetchUserUAVs, fetchUserFlightLogs, selectedUserId, uavCurrentPage, flightLogCurrentPage]);
 
   const handleFilterChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -184,8 +296,7 @@ const AdminPage = () => {
     if (userToEdit) {
       setEditingUser({ ...userToEdit });
       setEditingUserId(id);
-      
-      // Clear selected user for UAVs when editing
+
       setSelectedUserId(null);
       setSelectedUserName('');
     }
@@ -258,8 +369,154 @@ const AdminPage = () => {
       setSelectedUserId(id);
       setSelectedUserName(`${selectedUser.first_name || ''} ${selectedUser.last_name || ''} (${selectedUser.email})`);
       setUavCurrentPage(1);
+
+      setEditingUavId(null);
+      setEditingUav(null);
     }
   }, [users]);
+
+  const handleUavEdit = useCallback((id) => {
+    const uavToEdit = userUAVs.find(uav => uav.uav_id === id);
+    if (uavToEdit) {
+      setEditingUav({ ...uavToEdit });
+      setEditingUavId(id);
+      setUavError(null);
+    }
+  }, [userUAVs]);
+
+  const handleUavEditChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setEditingUav(prev => {
+      if (name === 'motors') {
+        return { ...prev, [name]: parseInt(value) || 0 };
+      }
+      if (name === 'is_active') {
+        return { ...prev, [name]: value === 'true' || value === true };
+      }
+      return { ...prev, [name]: value };
+    });
+  }, []);
+
+  const handleUavSaveEdit = useCallback(async () => {
+    if (!editingUav) return;
+    try {
+      const response = await fetch(`${API_URL}/api/admin/uavs/${editingUavId}/`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(editingUav)
+      });
+
+      if (!response.ok) {
+        if (handleAuthError(response)) return;
+        const errorData = await response.json();
+        setUavError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
+        return;
+      }
+
+      fetchUserUAVs(selectedUserId);
+      setEditingUavId(null);
+      setEditingUav(null);
+      setUavError(null);
+    } catch (err) {
+      setUavError('An error occurred while saving the UAV.');
+    }
+  }, [API_URL, editingUav, editingUavId, fetchUserUAVs, getAuthHeaders, handleAuthError, selectedUserId]);
+
+  const handleUavCancelEdit = useCallback(() => {
+    setEditingUavId(null);
+    setEditingUav(null);
+    setUavError(null);
+  }, []);
+
+  const handleDeleteUav = useCallback(async (id) => {
+    if (!window.confirm('Are you sure you want to delete this UAV? All flight logs associated with this UAV will also be deleted. This action cannot be undone.')) return;
+    try {
+      const response = await fetch(`${API_URL}/api/admin/uavs/${id}/`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        if (handleAuthError(response)) return;
+        throw new Error('Failed to delete UAV');
+      }
+
+      fetchUserUAVs(selectedUserId);
+      setEditingUavId(null);
+      setEditingUav(null);
+      setUavError(null);
+    } catch (err) {
+      setUavError('An error occurred while deleting the UAV.');
+    }
+  }, [API_URL, fetchUserUAVs, getAuthHeaders, handleAuthError, selectedUserId]);
+
+  const handleFlightLogEdit = (id) => {
+    const logToEdit = userFlightLogs.find(log => log.flightlog_id === id);
+    if (logToEdit) {
+      setEditingUav(null);
+      setEditingUavId(null);
+      setEditingUser(null);
+      setEditingUserId(null);
+      setEditingFlightLog({ ...logToEdit });
+      setEditingFlightLogId(id);
+    }
+  };
+
+  const handleFlightLogEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditingFlightLog(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFlightLogSaveEdit = async () => {
+    if (!editingFlightLog) return;
+    try {
+      const response = await fetch(`${API_URL}/api/flightlogs/${editingFlightLogId}/`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(editingFlightLog)
+      });
+      if (!response.ok) {
+        if (handleAuthError(response)) return;
+        const errorData = await response.json();
+        setFlightLogsError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
+        return;
+      }
+      fetchUserFlightLogs(selectedUserId);
+      setEditingFlightLogId(null);
+      setEditingFlightLog(null);
+      setFlightLogsError(null);
+    } catch (err) {
+      setFlightLogsError('An error occurred while saving the flight log.');
+    }
+  };
+
+  const handleFlightLogCancelEdit = () => {
+    setEditingFlightLogId(null);
+    setEditingFlightLog(null);
+  };
+
+  const handleFlightLogDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this flight log?')) return;
+    try {
+      const response = await fetch(`${API_URL}/api/flightlogs/${id}/`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) {
+        if (handleAuthError(response)) return;
+        throw new Error('Failed to delete flight log');
+      }
+      fetchUserFlightLogs(selectedUserId);
+      setEditingFlightLogId(null);
+      setEditingFlightLog(null);
+      setFlightLogsError(null);
+    } catch (err) {
+      setFlightLogsError('An error occurred while deleting the flight log.');
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
@@ -285,6 +542,7 @@ const AdminPage = () => {
     { header: 'Manufacturer', accessor: 'manufacturer' },
     { header: 'Type', accessor: 'type' },
     { header: 'Motors', accessor: 'motors' },
+    { header: 'Motor Type', accessor: 'motor_type' },
     { header: 'Flight Time', accessor: 'total_flight_time', render: (seconds) => {
       if (!seconds) return 'N/A';
       const hh = Math.floor(seconds / 3600);
@@ -293,7 +551,38 @@ const AdminPage = () => {
     }},
     { header: 'TO', accessor: 'total_takeoffs' },
     { header: 'LDG', accessor: 'total_landings' },
-    { header: 'Reg. Number', accessor: 'registration_number' }
+    { header: 'Flight Controller', accessor: 'flight_controller' },
+    { header: 'Firmware', accessor: 'firmware' },
+    { header: 'Version', accessor: 'firmware_version' },
+    { header: 'ESC', accessor: 'esc' },
+    { header: 'ESC Firmware', accessor: 'esc_firmware' },
+    { header: 'Video', accessor: 'video' },
+    { header: 'Video System', accessor: 'video_system' },
+    { header: 'Receiver', accessor: 'receiver' },
+    { header: 'Receiver FW', accessor: 'receiver_firmware' },
+    { header: 'GPS', accessor: 'gps' },
+    { header: 'MAG', accessor: 'mag' },
+    { header: 'BARO', accessor: 'baro' },
+    { header: 'GYRO', accessor: 'gyro' },
+    { header: 'ACC', accessor: 'acc' },
+    { header: 'Reg. Number', accessor: 'registration_number' },
+    { header: 'Serial Number', accessor: 'serial_number' },
+    { header: 'Status', accessor: 'is_active', render: (value) => value ? 'Active' : 'Inactive' }
+  ];
+
+  const flightLogTableColumns = [
+    { header: 'Dept Place', accessor: 'departure_place' },
+    { header: 'Date', accessor: 'departure_date' },
+    { header: 'Dept Time', accessor: 'departure_time' },
+    { header: 'LDG Time', accessor: 'landing_time' },
+    { header: 'LDG Place', accessor: 'landing_place' },
+    { header: 'Duration', accessor: 'flight_duration' },
+    { header: 'T/O', accessor: 'takeoffs' },
+    { header: 'LDG', accessor: 'landings' },
+    { header: 'Light', accessor: 'light_conditions' },
+    { header: 'OPS', accessor: 'ops_conditions' },
+    { header: 'Pilot Type', accessor: 'pilot_type' },
+    { header: 'Comments', accessor: 'comments' }
   ];
 
   const filterFormFields = [
@@ -309,36 +598,33 @@ const AdminPage = () => {
     { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Select active status', options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }] }
   ];
 
-  const editFormFields = [
-    { name: 'email', label: 'Email', type: 'email', placeholder: 'Email' },
-    { name: 'first_name', label: 'First Name', type: 'text', placeholder: 'First Name' },
-    { name: 'last_name', label: 'Last Name', type: 'text', placeholder: 'Last Name' },
-    { name: 'phone', label: 'Phone', type: 'text', placeholder: 'Phone' },
-    { name: 'street', label: 'Street', type: 'text', placeholder: 'Street' },
-    { name: 'zip', label: 'ZIP', type: 'text', placeholder: 'ZIP' },
-    { name: 'city', label: 'City', type: 'text', placeholder: 'City' },
-    { name: 'country', label: 'Country', type: 'text', placeholder: 'Country' },
-    { name: 'company', label: 'Company', type: 'text', placeholder: 'Company' },
-    { name: 'drone_ops_nb', label: 'Drone Ops #', type: 'text', placeholder: 'Drone Operations Number' },
-    { name: 'pilot_license_nb', label: 'Pilot License #', type: 'text', placeholder: 'Pilot License Number' },
-    { name: 'a1_a3', label: 'A1/A3 Date', type: 'date', placeholder: 'A1/A3 Date' },
-    { name: 'a2', label: 'A2 Date', type: 'date', placeholder: 'A2 Date' },
-    { name: 'sts', label: 'STS Date', type: 'date', placeholder: 'STS Date' },
-    { name: 'is_staff', label: 'Staff Status', type: 'select', placeholder: 'Staff Status', options: [{ value: true, label: 'Yes' }, { value: false, label: 'No' }] },
+  const uavEditFormFields = [
+    { name: 'drone_name', label: 'Aircraft Name', type: 'text', placeholder: 'Aircraft Name' },
+    { name: 'manufacturer', label: 'Manufacturer', type: 'text', placeholder: 'Manufacturer' },
+    { name: 'type', label: 'Type', type: 'text', placeholder: 'Type' },
+    { name: 'motors', label: 'Motors', type: 'number', placeholder: 'Number of Motors' },
+    { name: 'motor_type', label: 'Motor Type', type: 'text', placeholder: 'Motor Type' },
+    { name: 'video', label: 'Video', type: 'text', placeholder: 'Video' },
+    { name: 'video_system', label: 'Video System', type: 'text', placeholder: 'Video System' },
+    { name: 'esc', label: 'ESC', type: 'text', placeholder: 'ESC' },
+    { name: 'esc_firmware', label: 'ESC Firmware', type: 'text', placeholder: 'ESC Firmware' },
+    { name: 'receiver', label: 'Receiver', type: 'text', placeholder: 'Receiver' },
+    { name: 'receiver_firmware', label: 'Receiver Firmware', type: 'text', placeholder: 'Receiver Firmware' },
+    { name: 'flight_controller', label: 'Flight Controller', type: 'text', placeholder: 'Flight Controller' },
+    { name: 'firmware', label: 'Firmware', type: 'text', placeholder: 'Firmware' },
+    { name: 'firmware_version', label: 'Firmware Version', type: 'text', placeholder: 'Firmware Version' },
+    { name: 'gps', label: 'GPS', type: 'text', placeholder: 'GPS' },
+    { name: 'mag', label: 'MAG', type: 'text', placeholder: 'MAG' },
+    { name: 'baro', label: 'BARO', type: 'text', placeholder: 'BARO' },
+    { name: 'gyro', label: 'GYRO', type: 'text', placeholder: 'GYRO' },
+    { name: 'acc', label: 'ACC', type: 'text', placeholder: 'ACC' },
+    { name: 'registration_number', label: 'Registration Number', type: 'text', placeholder: 'Registration Number' },
+    { name: 'serial_number', label: 'Serial Number', type: 'text', placeholder: 'Serial Number' },
     { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Active Status', options: [{ value: true, label: 'Yes' }, { value: false, label: 'No' }] }
   ];
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (!isStaff) {
-    return <Navigate to="/flightlog" state={{ from: location }} replace />;
-  }
+  if (loading) return <div className="flex justify-center items-center h-screen"><Spinner /></div>;
+  if (!isStaff) return <Navigate to="/flightlog" state={{ from: location }} replace />;
 
   return (
     <div className="flex h-screen relative">
@@ -373,11 +659,7 @@ const AdminPage = () => {
           <h1 className="text-2xl font-semibold text-center flex-1">Admin Panel - User Management</h1>
         </div>
         <Alert type="error" message={error} />
-        {isLoading ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
+        {isLoading ? <Spinner /> : (
           <>
             <ResponsiveTable 
               columns={tableColumns}
@@ -400,127 +682,73 @@ const AdminPage = () => {
               titleField="email"
               onRowClick={handleUserSelect}
             />
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center mt-4 gap-2">
-                <button 
-                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-                >
-                  &laquo; Prev
-                </button>
-                <div className="flex items-center gap-1">
-                  {currentPage > 3 && (
-                    <>
-                      <button 
-                        onClick={() => handlePageChange(1)}
-                        className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-                      >
-                        1
-                      </button>
-                      {currentPage > 4 && <span className="px-1">...</span>}
-                    </>
-                  )}
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(page => {
-                      if ((currentPage > 3 && page === 1) || (currentPage < totalPages - 2 && page === totalPages)) {
-                        return false;
-                      }
-                      return page >= currentPage - 1 && page <= currentPage + 1;
-                    })
-                    .map(page => (
-                      <button
-                        key={page}
-                        onClick={() => handlePageChange(page)}
-                        className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-                      >
-                        {page}
-                      </button>
-                    ))
-                  }
-                  {currentPage < totalPages - 2 && (
-                    <>
-                      {currentPage < totalPages - 3 && <span className="px-1">...</span>}
-                      <button 
-                        onClick={() => handlePageChange(totalPages)}
-                        className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-                      >
-                        {totalPages}
-                      </button>
-                    </>
-                  )}
-                </div>
-                <button 
-                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-                >
-                  Next &raquo;
-                </button>
-              </div>
-            )}
-
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
             {selectedUserId && (
               <div className="mt-10">
-                <h2 className="text-xl font-semibold mb-4">
-                  Aircraft for {selectedUserName}
-                </h2>
-                
-                {loadingUAVs ? (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-                  </div>
-                ) : userUAVs.length > 0 ? (
+                <h2 className="text-xl font-semibold mb-4">Aircraft for {selectedUserName}</h2>
+                {loadingUAVs ? <Spinner /> : userUAVs.length > 0 ? (
                   <>
+                    <Alert type="error" message={uavError} />
                     <ResponsiveTable 
                       columns={uavTableColumns}
                       data={userUAVs}
+                      onEdit={handleUavEdit}
+                      filterFields={[]}
+                      filters={{}}
                       rowClickable={false}
-                      showActionColumn={false}
+                      showActionColumn={true}
+                      actionColumnText="Actions"
                       idField="uav_id"
                       titleField="drone_name"
-                      filterFields={[]} // Add empty array to prevent mapping error
-                      filters={{}}      // Add empty object for filters
+                      editingId={editingUavId}
+                      editingData={editingUav}
+                      onEditChange={handleUavEditChange}
+                      onSaveEdit={handleUavSaveEdit}
+                      onCancelEdit={handleUavCancelEdit}
+                      onDelete={handleDeleteUav}
+                      editFormFields={uavEditFormFields}
                     />
-                    
-                    {uavTotalPages > 1 && (
-                      <div className="flex justify-center items-center mt-4 gap-2">
-                        <button 
-                          onClick={() => handleUavPageChange(Math.max(1, uavCurrentPage - 1))}
-                          disabled={uavCurrentPage === 1}
-                          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-                        >
-                          &laquo; Prev
-                        </button>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: uavTotalPages }, (_, i) => i + 1)
-                            .filter(page => page >= uavCurrentPage - 1 && page <= uavCurrentPage + 1)
-                            .map(page => (
-                              <button
-                                key={page}
-                                onClick={() => handleUavPageChange(page)}
-                                className={`w-8 h-8 flex items-center justify-center rounded ${uavCurrentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-                              >
-                                {page}
-                              </button>
-                            ))
-                          }
-                        </div>
-                        <button 
-                          onClick={() => handleUavPageChange(Math.min(uavTotalPages, uavCurrentPage + 1))}
-                          disabled={uavCurrentPage === uavTotalPages}
-                          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-                        >
-                          Next &raquo;
-                        </button>
-                      </div>
-                    )}
+                    <Pagination currentPage={uavCurrentPage} totalPages={uavTotalPages} onPageChange={handleUavPageChange} />
                   </>
                 ) : (
-                  <div className="text-center py-4 bg-gray-100 rounded-md">
-                    This user has no registered aircraft.
-                  </div>
+                  <div className="text-center py-4 bg-gray-100 rounded-md">This user has no registered aircraft.</div>
                 )}
+                <div className="mt-10">
+                  <h2 className="text-xl font-semibold mb-4">Flight Logs for {selectedUserName}</h2>
+                  {loadingFlightLogs ? <Spinner /> : flightLogsError ? (
+                    <Alert type="error" message={flightLogsError} />
+                  ) : userFlightLogs.length > 0 ? (
+                    <>
+                      <ResponsiveTable
+                        columns={flightLogTableColumns}
+                        data={userFlightLogs}
+                        filterFields={[]}
+                        filters={{}}
+                        rowClickable={false}
+                        showActionColumn={true}
+                        actionColumnText="Actions"
+                        idField="flightlog_id"
+                        titleField="departure_date"
+                        onEdit={handleFlightLogEdit}
+                        editingId={editingFlightLogId}
+                        editingData={editingFlightLog}
+                        onEditChange={handleFlightLogEditChange}
+                        onSaveEdit={handleFlightLogSaveEdit}
+                        onCancelEdit={handleFlightLogCancelEdit}
+                        onDelete={handleFlightLogDelete}
+                        editFormFields={flightLogTableColumns.map(col => ({
+                          name: col.accessor,
+                          label: col.header,
+                          type: 'text',
+                          placeholder: col.header
+                        }))}
+                      />
+                      <Pagination currentPage={flightLogCurrentPage} totalPages={flightLogTotalPages} onPageChange={setFlightLogCurrentPage} />
+                    </>
+                  ) : (
+                    <div className="text-center py-4 bg-gray-100 rounded-md">This user has no flight logs.</div>
+                  )}
+                </div>
               </div>
             )}
           </>

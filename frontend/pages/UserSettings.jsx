@@ -5,40 +5,7 @@ import { CountryDropdown } from 'react-country-region-selector';
 
 const UserSettings = () => {
   const navigate = useNavigate();
-  // Initialize sidebarOpen based on screen size - match existing pages
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
-  
-  // Add resize handler to match existing behavior
-  useEffect(() => {
-    const handleResize = () => {
-      // For desktop: automatically show sidebar
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(true);
-      } 
-      // For mobile: automatically hide sidebar
-      else {
-        setSidebarOpen(false);
-      }
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  
-  // Get API URL from environment variables
-  const API_URL = import.meta.env.VITE_API_URL;
-  
-  // Check authentication on component mount
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      navigate('/login');
-    } else {
-      fetchUserData();
-    }
-  }, [navigate]);
-
-  // State for form data
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -55,37 +22,64 @@ const UserSettings = () => {
     a2: '',
     sts: ''
   });
-
-  // State for alerts
+  const [userSettings, setUserSettings] = useState({
+    notifications_enabled: true,
+    a1_a3_reminder: false,
+    a2_reminder: false,
+    sts_reminder: false,
+    reminder_months_before: 3,
+    theme: '',
+    preferred_units: ''
+  });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const API_URL = import.meta.env.VITE_API_URL;
 
-  // Toggle sidebar function - match existing behavior
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      navigate('/login');
+    } else {
+      fetchUserData();
+    }
+  }, [navigate]);
+
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Fetch user data from API
   const fetchUserData = async () => {
     try {
       const token = localStorage.getItem('access_token');
       const user_id = localStorage.getItem('user_id');
-      
+
       if (!token || !user_id) {
         setError('Authentication required. Please log in again.');
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/users/${user_id}/`, {
+      const userResponse = await fetch(`${API_URL}/api/users/${user_id}/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!userResponse.ok) {
+        const errorData = await userResponse.json();
         throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
       }
 
-      const userData = await response.json();
+      const userData = await userResponse.json();
       setFormData({
         first_name: userData.first_name || '',
         last_name: userData.last_name || '',
@@ -102,13 +96,34 @@ const UserSettings = () => {
         a2: userData.a2 ? formatDateForInput(userData.a2) : '',
         sts: userData.sts ? formatDateForInput(userData.sts) : ''
       });
+
+      const settingsResponse = await fetch(`${API_URL}/api/user-settings/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        if (settingsData && settingsData.length > 0) {
+          setUserSettings({
+            notifications_enabled: settingsData[0].notifications_enabled ?? true,
+            a1_a3_reminder: settingsData[0].a1_a3_reminder ?? false,
+            a2_reminder: settingsData[0].a2_reminder ?? false,
+            sts_reminder: settingsData[0].sts_reminder ?? false,
+            reminder_months_before: settingsData[0].reminder_months_before ?? 3,
+            theme: settingsData[0].theme || '',
+            preferred_units: settingsData[0].preferred_units || '',
+            settings_id: settingsData[0].settings_id
+          });
+        }
+      }
     } catch (err) {
       console.error('Error fetching user data:', err);
       setError('Failed to load user data. Please try again.');
     }
   };
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevData => ({
@@ -117,7 +132,28 @@ const UserSettings = () => {
     }));
   };
 
-  // Handle country selection
+  const handleSettingsChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    // Create updated settings object
+    const updatedSettings = {
+      ...userSettings,
+      [name]: type === 'checkbox' ? checked : value
+    };
+    
+    // Auto-manage master notifications toggle based on individual selections
+    if (name === 'a1_a3_reminder' || name === 'a2_reminder' || name === 'sts_reminder') {
+      // If any license reminder is checked, enable notifications
+      // If all are unchecked, disable notifications
+      updatedSettings.notifications_enabled = 
+        updatedSettings.a1_a3_reminder || 
+        updatedSettings.a2_reminder || 
+        updatedSettings.sts_reminder;
+    }
+    
+    setUserSettings(updatedSettings);
+  };
+
   const selectCountry = (val) => {
     setFormData({
       ...formData,
@@ -125,14 +161,12 @@ const UserSettings = () => {
     });
   };
 
-  // Format date to YYYY-MM-DD for input[type="date"]
   const formatDateForInput = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toISOString().split('T')[0];
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -141,29 +175,26 @@ const UserSettings = () => {
     try {
       const token = localStorage.getItem('access_token');
       const user_id = localStorage.getItem('user_id');
-      
+
       if (!token || !user_id) {
         setError('Authentication required. Please log in again.');
         return;
       }
 
-      // Required fields validation
       if (!formData.first_name || !formData.last_name || !formData.email) {
         setError('Please fill in all required fields: First Name, Last Name, and Email');
         return;
       }
 
-      // Create a cleaned data object that omits empty date fields
       const cleanedData = {
         ...formData
       };
 
-      // Remove empty date fields to avoid validation errors
       if (!cleanedData.a1_a3) delete cleanedData.a1_a3;
       if (!cleanedData.a2) delete cleanedData.a2;
       if (!cleanedData.sts) delete cleanedData.sts;
 
-      const response = await fetch(`${API_URL}/api/users/${user_id}/`, {
+      const userResponse = await fetch(`${API_URL}/api/users/${user_id}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -172,12 +203,39 @@ const UserSettings = () => {
         body: JSON.stringify(cleanedData)
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!userResponse.ok) {
+        const errorData = await userResponse.json();
         throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
       }
 
-      await response.json();
+      const settingsMethod = userSettings.settings_id ? 'PUT' : 'POST';
+      const settingsUrl = userSettings.settings_id 
+        ? `${API_URL}/api/user-settings/${userSettings.settings_id}/`
+        : `${API_URL}/api/user-settings/`;
+
+      const settingsResponse = await fetch(settingsUrl, {
+        method: settingsMethod,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          user: user_id,
+          notifications_enabled: userSettings.notifications_enabled,
+          a1_a3_reminder: userSettings.a1_a3_reminder,
+          a2_reminder: userSettings.a2_reminder,
+          sts_reminder: userSettings.sts_reminder,
+          reminder_months_before: userSettings.reminder_months_before,
+          theme: userSettings.theme,
+          preferred_units: userSettings.preferred_units
+        })
+      });
+
+      if (!settingsResponse.ok) {
+        const errorData = await settingsResponse.json();
+        throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
+      }
+
       setSuccess('Settings saved successfully!');
     } catch (err) {
       console.error('Error updating user settings:', err);
@@ -385,6 +443,19 @@ const UserSettings = () => {
                   onChange={handleChange}
                   />
               </div>
+              <div className="col-span-4 flex items-center mt-1">
+                <input
+                  type="checkbox"
+                  name="a1_a3_reminder"
+                  id="a1_a3_reminder"
+                  checked={userSettings.a1_a3_reminder}
+                  onChange={handleSettingsChange}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="a1_a3_reminder" className="ml-2 text-sm text-gray-700">
+                  Send me a reminder before expiry
+                </label>
+              </div>
             </div>
             
             <div className="grid grid-cols-4 gap-2 items-center">
@@ -403,6 +474,19 @@ const UserSettings = () => {
                   onChange={handleChange}
                   />
               </div>
+              <div className="col-span-4 flex items-center mt-1">
+                <input
+                  type="checkbox"
+                  name="a2_reminder"
+                  id="a2_reminder"
+                  checked={userSettings.a2_reminder}
+                  onChange={handleSettingsChange}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="a2_reminder" className="ml-2 text-sm text-gray-700">
+                  Send me a reminder before expiry
+                </label>
+              </div>
             </div>
             
             <div className="grid grid-cols-4 gap-2 items-center">
@@ -420,6 +504,41 @@ const UserSettings = () => {
                   value={formData.sts}
                   onChange={handleChange}
                   />
+              </div>
+              <div className="col-span-4 flex items-center mt-1">
+                <input
+                  type="checkbox"
+                  name="sts_reminder"
+                  id="sts_reminder"
+                  checked={userSettings.sts_reminder}
+                  onChange={handleSettingsChange}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="sts_reminder" className="ml-2 text-sm text-gray-700">
+                  Send me a reminder before expiry
+                </label>
+              </div>
+            </div>
+            
+            <div className="mt-4 border-t pt-4">
+              <h3 className="text-lg font-medium text-black">Notification Settings</h3>
+              
+              <div className="mt-4">
+                <label htmlFor="reminder_months_before" className="block text-sm font-medium text-gray-700">
+                  Send reminders before expiry (months):
+                </label>
+                <select
+                  id="reminder_months_before"
+                  name="reminder_months_before"
+                  value={userSettings.reminder_months_before}
+                  onChange={handleSettingsChange}
+                  className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="1">1 month</option>
+                  <option value="2">2 months</option>
+                  <option value="3">3 months</option>
+                  <option value="6">6 months</option>
+                </select>
               </div>
             </div>
           </div>

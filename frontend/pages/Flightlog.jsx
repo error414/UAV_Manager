@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button, ResponsiveTable } from '../components';
-import LogImporter from '../helper/LogImporter';
 
 // Utility functions
 const calculateFlightDuration = (deptTime, landTime) => {
@@ -162,14 +161,51 @@ const Flightlog = () => {
       });
   }, [API_URL, getAuthHeaders, handleAuthError, navigate, debouncedFilters, currentPage, pageSize, sortField]);
 
-  const { handleFileUpload } = LogImporter({
-    setError,
-    navigate,
-    API_URL,
-    getAuthHeaders,
-    availableUAVs,
-    fetchFlightLogs
-  });
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    event.target.value = null; // Reset the input
+
+    if (!file.name.endsWith('.csv')) {
+      setError('File must be a CSV');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(`${API_URL}/api/import/flightlog/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (handleAuthError(response)) return;
+        setError(result.error || 'Failed to import flight logs');
+        setIsLoading(false);
+        return;
+      }
+
+      // Refresh the logs list
+      await fetchFlightLogs();
+      
+      // Show success message with details
+      alert(result.message + (result.details?.unmapped_message || ''));
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error uploading CSV:', err);
+      setError('Failed to upload CSV. Please try again.');
+      setIsLoading(false);
+    }
+  };
 
   const handleImportClick = () => {
     if (fileInputRef.current) {

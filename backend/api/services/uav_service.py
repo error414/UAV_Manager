@@ -1,6 +1,8 @@
 from datetime import datetime
 from django.db.models import Q, Sum
 from ..models import UAV, FlightLog, MaintenanceReminder
+import csv
+import io
 
 class UAVService:
     @staticmethod
@@ -144,6 +146,102 @@ class UAVService:
         uav_data['total_landings'] = FlightLogService.get_total_landings(uav_id)
         uav_data['total_takeoffs'] = FlightLogService.get_total_takeoffs(uav_id)
 
+    @staticmethod
+    def import_uavs_from_csv(csv_file, user):
+        """Import UAVs from CSV file"""
+        try:
+            # Decode the file
+            csv_data = csv_file.read().decode('utf-8')
+            csv_reader = csv.DictReader(io.StringIO(csv_data))
+            
+            # Statistics tracking
+            success_count = 0
+            duplicate_count = 0
+            error_count = 0
+            errors = []
+            duplicate_names = {}
+            
+            # Get existing UAVs to check for duplicates
+            existing_uavs = UAV.objects.filter(user=user).values_list('drone_name', flat=True)
+            
+            for row in csv_reader:
+                try:
+                    # Check for required fields
+                    if not row.get('DroneName') or not row.get('Type') or not row.get('Motors'):
+                        errors.append(f"Missing required field for UAV: {row.get('DroneName', 'Unknown')}")
+                        error_count += 1
+                        continue
+                    
+                    # Check for duplicates
+                    if row['DroneName'] in existing_uavs:
+                        if row['DroneName'] not in duplicate_names:
+                            duplicate_names[row['DroneName']] = 0
+                        duplicate_names[row['DroneName']] += 1
+                        duplicate_count += 1
+                        continue
+                    
+                    # Create UAV object
+                    uav = UAV(
+                        user=user,
+                        drone_name=row.get('DroneName', ''),
+                        manufacturer=row.get('Manufacturer', ''),
+                        type=row.get('Type', ''),
+                        motors=int(row.get('Motors', 1)),
+                        motor_type=row.get('MotorType', ''),
+                        video=row.get('Video', ''),
+                        video_system=row.get('VideoSystem', ''),
+                        esc=row.get('ESC', ''),
+                        esc_firmware=row.get('ESCFirmware', ''),
+                        receiver=row.get('Receiver', ''),
+                        receiver_firmware=row.get('ReceiverFirmware', ''),
+                        flight_controller=row.get('FlightController', ''),
+                        firmware=row.get('Firmware', ''),
+                        firmware_version=row.get('FirmwareVersion', ''),
+                        gps=row.get('GPS', ''),
+                        mag=row.get('MAG', ''),
+                        baro=row.get('BARO', ''),
+                        gyro=row.get('GYRO', ''),
+                        acc=row.get('ACC', ''),
+                        registration_number=row.get('RegistrationNumber', ''),
+                        serial_number=row.get('SerialNumber', ''),
+                        is_active=True
+                    )
+                    uav.save()
+                    success_count += 1
+                    existing_uavs = list(existing_uavs) + [uav.drone_name]
+                    
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f"Error processing UAV {row.get('DroneName', 'Unknown')}: {str(e)}")
+            
+            # Create report message
+            duplicate_message = ""
+            if duplicate_names:
+                duplicate_message = "\n\nSkipped UAVs with these names (already exist):"
+                for name, count in duplicate_names.items():
+                    duplicate_message += f"\n- {name}: {count} UAV(s)"
+            
+            result = {
+                'success_count': success_count,
+                'duplicate_count': duplicate_count,
+                'error_count': error_count,
+                'errors': errors,
+                'duplicate_message': duplicate_message,
+                'total': success_count + duplicate_count + error_count
+            }
+            
+            return result
+            
+        except Exception as e:
+            return {
+                'success_count': 0,
+                'duplicate_count': 0,
+                'error_count': 1,
+                'errors': [f"Failed to process CSV: {str(e)}"],
+                'duplicate_message': "",
+                'total': 0
+            }
+
 class FlightLogService:
     @staticmethod
     def get_flightlog_queryset(user, query_params=None):
@@ -239,3 +337,141 @@ class FlightLogService:
             total_duration=Sum('flight_duration')
         )['total_duration'] or 0
         return total_seconds / 3600  # Convert seconds to hours
+
+    @staticmethod
+    def import_logs_from_csv(csv_file, user):
+        """Import flight logs from CSV file"""
+        try:
+            # Decode the file
+            csv_data = csv_file.read().decode('utf-8')
+            csv_reader = csv.DictReader(io.StringIO(csv_data))
+            
+            # Statistics tracking
+            success_count = 0
+            duplicate_count = 0
+            unmapped_count = 0
+            error_count = 0
+            errors = []
+            unmapped_models = {}
+            
+            # Get all UAVs for this user to map model names
+            uav_map = {}
+            for uav in UAV.objects.filter(user=user).values('uav_id', 'drone_name'):
+                uav_map[uav['drone_name']] = uav['uav_id']
+            
+            # Get existing logs to check for duplicates
+            existing_logs = FlightLog.objects.filter(user=user).values('departure_date', 'departure_time', 'uav_id')
+            existing_log_keys = set()
+            for log in existing_logs:
+                if log['departure_date'] and log['departure_time'] and log['uav_id']:
+                    key = f"{log['departure_date']}_{log['departure_time']}_{log['uav_id']}"
+                    existing_log_keys.add(key)
+            
+            for row in csv_reader:
+                try:
+                    # Check if model name can be mapped to UAV
+                    model_name = row.get('ModelName', '')
+                    if not model_name or model_name not in uav_map:
+                        if model_name:
+                            if model_name not in unmapped_models:
+                                unmapped_models[model_name] = 0
+                            unmapped_models[model_name] += 1
+                        unmapped_count += 1
+                        continue
+                    
+                    uav_id = uav_map[model_name]
+                    
+                    # Parse departure date
+                    departure_date = row.get('Date', '')
+                    if departure_date and not departure_date.strip().startswith('20'):
+                        # Try to reformat date if it's not in YYYY-MM-DD format
+                        date_parts = departure_date.split('/')
+                        if len(date_parts) == 3:
+                            month, day, year = date_parts
+                            if len(year) == 4:
+                                departure_date = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+                    
+                    departure_time = row.get('Timestamp-TO', '')
+                    landing_time = row.get('Timestamp-LDG', '')
+                    
+                    # Calculate duration
+                    duration = 0
+                    if row.get('Duration'):
+                        try:
+                            duration = round(float(row['Duration']))
+                        except (ValueError, TypeError):
+                            pass
+                    
+                    # Determine locations
+                    depart_lat = row.get('GPS-Arming-Lat', '')
+                    depart_lon = row.get('GPS-Arming-Lon', '')
+                    departure_place = 'Unknown'
+                    if depart_lat and depart_lon and (float(depart_lat) != 0 or float(depart_lon) != 0):
+                        departure_place = f"{depart_lat},{depart_lon}"
+                    
+                    landing_lat = row.get('GPS-Disarming-Lat', '')
+                    landing_lon = row.get('GPS-Disarming-Lon', '')
+                    landing_place = 'Unknown'
+                    if landing_lat and landing_lon and (float(landing_lat) != 0 or float(landing_lon) != 0):
+                        landing_place = f"{landing_lat},{landing_lon}"
+                    
+                    # Check for duplicate
+                    log_key = f"{departure_date}_{departure_time}_{uav_id}"
+                    if log_key in existing_log_keys:
+                        duplicate_count += 1
+                        continue
+                    
+                    # Create flight log
+                    flight_log = FlightLog(
+                        user=user,
+                        uav_id=uav_id,
+                        departure_place=departure_place,
+                        departure_date=departure_date,
+                        departure_time=departure_time,
+                        landing_time=landing_time,
+                        landing_place=landing_place,
+                        flight_duration=duration,
+                        takeoffs=1,
+                        landings=1,
+                        light_conditions='Day',  # Default
+                        ops_conditions='VLOS',   # Default
+                        pilot_type='PIC',        # Default
+                        comments='Imported from CSV'
+                    )
+                    flight_log.save()
+                    success_count += 1
+                    existing_log_keys.add(log_key)
+                    
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f"Error processing log: {str(e)}")
+            
+            # Create report message for unmapped models
+            unmapped_message = ""
+            if unmapped_models:
+                unmapped_message = "\n\nSkipped logs for these unmapped UAV models:"
+                for model, count in unmapped_models.items():
+                    unmapped_message += f"\n- {model}: {count} log(s)"
+            
+            result = {
+                'success_count': success_count,
+                'duplicate_count': duplicate_count,
+                'unmapped_count': unmapped_count,
+                'error_count': error_count,
+                'errors': errors,
+                'unmapped_message': unmapped_message,
+                'total': success_count + duplicate_count + unmapped_count + error_count
+            }
+            
+            return result
+            
+        except Exception as e:
+            return {
+                'success_count': 0,
+                'duplicate_count': 0,
+                'unmapped_count': 0,
+                'error_count': 1,
+                'errors': [f"Failed to process CSV: {str(e)}"],
+                'unmapped_message': "",
+                'total': 0
+            }

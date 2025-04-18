@@ -57,6 +57,10 @@ class UserSettings(models.Model):
     preferred_units = models.CharField(max_length=50, blank=True, null=True)
     theme = models.CharField(max_length=50, blank=True, null=True)
     notifications_enabled = models.BooleanField(default=True)
+    a1_a3_reminder = models.BooleanField(default=False)
+    a2_reminder = models.BooleanField(default=False)
+    sts_reminder = models.BooleanField(default=False)
+    reminder_months_before = models.IntegerField(default=3)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

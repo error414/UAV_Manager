@@ -17,42 +17,54 @@ import viteLogo from '/vite.svg';
 function Home() {
   const [count, setCount] = useState(0);
   const [deleteMessage, setDeleteMessage] = useState(null);
+  const [deleteUAVMessage, setDeleteUAVMessage] = useState(null);
   const API_URL = import.meta.env.VITE_API_URL;
 
   const deleteAllFlightLogs = async () => {
     if (!window.confirm('⚠️ DEVELOPMENT ONLY: Are you sure you want to delete ALL flight logs? This cannot be undone!')) {
       return;
     }
-    
+
     const token = localStorage.getItem('access_token');
-    const user_id = localStorage.getItem('user_id');
-    
-    if (!token || !user_id) {
+
+    if (!token) {
       setDeleteMessage({ type: 'error', text: 'You must be logged in to delete logs' });
       return;
     }
-    
+
     try {
-      const response = await fetch(`${API_URL}/api/flightlogs/?user=${user_id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch logs');
+      // Alle Seiten abfragen
+      let allLogs = [];
+      let url = `${API_URL}/api/flightlogs/`;
+      while (url) {
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch logs');
+        }
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          allLogs = allLogs.concat(data);
+          break;
+        } else if (data.results) {
+          allLogs = allLogs.concat(data.results);
+          url = data.next;
+        } else {
+          break;
+        }
       }
-      
-      const logs = await response.json();
-      
+
       let successCount = 0;
       let errorCount = 0;
-      
-      for (const log of logs) {
+
+      for (const log of allLogs) {
         try {
           const deleteResponse = await fetch(`${API_URL}/api/flightlogs/${log.flightlog_id}/`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` }
           });
-          
+
           if (deleteResponse.ok) {
             successCount++;
           } else {
@@ -62,15 +74,81 @@ function Home() {
           errorCount++;
         }
       }
-      
-      setDeleteMessage({ 
-        type: 'success', 
-        text: `Deleted ${successCount} logs. Failed to delete ${errorCount} logs.` 
+
+      setDeleteMessage({
+        type: 'success',
+        text: `Deleted ${successCount} logs. Failed to delete ${errorCount} logs.`
       });
-      
+
     } catch (err) {
       console.error('Error deleting logs:', err);
       setDeleteMessage({ type: 'error', text: 'Error deleting logs: ' + err.message });
+    }
+  };
+
+  const deleteAllUAVs = async () => {
+    if (!window.confirm('⚠️ DEVELOPMENT ONLY: Are you sure you want to delete ALL UAVs? This cannot be undone!')) {
+      return;
+    }
+
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+      setDeleteUAVMessage({ type: 'error', text: 'You must be logged in to delete UAVs' });
+      return;
+    }
+
+    try {
+      // Alle Seiten abfragen
+      let allUAVs = [];
+      let url = `${API_URL}/api/uavs/`;
+      while (url) {
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch UAVs');
+        }
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          allUAVs = allUAVs.concat(data);
+          break;
+        } else if (data.results) {
+          allUAVs = allUAVs.concat(data.results);
+          url = data.next;
+        } else {
+          break;
+        }
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const uav of allUAVs) {
+        try {
+          const deleteResponse = await fetch(`${API_URL}/api/uavs/${uav.uav_id}/`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          if (deleteResponse.ok) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (err) {
+          errorCount++;
+        }
+      }
+
+      setDeleteUAVMessage({
+        type: 'success',
+        text: `Deleted ${successCount} UAVs. Failed to delete ${errorCount} UAVs.`
+      });
+
+    } catch (err) {
+      console.error('Error deleting UAVs:', err);
+      setDeleteUAVMessage({ type: 'error', text: 'Error deleting UAVs: ' + err.message });
     }
   };
 
@@ -139,10 +217,20 @@ function Home() {
           >
             Delete ALL Flight Logs
           </button>
-          
+          <button
+            onClick={deleteAllUAVs}
+            className="block mx-auto bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-10 rounded mt-2"
+          >
+            Delete ALL UAVs
+          </button>
           {deleteMessage && (
             <div className={`mt-2 p-2 rounded ${deleteMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
               {deleteMessage.text}
+            </div>
+          )}
+          {deleteUAVMessage && (
+            <div className={`mt-2 p-2 rounded ${deleteUAVMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {deleteUAVMessage.text}
             </div>
           )}
         </div>

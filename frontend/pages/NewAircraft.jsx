@@ -248,7 +248,7 @@ const useAircraftForm = (isEditMode, uavId) => {
       if (!isEditMode) {
         setFormData(defaultFormData);
       } else {
-        setTimeout(() => navigate('/aircraft-list'), 1500);
+        setTimeout(() => navigate('/AircraftList'), 1500);
       }
     } catch (err) {
       console.error('Error handling aircraft:', err);
@@ -278,7 +278,7 @@ const useAircraftForm = (isEditMode, uavId) => {
       }
       
       setSuccess('Aircraft successfully deleted!');
-      setTimeout(() => navigate('/aircraft-list'), 1500);
+      setTimeout(() => navigate('/AircraftList'), 1500);
     } catch (err) {
       console.error('Error deleting aircraft:', err);
       setError(err.message || 'An error occurred while processing your request.');
@@ -310,7 +310,7 @@ const useAircraftForm = (isEditMode, uavId) => {
       }
       
       setSuccess('Aircraft successfully marked as inactive');
-      setTimeout(() => navigate('/aircraft-list'), 1500);
+      setTimeout(() => navigate('/AircraftList'), 1500);
     } catch (err) {
       console.error('Error marking aircraft as inactive:', err);
       setError(err.message || 'An error occurred while processing your request.');
@@ -358,7 +358,7 @@ const useAircraftForm = (isEditMode, uavId) => {
       // If reactivating, just update the UI
       // If deactivating and has references, navigate away
       if (!newActiveState && !canDelete) {
-        setTimeout(() => navigate('/aircraft-list'), 1500);
+        setTimeout(() => navigate('/AircraftList'), 1500);
       }
     } catch (err) {
       console.error('Error toggling active status:', err);

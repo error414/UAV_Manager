@@ -2,6 +2,10 @@
 from rest_framework import generics, permissions, filters, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.parsers import MultiPartParser
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import (
     UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings
@@ -294,4 +298,108 @@ class AdminUAVListView(generics.ListAPIView):
         # Add flight statistics to each UAV
         response_data = UAVService.enrich_uav_data(response_data)
         
+        return Response(response_data)
+
+class AdminUAVDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = UAVSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        # Only staff users can access this view
+        if not self.request.user.is_staff:
+            return UAV.objects.none()
+        return UAV.objects.all()
+    
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        # Additional check for staff status
+        if not request.user.is_staff:
+            self.permission_denied(
+                request,
+                message="You do not have permission to perform this action.",
+                code=status.HTTP_403_FORBIDDEN
+            )
+    
+    def perform_update(self, serializer):
+        uav = serializer.save()
+        UAVService.update_maintenance_reminders(uav, serializer.validated_data)
+    
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        
+        # Use the service to add flight statistics to the response data
+        response.data = UAVService.enrich_uav_data(response.data)
+        
+        return response
+
+class UAVImportView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        if 'file' not in request.FILES:
+            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        csv_file = request.FILES['file']
+        
+        # Check if file is CSV
+        if not csv_file.name.endswith('.csv'):
+            return Response({'error': 'File must be a CSV'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Process the CSV file using UAVService
+        import_results = UAVService.import_uavs_from_csv(csv_file, request.user)
+        
+        # Create response
+        response_data = {
+            'success': import_results['error_count'] == 0,
+            'message': f"Successfully imported {import_results['success_count']} of {import_results['total']} UAVs. "
+                      f"Skipped {import_results['duplicate_count']} duplicates.",
+            'details': {
+                'success_count': import_results['success_count'],
+                'duplicate_count': import_results['duplicate_count'],
+                'error_count': import_results['error_count'],
+                'duplicate_message': import_results['duplicate_message']
+            }
+        }
+        
+        if import_results['errors']:
+            response_data['details']['errors'] = import_results['errors']
+            
+        return Response(response_data)
+
+
+class FlightLogImportView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        if 'file' not in request.FILES:
+            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        csv_file = request.FILES['file']
+        
+        # Check if file is CSV
+        if not csv_file.name.endswith('.csv'):
+            return Response({'error': 'File must be a CSV'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Process the CSV file using FlightLogService
+        import_results = FlightLogService.import_logs_from_csv(csv_file, request.user)
+        
+        # Create response
+        response_data = {
+            'success': import_results['error_count'] == 0,
+            'message': f"Successfully imported {import_results['success_count']} of {import_results['total']} logs. "
+                      f"Skipped {import_results['duplicate_count']} duplicates and {import_results['unmapped_count']} logs with unmapped UAVs.",
+            'details': {
+                'success_count': import_results['success_count'],
+                'duplicate_count': import_results['duplicate_count'],
+                'unmapped_count': import_results['unmapped_count'],
+                'error_count': import_results['error_count'],
+                'unmapped_message': import_results['unmapped_message']
+            }
+        }
+        
+        if import_results['errors']:
+            response_data['details']['errors'] = import_results['errors']
+            
         return Response(response_data)

@@ -7,8 +7,8 @@ from .views import (
     FileListCreateView, FileDetailView,
     UserListCreateView, UserDetailView,
     UserSettingsListCreateView, UserSettingsDetailView,
-    # Add the new admin views
-    AdminUserListView, AdminUserDetailView, AdminUAVListView,
+    AdminUserListView, AdminUserDetailView, AdminUAVListView, AdminUAVDetailView,
+    UAVImportView, FlightLogImportView,
 )
 
 urlpatterns = [
@@ -44,4 +44,9 @@ urlpatterns = [
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
     path('admin/users/<int:pk>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
     path('admin/uavs/', AdminUAVListView.as_view(), name='admin-uavs-list'),
+    path('admin/uavs/<int:pk>/', AdminUAVDetailView.as_view(), name='admin-uav-detail'),
+
+    # Import endpoints
+    path('import/uav/', UAVImportView.as_view(), name='uav-import'),
+    path('import/flightlog/', FlightLogImportView.as_view(), name='flightlog-import'),
 ]
