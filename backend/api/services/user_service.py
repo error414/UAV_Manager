@@ -11,7 +11,7 @@ class UserService:
     
     @staticmethod
     def get_user_settings(user):
-        """Get settings for a specific user"""
+        from ..models import UserSettings
         return UserSettings.objects.filter(user=user)
     
     @staticmethod

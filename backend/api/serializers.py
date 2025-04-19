@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from djoser.serializers import UserCreateSerializer as BaseUserCreateSerializer, UserSerializer as BaseDjoserUserSerializer
 from django.contrib.auth import get_user_model
-from .models import UserSettings, UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File
+from .models import UserSettings, UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, FlightGPSLog
 from datetime import datetime
 
 User = get_user_model()
@@ -62,6 +62,18 @@ class UAVSerializer(serializers.ModelSerializer):
         return representation
 
 class FlightLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FlightLog
+        fields = '__all__'
+
+class FlightGPSLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FlightGPSLog
+        fields = ['timestamp', 'latitude', 'longitude', 'altitude', 'num_sat', 'speed', 'ground_course']
+        
+class FlightLogWithGPSSerializer(serializers.ModelSerializer):
+    gps_logs = FlightGPSLogSerializer(many=True, read_only=True)
+    
     class Meta:
         model = FlightLog
         fields = '__all__'

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sidebar, Button } from '../components';
+import { Sidebar, Button, Loading, ConfirmModal } from '../components';
+import Alert from '../components/Alert';
 
 const AircraftSettings = () => {
   const { uavId } = useParams();
@@ -15,10 +16,11 @@ const AircraftSettings = () => {
   });
   const [editingLogId, setEditingLogId] = useState(null);
   const [editingLog, setEditingLog] = useState(null);
+  const [deleteLogId, setDeleteLogId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Helper function to handle maintenance log submissions
   const submitMaintenanceLog = async (logData, file, method, logId = null) => {
     const token = localStorage.getItem('access_token');
     const endpoint = logId 
@@ -29,7 +31,6 @@ const AircraftSettings = () => {
       let response;
       
       if (file) {
-        // Use FormData when submitting files
         const formData = new FormData();
         formData.append('description', logData.description);
         formData.append('event_date', logData.event_date);
@@ -45,7 +46,6 @@ const AircraftSettings = () => {
           body: formData,
         });
       } else {
-        // Use JSON when no file is being submitted
         response = await fetch(endpoint, {
           method,
           headers: {
@@ -83,7 +83,6 @@ const AircraftSettings = () => {
       if (!response.ok) throw new Error('Failed to fetch aircraft data');
       const data = await response.json();
 
-      // Fetch maintenance logs
       const logsResponse = await fetch(`${API_URL}/api/maintenance/?uav=${uavId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -93,7 +92,6 @@ const AircraftSettings = () => {
         data.maintenance_logs = logsData;
       }
 
-      // Fetch maintenance reminders
       const remindersResponse = await fetch(`${API_URL}/api/maintenance-reminders/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -220,14 +218,15 @@ const AircraftSettings = () => {
     }
   };
 
-  const handleDeleteLog = async (logId) => {
-    if (!window.confirm('Are you sure you want to delete this maintenance log?')) {
-      return;
-    }
-    
+  const handleDeleteLog = (logId) => {
+    setDeleteLogId(logId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteLog = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/api/maintenance/${logId}/`, {
+      const response = await fetch(`${API_URL}/api/maintenance/${deleteLogId}/`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -235,15 +234,22 @@ const AircraftSettings = () => {
       if (!response.ok) throw new Error('Failed to delete maintenance log');
       
       await fetchAircraft();
-      
       setEditingLogId(null);
       setEditingLog(null);
     } catch (error) {
       console.error(error);
+    } finally {
+      setShowDeleteModal(false);
+      setDeleteLogId(null);
     }
   };
 
-  if (!aircraft) return <div>Loading...</div>;
+  const cancelDeleteLog = () => {
+    setShowDeleteModal(false);
+    setDeleteLogId(null);
+  };
+
+  if (!aircraft) return <Loading message="Loading..." />;
 
   return (
     <div className="flex h-screen relative">
@@ -610,6 +616,16 @@ const AircraftSettings = () => {
             Modify Aircraft
           </Button>
         </div>
+
+        <ConfirmModal
+          open={showDeleteModal}
+          title="Log löschen bestätigen"
+          message="Möchten Sie diesen Maintenance Log wirklich löschen?"
+          onConfirm={confirmDeleteLog}
+          onCancel={cancelDeleteLog}
+          confirmText="Löschen"
+          cancelText="Abbrechen"
+        />
       </div>
     </div>
   );

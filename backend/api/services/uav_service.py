@@ -1,8 +1,7 @@
-from datetime import datetime
-from django.db.models import Q, Sum
-from ..models import UAV, FlightLog, MaintenanceReminder
 import csv
-import io
+from datetime import datetime
+from django.db.models import Q, Sum, Count
+from ..models import UAV, FlightLog, MaintenanceReminder
 
 class UAVService:
     @staticmethod
@@ -10,237 +9,186 @@ class UAVService:
         """Filter UAV queryset based on user and query parameters"""
         queryset = UAV.objects.filter(user=user)
         
-        if not query_params:
-            return queryset
+        # Add filtering if needed
+        if query_params:
+            if 'is_active' in query_params:
+                is_active = query_params.get('is_active').lower() == 'true'
+                queryset = queryset.filter(is_active=is_active)
             
-        # Apply filters from query parameters
-        params = query_params
-        
-        # Filter by drone name (partial match)
-        if params.get('drone_name'):
-            queryset = queryset.filter(drone_name__icontains=params['drone_name'])
+            # Filter by drone name (partial match)
+            if query_params.get('drone_name'):
+                queryset = queryset.filter(drone_name__icontains=query_params['drone_name'])
             
-        # Filter by manufacturer (partial match)
-        if params.get('manufacturer'):
-            queryset = queryset.filter(manufacturer__icontains=params['manufacturer'])
+            # Filter by manufacturer (partial match)
+            if query_params.get('manufacturer'):
+                queryset = queryset.filter(manufacturer__icontains=query_params['manufacturer'])
             
-        # Filter by type (partial match)
-        if params.get('type'):
-            queryset = queryset.filter(type__icontains=params['type'])
+            # Filter by type (partial match)
+            if query_params.get('type'):
+                queryset = queryset.filter(type__icontains=query_params['type'])
             
-        # Filter by motors (exact match)
-        if params.get('motors'):
-            try:
-                motors = int(params['motors'])
-                queryset = queryset.filter(motors=motors)
-            except (ValueError, TypeError):
-                pass
-                
-        # Filter by motor type (partial match)
-        if params.get('motor_type'):
-            queryset = queryset.filter(motor_type__icontains=params['motor_type'])
+            # Filter by motors (exact match)
+            if query_params.get('motors'):
+                try:
+                    motors = int(query_params['motors'])
+                    queryset = queryset.filter(motors=motors)
+                except (ValueError, TypeError):
+                    pass
             
-        # Filter by video system (partial match)
-        if params.get('video_system'):
-            queryset = queryset.filter(video_system__icontains=params['video_system'])
+            # Filter by motor type (partial match)
+            if query_params.get('motor_type'):
+                queryset = queryset.filter(motor_type__icontains=query_params['motor_type'])
             
-        # Filter by firmware (partial match)
-        if params.get('firmware'):
-            queryset = queryset.filter(firmware__icontains=params['firmware'])
+            # Filter by video system (partial match)
+            if query_params.get('video_system'):
+                queryset = queryset.filter(video_system__icontains=query_params['video_system'])
             
-        # Filter by firmware version (partial match)
-        if params.get('firmware_version'):
-            queryset = queryset.filter(firmware_version__icontains=params['firmware_version'])
+            # Filter by firmware (partial match)
+            if query_params.get('firmware'):
+                queryset = queryset.filter(firmware__icontains=query_params['firmware'])
             
-        # Filter by GPS (partial match)
-        if params.get('gps'):
-            queryset = queryset.filter(gps__icontains=params['gps'])
+            # Filter by firmware version (partial match)
+            if query_params.get('firmware_version'):
+                queryset = queryset.filter(firmware_version__icontains=query_params['firmware_version'])
             
-        # Filter by MAG (partial match)
-        if params.get('mag'):
-            queryset = queryset.filter(mag__icontains=params['mag'])
+            # Filter by GPS (partial match)
+            if query_params.get('gps'):
+                queryset = queryset.filter(gps__icontains=query_params['gps'])
             
-        # Filter by BARO (partial match)
-        if params.get('baro'):
-            queryset = queryset.filter(baro__icontains=params['baro'])
+            # Filter by MAG (partial match)
+            if query_params.get('mag'):
+                queryset = queryset.filter(mag__icontains=query_params['mag'])
             
-        # Filter by GYRO (partial match)
-        if params.get('gyro'):
-            queryset = queryset.filter(gyro__icontains=params['gyro'])
+            # Filter by BARO (partial match)
+            if query_params.get('baro'):
+                queryset = queryset.filter(baro__icontains=query_params['baro'])
             
-        # Filter by ACC (partial match)
-        if params.get('acc'):
-            queryset = queryset.filter(acc__icontains=params['acc'])
+            # Filter by GYRO (partial match)
+            if query_params.get('gyro'):
+                queryset = queryset.filter(gyro__icontains=query_params['gyro'])
+            
+            # Filter by ACC (partial match)
+            if query_params.get('acc'):
+                queryset = queryset.filter(acc__icontains=query_params['acc'])
 
-        # Filter by registration number (partial match)
-        if params.get('registration_number'):
-            queryset = queryset.filter(registration_number__icontains=params['registration_number'])
+            # Filter by registration number (partial match)
+            if query_params.get('registration_number'):
+                queryset = queryset.filter(registration_number__icontains=query_params['registration_number'])
             
-        # Filter by serial number (partial match)
-        if params.get('serial_number'):
-            queryset = queryset.filter(serial_number__icontains=params['serial_number'])
+            # Filter by serial number (partial match)
+            if query_params.get('serial_number'):
+                queryset = queryset.filter(serial_number__icontains=query_params['serial_number'])
         
         return queryset
 
     @staticmethod
     def update_maintenance_reminders(uav, data):
         """Create or update maintenance reminders for a UAV"""
-        # Process maintenance reminders
         components = ['props', 'motor', 'frame']
+        
         for component in components:
             maint_date_key = f'{component}_maint_date'
             reminder_date_key = f'{component}_reminder_date'
             
-            # Only update if the field is in the data
-            if maint_date_key not in data:
-                continue
-            
-            last_maintenance = data[maint_date_key]
-            next_maintenance = data.get(reminder_date_key, None)
-            
-            # If maintenance date is None, we might want to delete any existing reminder
-            if last_maintenance is None:
-                MaintenanceReminder.objects.filter(uav=uav, component=component).delete()
-                continue
-            
-            # If no next_maintenance date, default to 1 year later
-            if next_maintenance is None and last_maintenance is not None:
-                next_year = datetime(
-                    last_maintenance.year + 1, 
-                    last_maintenance.month, 
-                    last_maintenance.day
+            if maint_date_key in data and data[maint_date_key]:
+                # Update or create the maintenance reminder
+                reminder, created = MaintenanceReminder.objects.update_or_create(
+                    uav=uav,
+                    component=component,
+                    defaults={
+                        'last_maintenance': data[maint_date_key],
+                        'next_maintenance': data.get(reminder_date_key) or data[maint_date_key],
+                        'reminder_active': True
+                    }
                 )
-                next_maintenance = next_year
-            
-            # Create or update reminder
-            reminder, created = MaintenanceReminder.objects.update_or_create(
-                uav=uav,
-                component=component,
-                defaults={
-                    'last_maintenance': last_maintenance,
-                    'next_maintenance': next_maintenance,
-                    'reminder_active': True
-                }
-            )
 
     @staticmethod
     def enrich_uav_data(uav_data):
-        """Add flight statistics to UAV data"""
+        """Add flight statistics to UAV data."""
         if isinstance(uav_data, list):
-            # Handle list of UAVs
-            for item in uav_data:
-                UAVService._add_flight_stats_to_uav(item)
+            # For a list of UAVs
+            for uav in uav_data:
+                uav_id = uav['uav_id']
+                stats = FlightLogService.get_flight_stats_for_uav(uav_id)
+                uav.update(stats)
+            return uav_data
         else:
-            # Handle single UAV
-            UAVService._add_flight_stats_to_uav(uav_data)
-        
-        return uav_data
-    
-    @staticmethod
-    def _add_flight_stats_to_uav(uav_data):
-        """Helper method to add flight statistics to a single UAV data object"""
-        uav_id = uav_data['uav_id']
-        uav_data['total_flights'] = FlightLog.objects.filter(uav_id=uav_id).count()
-        uav_data['total_flight_hours'] = FlightLogService.get_total_flight_hours(uav_id)
-        uav_data['total_flight_time'] = FlightLogService.get_total_flight_hours(uav_id) * 3600  # Convert hours to seconds
-        uav_data['total_landings'] = FlightLogService.get_total_landings(uav_id)
-        uav_data['total_takeoffs'] = FlightLogService.get_total_takeoffs(uav_id)
+            # For a single UAV
+            uav_id = uav_data['uav_id']
+            stats = FlightLogService.get_flight_stats_for_uav(uav_id)
+            uav_data.update(stats)
+            return uav_data
 
     @staticmethod
     def import_uavs_from_csv(csv_file, user):
         """Import UAVs from CSV file"""
+        results = {
+            'total': 0,
+            'success_count': 0,
+            'duplicate_count': 0,
+            'error_count': 0,
+            'errors': [],
+            'duplicate_message': ''
+        }
+        
         try:
-            # Decode the file
-            csv_data = csv_file.read().decode('utf-8')
-            csv_reader = csv.DictReader(io.StringIO(csv_data))
+            csv_text = csv_file.read().decode('utf-8')
+            csv_reader = csv.DictReader(csv_text.splitlines())
             
-            # Statistics tracking
-            success_count = 0
-            duplicate_count = 0
-            error_count = 0
-            errors = []
-            duplicate_names = {}
+            duplicates = []
             
-            # Get existing UAVs to check for duplicates
-            existing_uavs = UAV.objects.filter(user=user).values_list('drone_name', flat=True)
-            
-            for row in csv_reader:
+            for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 for human-readable row numbers
+                results['total'] += 1
+                
                 try:
                     # Check for required fields
-                    if not row.get('DroneName') or not row.get('Type') or not row.get('Motors'):
-                        errors.append(f"Missing required field for UAV: {row.get('DroneName', 'Unknown')}")
-                        error_count += 1
-                        continue
+                    required_fields = ['drone_name', 'type', 'motors']
+                    for field in required_fields:
+                        if not row.get(field):
+                            raise ValueError(f"Missing required field: {field}")
                     
                     # Check for duplicates
-                    if row['DroneName'] in existing_uavs:
-                        if row['DroneName'] not in duplicate_names:
-                            duplicate_names[row['DroneName']] = 0
-                        duplicate_names[row['DroneName']] += 1
-                        duplicate_count += 1
-                        continue
+                    serial_number = row.get('serial_number')
+                    if serial_number:
+                        existing_uav = UAV.objects.filter(user=user, serial_number=serial_number).first()
+                        if existing_uav:
+                            results['duplicate_count'] += 1
+                            duplicates.append(serial_number)
+                            continue
+                    
+                    # Convert motors to int
+                    try:
+                        motors = int(row.get('motors', 0))
+                    except ValueError:
+                        motors = 0
                     
                     # Create UAV object
                     uav = UAV(
                         user=user,
-                        drone_name=row.get('DroneName', ''),
-                        manufacturer=row.get('Manufacturer', ''),
-                        type=row.get('Type', ''),
-                        motors=int(row.get('Motors', 1)),
-                        motor_type=row.get('MotorType', ''),
-                        video=row.get('Video', ''),
-                        video_system=row.get('VideoSystem', ''),
-                        esc=row.get('ESC', ''),
-                        esc_firmware=row.get('ESCFirmware', ''),
-                        receiver=row.get('Receiver', ''),
-                        receiver_firmware=row.get('ReceiverFirmware', ''),
-                        flight_controller=row.get('FlightController', ''),
-                        firmware=row.get('Firmware', ''),
-                        firmware_version=row.get('FirmwareVersion', ''),
-                        gps=row.get('GPS', ''),
-                        mag=row.get('MAG', ''),
-                        baro=row.get('BARO', ''),
-                        gyro=row.get('GYRO', ''),
-                        acc=row.get('ACC', ''),
-                        registration_number=row.get('RegistrationNumber', ''),
-                        serial_number=row.get('SerialNumber', ''),
-                        is_active=True
+                        drone_name=row.get('drone_name', ''),
+                        manufacturer=row.get('manufacturer', ''),
+                        type=row.get('type', ''),
+                        motors=motors,
+                        motor_type=row.get('motor_type', ''),
+                        registration_number=row.get('registration_number', ''),
+                        serial_number=serial_number,
                     )
                     uav.save()
-                    success_count += 1
-                    existing_uavs = list(existing_uavs) + [uav.drone_name]
+                    results['success_count'] += 1
                     
                 except Exception as e:
-                    error_count += 1
-                    errors.append(f"Error processing UAV {row.get('DroneName', 'Unknown')}: {str(e)}")
+                    results['error_count'] += 1
+                    results['errors'].append(f"Row {row_num}: {str(e)}")
             
-            # Create report message
-            duplicate_message = ""
-            if duplicate_names:
-                duplicate_message = "\n\nSkipped UAVs with these names (already exist):"
-                for name, count in duplicate_names.items():
-                    duplicate_message += f"\n- {name}: {count} UAV(s)"
-            
-            result = {
-                'success_count': success_count,
-                'duplicate_count': duplicate_count,
-                'error_count': error_count,
-                'errors': errors,
-                'duplicate_message': duplicate_message,
-                'total': success_count + duplicate_count + error_count
-            }
-            
-            return result
-            
+            if duplicates:
+                results['duplicate_message'] = f"Duplicates found with serial numbers: {', '.join(duplicates)}"
+                
+            return results
         except Exception as e:
-            return {
-                'success_count': 0,
-                'duplicate_count': 0,
-                'error_count': 1,
-                'errors': [f"Failed to process CSV: {str(e)}"],
-                'duplicate_message': "",
-                'total': 0
-            }
+            results['error_count'] += 1
+            results['errors'].append(f"Error processing file: {str(e)}")
+            return results
+
 
 class FlightLogService:
     @staticmethod
@@ -248,230 +196,114 @@ class FlightLogService:
         """Filter FlightLog queryset based on user and query parameters"""
         queryset = FlightLog.objects.filter(user=user)
         
-        if not query_params:
-            return queryset
-            
-        # Apply filters from query parameters
-        params = query_params
-        
-        # Filter by departure place (partial match)
-        if params.get('departure_place'):
-            queryset = queryset.filter(departure_place__icontains=params['departure_place'])
-            
-        # Filter by landing place (partial match)
-        if params.get('landing_place'):
-            queryset = queryset.filter(landing_place__icontains=params['landing_place'])
-            
-        # Filter by specific date
-        if params.get('departure_date'):
-            queryset = queryset.filter(departure_date=params['departure_date'])
-        
-        # Filter by departure time (exact match)
-        if params.get('departure_time'):
-            queryset = queryset.filter(departure_time=params['departure_time'])
-            
-        # Filter by landing time (exact match)
-        if params.get('landing_time'):
-            queryset = queryset.filter(landing_time=params['landing_time'])
-            
-        # Filter by flight duration
-        if params.get('flight_duration'):
-            try:
-                duration = int(params['flight_duration'])
-                queryset = queryset.filter(flight_duration=duration)
-            except (ValueError, TypeError):
-                pass
-            
-        # Filter by takeoffs
-        if params.get('takeoffs'):
-            try:
-                takeoffs = int(params['takeoffs'])
-                queryset = queryset.filter(takeoffs=takeoffs)
-            except (ValueError, TypeError):
-                pass
+        # Add filtering if needed
+        if query_params:
+            uav_id = query_params.get('uav')
+            if uav_id:
+                queryset = queryset.filter(uav_id=uav_id)
                 
-        # Filter by landings
-        if params.get('landings'):
-            try:
-                landings = int(params['landings'])
-                queryset = queryset.filter(landings=landings)
-            except (ValueError, TypeError):
-                pass
-            
-        # Filter by UAV id
-        if params.get('uav'):
-            queryset = queryset.filter(uav__uav_id=params['uav'])
-            
-        # Filter by light conditions
-        if params.get('light_conditions'):
-            queryset = queryset.filter(light_conditions=params['light_conditions'])
-            
-        # Filter by ops conditions
-        if params.get('ops_conditions'):
-            queryset = queryset.filter(ops_conditions=params['ops_conditions'])
-            
-        # Filter by pilot type
-        if params.get('pilot_type'):
-            queryset = queryset.filter(pilot_type=params['pilot_type'])
-            
-        # Text search in comments
-        if params.get('comments'):
-            queryset = queryset.filter(comments__icontains=params['comments'])
+            date_from = query_params.get('date_from')
+            if date_from:
+                queryset = queryset.filter(departure_date__gte=date_from)
+                
+            date_to = query_params.get('date_to')
+            if date_to:
+                queryset = queryset.filter(departure_date__lte=date_to)
         
         return queryset
-
+        
     @staticmethod
-    def get_total_landings(uav_id):
-        """Get total landings for a UAV"""
-        return FlightLog.objects.filter(uav_id=uav_id).aggregate(total_landings=Sum('landings'))['total_landings'] or 0
-
-    @staticmethod
-    def get_total_takeoffs(uav_id):
-        """Get total takeoffs for a UAV"""
-        return FlightLog.objects.filter(uav_id=uav_id).aggregate(total_takeoffs=Sum('takeoffs'))['total_takeoffs'] or 0
-
-    @staticmethod
-    def get_total_flight_hours(uav_id):
-        """Get total flight hours for a UAV"""
-        total_seconds = FlightLog.objects.filter(uav_id=uav_id).aggregate(
-            total_duration=Sum('flight_duration')
-        )['total_duration'] or 0
-        return total_seconds / 3600  # Convert seconds to hours
-
+    def get_flight_stats_for_uav(uav_id):
+        """Get flight statistics for a UAV"""
+        flight_stats = FlightLog.objects.filter(uav_id=uav_id).aggregate(
+            total_flights=Count('flightlog_id'),
+            total_flight_time=Sum('flight_duration'),
+            total_takeoffs=Sum('takeoffs'),
+            total_landings=Sum('landings')
+        )
+        
+        # Handle None values
+        stats = {
+            'total_flights': flight_stats['total_flights'] or 0,
+            'total_flight_time': flight_stats['total_flight_time'] or 0,
+            'total_takeoffs': flight_stats['total_takeoffs'] or 0,
+            'total_landings': flight_stats['total_landings'] or 0
+        }
+        
+        return stats
+    
     @staticmethod
     def import_logs_from_csv(csv_file, user):
         """Import flight logs from CSV file"""
+        results = {
+            'total': 0,
+            'success_count': 0,
+            'duplicate_count': 0,
+            'unmapped_count': 0,
+            'error_count': 0,
+            'errors': [],
+            'unmapped_message': ''
+        }
+        
+        unmapped_uavs = set()
+        
         try:
-            # Decode the file
-            csv_data = csv_file.read().decode('utf-8')
-            csv_reader = csv.DictReader(io.StringIO(csv_data))
+            csv_text = csv_file.read().decode('utf-8')
+            csv_reader = csv.DictReader(csv_text.splitlines())
             
-            # Statistics tracking
-            success_count = 0
-            duplicate_count = 0
-            unmapped_count = 0
-            error_count = 0
-            errors = []
-            unmapped_models = {}
-            
-            # Get all UAVs for this user to map model names
-            uav_map = {}
-            for uav in UAV.objects.filter(user=user).values('uav_id', 'drone_name'):
-                uav_map[uav['drone_name']] = uav['uav_id']
-            
-            # Get existing logs to check for duplicates
-            existing_logs = FlightLog.objects.filter(user=user).values('departure_date', 'departure_time', 'uav_id')
-            existing_log_keys = set()
-            for log in existing_logs:
-                if log['departure_date'] and log['departure_time'] and log['uav_id']:
-                    key = f"{log['departure_date']}_{log['departure_time']}_{log['uav_id']}"
-                    existing_log_keys.add(key)
-            
-            for row in csv_reader:
+            for row_num, row in enumerate(csv_reader, start=2):
+                results['total'] += 1
+                
                 try:
-                    # Check if model name can be mapped to UAV
-                    model_name = row.get('ModelName', '')
-                    if not model_name or model_name not in uav_map:
-                        if model_name:
-                            if model_name not in unmapped_models:
-                                unmapped_models[model_name] = 0
-                            unmapped_models[model_name] += 1
-                        unmapped_count += 1
-                        continue
+                    # Try to find the UAV
+                    uav_identifier = row.get('uav_serial', '') or row.get('drone_name', '')
                     
-                    uav_id = uav_map[model_name]
+                    uav = None
+                    if uav_identifier:
+                        # Try to match by serial or name
+                        uav = UAV.objects.filter(
+                            user=user,
+                            serial_number=uav_identifier
+                        ).first() or UAV.objects.filter(
+                            user=user,
+                            drone_name=uav_identifier
+                        ).first()
                     
-                    # Parse departure date
-                    departure_date = row.get('Date', '')
-                    if departure_date and not departure_date.strip().startswith('20'):
-                        # Try to reformat date if it's not in YYYY-MM-DD format
-                        date_parts = departure_date.split('/')
-                        if len(date_parts) == 3:
-                            month, day, year = date_parts
-                            if len(year) == 4:
-                                departure_date = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-                    
-                    departure_time = row.get('Timestamp-TO', '')
-                    landing_time = row.get('Timestamp-LDG', '')
-                    
-                    # Calculate duration
-                    duration = 0
-                    if row.get('Duration'):
-                        try:
-                            duration = round(float(row['Duration']))
-                        except (ValueError, TypeError):
-                            pass
-                    
-                    # Determine locations
-                    depart_lat = row.get('GPS-Arming-Lat', '')
-                    depart_lon = row.get('GPS-Arming-Lon', '')
-                    departure_place = 'Unknown'
-                    if depart_lat and depart_lon and (float(depart_lat) != 0 or float(depart_lon) != 0):
-                        departure_place = f"{depart_lat},{depart_lon}"
-                    
-                    landing_lat = row.get('GPS-Disarming-Lat', '')
-                    landing_lon = row.get('GPS-Disarming-Lon', '')
-                    landing_place = 'Unknown'
-                    if landing_lat and landing_lon and (float(landing_lat) != 0 or float(landing_lon) != 0):
-                        landing_place = f"{landing_lat},{landing_lon}"
-                    
-                    # Check for duplicate
-                    log_key = f"{departure_date}_{departure_time}_{uav_id}"
-                    if log_key in existing_log_keys:
-                        duplicate_count += 1
+                    if not uav:
+                        results['unmapped_count'] += 1
+                        unmapped_uavs.add(uav_identifier)
                         continue
                     
                     # Create flight log
                     flight_log = FlightLog(
                         user=user,
-                        uav_id=uav_id,
-                        departure_place=departure_place,
-                        departure_date=departure_date,
-                        departure_time=departure_time,
-                        landing_time=landing_time,
-                        landing_place=landing_place,
-                        flight_duration=duration,
-                        takeoffs=1,
-                        landings=1,
-                        light_conditions='Day',  # Default
-                        ops_conditions='VLOS',   # Default
-                        pilot_type='PIC',        # Default
-                        comments='Imported from CSV'
+                        uav=uav,
+                        departure_place=row.get('departure_place', ''),
+                        landing_place=row.get('landing_place', ''),
+                        departure_date=row.get('departure_date'),
+                        departure_time=row.get('departure_time'),
+                        landing_time=row.get('landing_time'),
+                        flight_duration=int(row.get('flight_duration', 0)),
+                        takeoffs=int(row.get('takeoffs', 1)),
+                        landings=int(row.get('landings', 1)),
+                        light_conditions=row.get('light_conditions', 'Day'),
+                        ops_conditions=row.get('ops_conditions', 'VLOS'),
+                        pilot_type=row.get('pilot_type', 'PIC'),
+                        comments=row.get('comments', '')
                     )
+                    
                     flight_log.save()
-                    success_count += 1
-                    existing_log_keys.add(log_key)
+                    results['success_count'] += 1
                     
                 except Exception as e:
-                    error_count += 1
-                    errors.append(f"Error processing log: {str(e)}")
+                    results['error_count'] += 1
+                    results['errors'].append(f"Row {row_num}: {str(e)}")
             
-            # Create report message for unmapped models
-            unmapped_message = ""
-            if unmapped_models:
-                unmapped_message = "\n\nSkipped logs for these unmapped UAV models:"
-                for model, count in unmapped_models.items():
-                    unmapped_message += f"\n- {model}: {count} log(s)"
-            
-            result = {
-                'success_count': success_count,
-                'duplicate_count': duplicate_count,
-                'unmapped_count': unmapped_count,
-                'error_count': error_count,
-                'errors': errors,
-                'unmapped_message': unmapped_message,
-                'total': success_count + duplicate_count + unmapped_count + error_count
-            }
-            
-            return result
-            
+            if unmapped_uavs:
+                results['unmapped_message'] = f"Could not map UAVs with identifiers: {', '.join(unmapped_uavs)}"
+                
+            return results
         except Exception as e:
-            return {
-                'success_count': 0,
-                'duplicate_count': 0,
-                'unmapped_count': 0,
-                'error_count': 1,
-                'errors': [f"Failed to process CSV: {str(e)}"],
-                'unmapped_message': "",
-                'total': 0
-            }
+            results['error_count'] += 1
+            results['errors'].append(f"Error processing file: {str(e)}")
+            return results

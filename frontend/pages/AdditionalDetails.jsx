@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthLayout, FormInput, Alert, Button } from '../components';
+import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
 
 const AdditionalDetails = () => {
@@ -16,6 +16,7 @@ const AdditionalDetails = () => {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -29,6 +30,7 @@ const AdditionalDetails = () => {
       return;
     }
 
+    setIsLoading(true);
     // Daten des aktuellen Benutzers abrufen und Formularfelder vorbelegen
     fetch(`${API_URL}/api/users/${user_id}/`, {
       headers: {
@@ -58,9 +60,11 @@ const AdditionalDetails = () => {
           city: data.city || '',
           country: data.country || '',
         });
+        setIsLoading(false);
       })
       .catch(err => {
         console.error("Error fetching user details", err);
+        setIsLoading(false);
       });
   }, [navigate, API_URL]);
 
@@ -133,6 +137,10 @@ const AdditionalDetails = () => {
       setError('An error occurred. Please try again later.');
     }
   };
+
+  if (isLoading) {
+    return <Loading message="Loading..." />;
+  }
 
   return (
     <AuthLayout title="Additional Details">

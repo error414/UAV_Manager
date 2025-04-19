@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { AuthLayout, FormInput, Alert, Button } from '../components';
+import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ const Login = () => {
 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Get API URL from environment variables
   const API_URL = import.meta.env.VITE_API_URL;
@@ -26,6 +27,7 @@ const Login = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setIsLoading(true);
 
     try {
       const response = await fetch(`${API_URL}/auth/jwt/create/`, {
@@ -56,17 +58,25 @@ const Login = () => {
           }
           
           setSuccess('Login successful!');
+          setIsLoading(false);
           navigate('/flightlog');
         } else {
           setError('No access token received.');
+          setIsLoading(false);
         }
       } else {
         setError(data.detail || 'Invalid credentials');
+        setIsLoading(false);
       }
     } catch (err) {
       setError('An error occurred. Please try again later.');
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return <Loading message="Logging in..." />;
+  }
 
   return (
     <AuthLayout title="Login">

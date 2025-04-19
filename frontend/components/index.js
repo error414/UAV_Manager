@@ -8,3 +8,5 @@ export { default as AddNew } from './AddNew';
 export { default as Sidebar } from './Sidebar';
 export { default as EditableRow } from './EditableRow';
 export { default as AircraftForm } from './AircraftForm';
+export { default as Loading } from './Loading';
+export { default as ConfirmModal } from './ConfirmModal';

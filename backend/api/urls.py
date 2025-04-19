@@ -8,7 +8,7 @@ from .views import (
     UserListCreateView, UserDetailView,
     UserSettingsListCreateView, UserSettingsDetailView,
     AdminUserListView, AdminUserDetailView, AdminUAVListView, AdminUAVDetailView,
-    UAVImportView, FlightLogImportView,
+    UAVImportView, FlightLogImportView, FlightGPSDataUploadView,
 )
 
 urlpatterns = [
@@ -19,6 +19,9 @@ urlpatterns = [
     # Endpunkte für Flightlogs
     path('flightlogs/', FlightLogListCreateView.as_view(), name='flightlog-list'),
     path('flightlogs/<int:pk>/', FlightLogDetailView.as_view(), name='flightlog-detail'),
+    
+    # New endpoint for GPS data
+    path('flightlogs/<int:flightlog_id>/gps/', FlightGPSDataUploadView.as_view(), name='flightlog-gps'),
 
     # Endpunkte für Wartungsprotokolle
     path('maintenance/', MaintenanceLogListCreateView.as_view(), name='maintenance-list'),

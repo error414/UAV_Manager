@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar, Alert, Button, ResponsiveTable } from '../components';
+import { Sidebar, Alert, Button, ResponsiveTable, Loading, ConfirmModal } from '../components';
 
 const AircraftList = () => {
   const navigate = useNavigate();
@@ -9,16 +9,13 @@ const AircraftList = () => {
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState('drone_name');
-
-  // Add debounce timer for filters
   const [debouncedFilters, setDebouncedFilters] = useState({});
   const filterTimer = useRef(null);
+  const [importResult, setImportResult] = useState(null);
   
   useEffect(() => {
     const handleResize = () => {
@@ -78,21 +75,16 @@ const AircraftList = () => {
     
     setIsLoading(true);
     
-    // Build query parameters for filtering and pagination
     const queryParams = new URLSearchParams();
     
-    // Add filter parameters - use debouncedFilters instead of filters
     Object.entries(debouncedFilters).forEach(([key, value]) => {
       if (value) {
         queryParams.append(key, value);
       }
     });
     
-    // Add pagination parameters
     queryParams.append('page', currentPage);
     queryParams.append('page_size', pageSize);
-    
-    // Add sorting parameter
     queryParams.append('ordering', sortField);
     
     try {
@@ -120,7 +112,7 @@ const AircraftList = () => {
     const file = event.target.files[0];
     if (!file) return;
 
-    event.target.value = null; // Reset the input
+    event.target.value = null; 
 
     if (!file.name.endsWith('.csv')) {
       setError('File must be a CSV');
@@ -149,11 +141,11 @@ const AircraftList = () => {
         return;
       }
 
-      // Refresh the aircraft list
       await fetchAircrafts();
       
-      // Show success message with details
-      alert(result.message + (result.details?.duplicate_message || ''));
+      setImportResult({
+        message: (result.message || '') + (result.details?.duplicate_message || '')
+      });
       setIsLoading(false);
     } catch (err) {
       console.error('Error uploading CSV:', err);
@@ -169,20 +161,16 @@ const AircraftList = () => {
   const handleFilterChange = useCallback((e) => {
     const { name, value } = e.target;
     
-    // Update the local filter state immediately for UI responsiveness
     setFilters(prev => ({
       ...prev,
       [name]: value
     }));
     
-    // Clear any existing timer
     if (filterTimer.current) {
       clearTimeout(filterTimer.current);
     }
     
-    // Set a new timer to update the debounced filters after 500ms
     filterTimer.current = setTimeout(() => {
-      // Reset to page 1 when filters change
       setCurrentPage(1);
       setDebouncedFilters(prev => ({
         ...prev,
@@ -205,18 +193,14 @@ const AircraftList = () => {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Handle pagination
   const handlePageChange = useCallback((page) => {
     setCurrentPage(page);
   }, []);
 
-  // Handle sorting
   const handleSortChange = useCallback((field) => {
     setSortField(prevSort => {
-      // If already sorting by this field, toggle direction
       if (prevSort === field) return `-${field}`;
       if (prevSort === `-${field}`) return field;
-      // Default to ascending for new field
       return field;
     });
   }, []);
@@ -371,9 +355,7 @@ const AircraftList = () => {
         <Alert type="error" message={error} />
         
         {isLoading ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-          </div>
+          <Loading message="Loading aircraft data..." />
         ) : (
           <ResponsiveTable
             columns={tableColumns}
@@ -391,7 +373,6 @@ const AircraftList = () => {
           />
         )}
         
-        {/* Pagination controls */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center mt-4 gap-2">
             <button 
@@ -403,7 +384,6 @@ const AircraftList = () => {
             </button>
             
             <div className="flex items-center gap-1">
-              {/* First page */}
               {currentPage > 3 && (
                 <>
                   <button 
@@ -416,14 +396,11 @@ const AircraftList = () => {
                 </>
               )}
               
-              {/* Page numbers */}
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter(page => {
-                  // Don't show page 1 or last page in the middle section if they're already shown separately
                   if ((currentPage > 3 && page === 1) || (currentPage < totalPages - 2 && page === totalPages)) {
                     return false;
                   }
-                  // Show pages around current page
                   return page >= currentPage - 1 && page <= currentPage + 1;
                 })
                 .map(page => (
@@ -437,7 +414,6 @@ const AircraftList = () => {
                 ))
               }
               
-              {/* Last page */}
               {currentPage < totalPages - 2 && (
                 <>
                   {currentPage < totalPages - 3 && <span className="px-1">...</span>}
@@ -489,6 +465,15 @@ const AircraftList = () => {
             onChange={handleFileUpload}
           />
         </div>
+        <ConfirmModal
+          open={!!importResult}
+          title="Import abgeschlossen"
+          message={importResult?.message || ''}
+          onConfirm={() => setImportResult(null)}
+          onCancel={() => setImportResult(null)}
+          confirmText="OK"
+          cancelText={null}
+        />
       </div>
     </div>
   );

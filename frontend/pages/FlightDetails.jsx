@@ -1,10 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
+import { Loading, ConfirmModal } from '../components';
+import Alert from '../components/Alert';
+
+// Helper functions
+const getUavId = (uav) => {
+  if (!uav) return null;
+  if (typeof uav === 'object' && uav.uav_id) return uav.uav_id;
+  if (!isNaN(uav)) return Number(uav);
+  return null;
+};
+
+const fetchWithAuth = async (url, options = {}) => {
+  const token = localStorage.getItem('access_token');
+  if (!token) throw new Error('No authentication token found');
+  return fetch(url, { ...options, headers: { ...(options.headers || {}), Authorization: `Bearer ${token}` } });
+};
 
 // Fix default marker icon issue in Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -23,7 +39,6 @@ const takeoffIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41]
 });
-
 const landingIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -38,144 +53,191 @@ const FlightDetails = () => {
   const navigate = useNavigate();
   const [flight, setFlight] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
-
+  const [gpsTrack, setGpsTrack] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [alertMessage, setAlertMessage] = useState(null);
+  const fileInputRef = useRef(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     const fetchFlightDetails = async () => {
       const token = localStorage.getItem('access_token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-
+      if (!token) return navigate('/login');
       try {
-        const response = await fetch(`${API_URL}/api/flightlogs/${flightId}/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
+        const response = await fetch(`${API_URL}/api/flightlogs/${flightId}/`, { headers: { Authorization: `Bearer ${token}` } });
         if (!response.ok) throw new Error('Failed to fetch flight details');
         const data = await response.json();
-        
-        // Fetch UAV details if available - handle different possible structures
-        let uavId = null;
-        
-        if (data.uav) {
-          // Case 1: data.uav is an object with uav_id property
-          if (typeof data.uav === 'object' && data.uav.uav_id) {
-            uavId = data.uav.uav_id;
-          } 
-          // Case 2: data.uav is just the ID itself
-          else if (typeof data.uav === 'number' || (typeof data.uav === 'string' && !isNaN(data.uav))) {
-            uavId = data.uav;
-          }
-          
-          if (uavId) {
-            const uavResponse = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
 
-            if (uavResponse.ok) {
-              const uavData = await uavResponse.json();
-              // Replace the original uav reference with detailed data
-              data.uav = uavData;
-            }
+        const fetches = [];
+        if (data.uav) {
+          const uavId = getUavId(data.uav);
+          if (uavId) {
+            fetches.push(
+              fetchWithAuth(`${API_URL}/api/uavs/${uavId}/`)
+                .then(r => r.json())
+                .then(uavData => { data.uav = uavData; })
+                .catch(console.error)
+            );
           }
         }
-
+        fetches.push(
+          fetchWithAuth(`${API_URL}/api/flightlogs/${flightId}/gps/`)
+            .then(r => r.json())
+            .then(gpsData => {
+              if (gpsData?.length) setGpsTrack(gpsData.map(p => [p.latitude, p.longitude]));
+            })
+            .catch(console.error)
+        );
+        await Promise.all(fetches);
         setFlight(data);
       } catch (error) {
-        console.error(error);
+        console.error('Error fetching flight details:', error);
       }
     };
-
     fetchFlightDetails();
   }, [API_URL, flightId, navigate]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Function to extract coordinates from string if they appear to be GPS coordinates
   const extractCoordinates = (str) => {
     if (!str) return null;
-    
-    // Match a pattern like "47.184693,8.664236" or "47.184693, 8.664236"
-    const coordRegex = /(\d+\.\d+)\s*,\s*(\d+\.\d+)/;
-    const match = str.match(coordRegex);
-    
-    if (match) {
-      return {
-        lat: parseFloat(match[1]),
-        lon: parseFloat(match[2])
-      };
-    }
-    return null;
+    const match = str.match(/(\d+\.\d+)\s*,\s*(\d+\.\d+)/);
+    return match ? { lat: +match[1], lon: +match[2] } : null;
   };
 
-  // Get coordinates from either direct lat/lon fields or from place strings
   const getCoordinates = () => {
-    const result = {
-      departureCoords: null,
-      landingCoords: null
-    };
-    
-    // First try to use the explicit lat/lon fields
-    if (flight.departure_lat && flight.departure_lon) {
-      result.departureCoords = [flight.departure_lat, flight.departure_lon];
-    } 
-    // Otherwise try to extract from departure_place if it looks like coordinates
-    else {
-      const extractedDept = extractCoordinates(flight.departure_place);
-      if (extractedDept) {
-        result.departureCoords = [extractedDept.lat, extractedDept.lon];
-      }
-    }
-    
-    // Same for landing coordinates
-    if (flight.landing_lat && flight.landing_lon) {
-      result.landingCoords = [flight.landing_lat, flight.landing_lon];
-    } else {
-      const extractedLand = extractCoordinates(flight.landing_place);
-      if (extractedLand) {
-        result.landingCoords = [extractedLand.lat, extractedLand.lon];
-      }
-    }
-    
-    return result;
+    const dep = flight.departure_lat && flight.departure_lon
+      ? [flight.departure_lat, flight.departure_lon]
+      : extractCoordinates(flight.departure_place) && [extractCoordinates(flight.departure_place).lat, extractCoordinates(flight.departure_place).lon];
+    const land = flight.landing_lat && flight.landing_lon
+      ? [flight.landing_lat, flight.landing_lon]
+      : extractCoordinates(flight.landing_place) && [extractCoordinates(flight.landing_place).lat, extractCoordinates(flight.landing_place).lon];
+    return { departureCoords: dep || null, landingCoords: land || null };
   };
 
   const getBounds = () => {
     const { departureCoords, landingCoords } = getCoordinates();
-    const points = [];
-    
-    if (departureCoords) {
-      points.push(departureCoords);
-    }
-    
-    if (landingCoords) {
-      points.push(landingCoords);
-    }
-    
-    // If no points are available, use default position
-    if (points.length === 0) {
-      return [[0, 0], [0, 0]]; // Default value
-    }
-    
-    // If only one point is available, create a small area around it
+    const points = [departureCoords, landingCoords].filter(Boolean);
+    if (!points.length) return [[0, 0], [0, 0]];
     if (points.length === 1) {
       const [lat, lng] = points[0];
       return [[lat - 0.01, lng - 0.01], [lat + 0.01, lng + 0.01]];
     }
-    
     return points;
   };
 
-  if (!flight) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p>Loading flight details...</p>
-      </div>
-    );
-  }
+  const handleImportGPS = () => fileInputRef.current.click();
+
+  const parseGPSFile = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const csvText = event.target.result;
+        if (!csvText?.trim()) return reject(new Error('Die Datei ist leer.'));
+        const rows = csvText.split('\n').filter(r => r.trim().length > 0);
+        if (rows.length < 2) return reject(new Error('Die Datei enthält keine Datenzeilen.'));
+        const header = rows[0];
+        const headerColumns = header.split(',').map(col => col.trim().toLowerCase());
+        // Flexible Header-Erkennung
+        const latIndex = headerColumns.findIndex(col => col === 'latitude' || col === 'lat' || col.includes('gps_coord[0]') || col.includes('lat'));
+        const lonIndex = headerColumns.findIndex(col => col === 'longitude' || col === 'lon' || col.includes('gps_coord[1]') || col.includes('lon'));
+        const timeIndex = headerColumns.findIndex(col => col.includes('time'));
+        const altIndex = headerColumns.findIndex(col => col.includes('alt'));
+        const satIndex = headerColumns.findIndex(col => col.includes('sat'));
+        const speedIndex = headerColumns.findIndex(col => col.includes('speed'));
+        const courseIndex = headerColumns.findIndex(col => col.includes('course'));
+        if (latIndex === -1 || lonIndex === -1) return reject(new Error('Keine gültigen GPS-Koordinaten gefunden.'));
+        const trackPoints = [], gpsData = [];
+        rows.slice(1).forEach((row) => {
+          const columns = row.trim().split(',').map(col => col.trim());
+          if (columns.length <= Math.max(latIndex, lonIndex)) return;
+          const lat = parseFloat(columns[latIndex]);
+          const lon = parseFloat(columns[lonIndex]);
+          if (!isNaN(lat) && !isNaN(lon)) {
+            trackPoints.push([lat, lon]);
+            const gpsPoint = {
+              latitude: lat,
+              longitude: lon,
+              timestamp: timeIndex !== -1 && columns[timeIndex] ? parseInt(columns[timeIndex], 10) || 0 : 0,
+            };
+            if (altIndex !== -1 && columns[altIndex]) gpsPoint.altitude = parseFloat(columns[altIndex]);
+            if (satIndex !== -1 && columns[satIndex]) gpsPoint.num_sat = parseInt(columns[satIndex], 10);
+            if (speedIndex !== -1 && columns[speedIndex]) gpsPoint.speed = parseFloat(columns[speedIndex]);
+            if (courseIndex !== -1 && columns[courseIndex]) gpsPoint.ground_course = parseFloat(columns[courseIndex]);
+            gpsData.push(gpsPoint);
+          }
+        });
+        if (!trackPoints.length) return reject(new Error('Keine gültigen GPS-Koordinaten in der Datei gefunden.'));
+        resolve({ trackPoints, gpsData });
+      } catch (err) {
+        reject(new Error(`Fehler beim Parsen der GPS-Daten: ${err.message || 'Unbekannter Fehler'}`));
+      }
+    };
+    reader.onerror = () => reject(new Error('Fehler beim Lesen der Datei.'));
+    reader.readAsText(file);
+  });
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    setAlertMessage(null);
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setAlertMessage({ type: 'error', message: 'Bitte wähle eine CSV-Datei aus.' });
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAlertMessage({ type: 'error', message: 'Dateigröße überschreitet das 10MB-Limit.' });
+      event.target.value = '';
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // Keine Vorab-Validierung, direkt parseGPSFile nutzen
+      const { trackPoints, gpsData } = await parseGPSFile(file);
+      setGpsTrack(trackPoints);
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_URL}/api/flightlogs/${flightId}/gps/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gps_data: gpsData })
+      });
+      if (!response.ok) throw new Error((await response.json()).detail || 'Fehler beim Speichern der GPS-Daten.');
+      setAlertMessage({ type: 'success', message: `Erfolgreich ${trackPoints.length} GPS-Punkte importiert und gespeichert.` });
+    } catch (error) {
+      setAlertMessage({ type: 'error', message: `Fehler: ${error.message || 'Ungültige oder nicht unterstützte Datei.'}` });
+    } finally {
+      setIsLoading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleDeleteGPS = () => setShowDeleteModal(true);
+
+  const confirmDeleteGPS = async () => {
+    setShowDeleteModal(false);
+    setIsLoading(true);
+    setAlertMessage(null);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${API_URL}/api/flightlogs/${flightId}/gps/`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error((await response.json()).detail || 'Failed to delete GPS data');
+      setGpsTrack(null);
+      setAlertMessage({ type: 'success', message: 'Successfully deleted GPS track' });
+    } catch (error) {
+      setAlertMessage({ type: 'error', message: `Error: ${error.message}` });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const cancelDeleteGPS = () => setShowDeleteModal(false);
+
+  if (!flight) return <Loading message="Loading flight details..." />;
 
   return (
     <div className="flex h-screen relative">
@@ -189,11 +251,29 @@ const FlightDetails = () => {
         </svg>
       </button>
 
+      <ConfirmModal
+        open={showDeleteModal}
+        title="Delete GPS Track"
+        message="Are you sure you want to delete the GPS track for this flight? This action cannot be undone."
+        onConfirm={confirmDeleteGPS}
+        onCancel={cancelDeleteGPS}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} style={{ zIndex: 10 }} />
       <div className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${sidebarOpen ? 'lg:ml-64' : ''}`}>
         <div className="flex items-center h-10 mb-4">
           <h1 className="text-2xl font-semibold text-center flex-1">Flight Details</h1>
         </div>
+
+        {alertMessage && (
+          <Alert type={alertMessage.type} className="mb-4">
+            {alertMessage.message}
+          </Alert>
+        )}
+
+        {isLoading && <Loading message="Processing GPS data..." />}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-4">
@@ -277,9 +357,9 @@ const FlightDetails = () => {
             <div className="flex-1" style={{ minHeight: '350px' }}>
               {(() => {
                 const { departureCoords, landingCoords } = getCoordinates();
-                return (departureCoords || landingCoords) ? (
+                return (departureCoords || landingCoords || (gpsTrack && gpsTrack.length > 0)) ? (
                   <MapContainer
-                    bounds={getBounds()}
+                    bounds={gpsTrack && gpsTrack.length > 0 ? gpsTrack : getBounds()}
                     zoom={13}
                     style={{ height: '100%', width: '100%', zIndex: 0, minHeight: '300px' }}
                   >
@@ -287,23 +367,27 @@ const FlightDetails = () => {
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
-                    
                     {departureCoords && (
                       <Marker position={departureCoords} icon={takeoffIcon}>
                         <Popup>
-                          <strong>Takeoff:</strong> {flight.departure_place || 'N/A'}<br/>
+                          <strong>Takeoff:</strong> {flight.departure_place || 'N/A'}<br />
                           <strong>Time:</strong> {flight.departure_time || 'N/A'}
                         </Popup>
                       </Marker>
                     )}
-                    
                     {landingCoords && (
                       <Marker position={landingCoords} icon={landingIcon}>
                         <Popup>
-                          <strong>Landing:</strong> {flight.landing_place || 'N/A'}<br/>
+                          <strong>Landing:</strong> {flight.landing_place || 'N/A'}<br />
                           <strong>Time:</strong> {flight.landing_time || 'N/A'}
                         </Popup>
                       </Marker>
+                    )}
+                    {gpsTrack && gpsTrack.length > 0 && (
+                      <Polyline
+                        positions={gpsTrack}
+                        pathOptions={{ color: 'blue', weight: 3, opacity: 0.7 }}
+                      />
                     )}
                   </MapContainer>
                 ) : (
@@ -316,10 +400,35 @@ const FlightDetails = () => {
           </div>
         </div>
 
-        <div className="mt-6 flex justify-center">
+        <div className="mt-6 flex justify-center gap-4">
           <Button onClick={() => navigate('/flightlog')} className="bg-blue-500 hover:bg-blue-600 text-white">
             Back to Flight Log
           </Button>
+          {!gpsTrack && (
+            <Button
+              onClick={handleImportGPS}
+              className="bg-green-500 hover:bg-green-600 text-white"
+              disabled={isLoading}
+            >
+              Import GPS Track
+            </Button>
+          )}
+          {gpsTrack && (
+            <Button
+              onClick={handleDeleteGPS}
+              className="bg-red-500 hover:bg-red-600 text-white"
+              disabled={isLoading}
+            >
+              Delete GPS Track
+            </Button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept=".csv"
+            onChange={handleFileChange}
+          />
         </div>
       </div>
     </div>

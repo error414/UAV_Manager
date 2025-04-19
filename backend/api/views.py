@@ -8,11 +8,12 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import (
-    UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings
+    UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings, FlightGPSLog
 )
 from .serializers import (
-    UAVSerializer, FlightLogSerializer, MaintenanceLogSerializer,
-    MaintenanceReminderSerializer, FileSerializer, UserSerializer, UserSettingsSerializer
+    UAVSerializer, FlightLogSerializer, MaintenanceLogSerializer, FlightGPSLogSerializer,
+    MaintenanceReminderSerializer, FileSerializer, UserSerializer, UserSettingsSerializer,
+    FlightLogWithGPSSerializer
 )
 
 # Import the services
@@ -21,6 +22,7 @@ from .services.maintenance_service import MaintenanceService
 from .services.admin_service import AdminService
 from .services.user_service import UserService
 from .services.file_service import FileService
+from .services.gps_service import GPSService
 
 # Pagination for UAVs
 class UAVPagination(PageNumberPagination):
@@ -112,11 +114,55 @@ class FlightLogListCreateView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 class FlightLogDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = FlightLogSerializer
+    serializer_class = FlightLogWithGPSSerializer  # Updated to include GPS logs
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
         return FlightLog.objects.filter(user=self.request.user)
+
+# Add a new view for handling GPS data upload
+class FlightGPSDataUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, flightlog_id):
+        try:
+            flight_log = FlightLog.objects.get(flightlog_id=flightlog_id, user=request.user)
+        except FlightLog.DoesNotExist:
+            return Response({"detail": "Flight log not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        gps_data = request.data.get('gps_data', [])
+        points_saved = GPSService.save_gps_data(flight_log, gps_data)
+        
+        if points_saved > 0:
+            return Response({"detail": f"Successfully uploaded {points_saved} GPS points"}, 
+                           status=status.HTTP_201_CREATED)
+        
+        return Response({"detail": "No valid GPS data provided"}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+    
+    def get(self, request, flightlog_id):
+        try:
+            flight_log = FlightLog.objects.get(flightlog_id=flightlog_id, user=request.user)
+        except FlightLog.DoesNotExist:
+            return Response({"detail": "Flight log not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        gps_logs = GPSService.get_gps_logs(flight_log)
+        serializer = FlightGPSLogSerializer(gps_logs, many=True)
+        
+        return Response(serializer.data)
+    
+    def delete(self, request, flightlog_id):
+        try:
+            flight_log = FlightLog.objects.get(flightlog_id=flightlog_id, user=request.user)
+        except FlightLog.DoesNotExist:
+            return Response({"detail": "Flight log not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        deleted_count = GPSService.delete_gps_data(flight_log)
+        
+        return Response({
+            "detail": f"Successfully deleted {deleted_count} GPS points",
+            "deleted_count": deleted_count
+        }, status=status.HTTP_200_OK)
 
 # Endpunkte für Wartungsprotokolle
 class MaintenanceLogListCreateView(generics.ListCreateAPIView):

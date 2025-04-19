@@ -1,26 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar, Alert, Button, ResponsiveTable } from '../components';
+import { Sidebar, Alert, Button, ResponsiveTable, ConfirmModal } from '../components';
 
 // Utility functions
 const calculateFlightDuration = (deptTime, landTime) => {
   if (!deptTime || !landTime) return '';
   
   try {
-    // Parse time strings to extract hours, minutes, seconds
     const [deptHours, deptMinutes, deptSeconds = 0] = deptTime.split(':').map(Number);
     const [landHours, landMinutes, landSeconds = 0] = landTime.split(':').map(Number);
-    
-    // Convert times to seconds
     const deptTotalSeconds = deptHours * 3600 + deptMinutes * 60 + deptSeconds;
     const landTotalSeconds = landHours * 3600 + landMinutes * 60 + landSeconds;
-    
-    // Calculate difference in seconds
     let durationInSeconds = landTotalSeconds - deptTotalSeconds;
-    
-    // Handle overnight flights
     if (durationInSeconds < 0) {
-      durationInSeconds += 86400; // Add 24 hours (in seconds)
+      durationInSeconds += 86400;
     }
     
     return Math.round(durationInSeconds);
@@ -30,7 +23,6 @@ const calculateFlightDuration = (deptTime, landTime) => {
   }
 };
 
-// Options for select fields
 const OPTIONS = {
   light_conditions: [
     { value: 'Day', label: 'Day' },
@@ -77,19 +69,20 @@ const Flightlog = () => {
   const [filters, setFilters] = useState({...INITIAL_FLIGHT_STATE});
   const [newFlight, setNewFlight] = useState({...INITIAL_FLIGHT_STATE});
 
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [isLoading, setIsLoading] = useState(false);
   const [sortField, setSortField] = useState('-departure_date');
 
-  // CSV Importer: create a ref for the hidden file input
   const fileInputRef = useRef(null);
 
-  // Add debounce timer for filters
   const [debouncedFilters, setDebouncedFilters] = useState({});
   const filterTimer = useRef(null);
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const [importResult, setImportResult] = useState(null);
 
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('access_token');
@@ -116,13 +109,10 @@ const Flightlog = () => {
     
     setIsLoading(true);
     
-    // Build query parameters for filtering and pagination
     const queryParams = new URLSearchParams();
     
-    // Add filter parameters - use debouncedFilters instead of filters
     Object.entries(debouncedFilters).forEach(([key, value]) => {
       if (value) {
-        // For UAV field, we need to handle it differently as it might be an object
         if (key === 'uav' && typeof value === 'object' && value.uav_id) {
           queryParams.append(key, value.uav_id);
         } else {
@@ -131,11 +121,9 @@ const Flightlog = () => {
       }
     });
     
-    // Add pagination parameters
     queryParams.append('page', currentPage);
     queryParams.append('page_size', pageSize);
     
-    // Add sorting parameter
     queryParams.append('ordering', sortField);
     
     fetch(`${API_URL}/api/flightlogs/?${queryParams.toString()}`, {
@@ -165,7 +153,7 @@ const Flightlog = () => {
     const file = event.target.files[0];
     if (!file) return;
 
-    event.target.value = null; // Reset the input
+    event.target.value = null;
 
     if (!file.name.endsWith('.csv')) {
       setError('File must be a CSV');
@@ -194,11 +182,11 @@ const Flightlog = () => {
         return;
       }
 
-      // Refresh the logs list
       await fetchFlightLogs();
       
-      // Show success message with details
-      alert(result.message + (result.details?.unmapped_message || ''));
+      setImportResult({
+        message: (result.message || '') + (result.details?.unmapped_message || '')
+      });
       setIsLoading(false);
     } catch (err) {
       console.error('Error uploading CSV:', err);
@@ -232,10 +220,8 @@ const Flightlog = () => {
         return res.json();
       })
       .then((data) => {
-        // Log UAV data for debugging
         console.log("Fetched UAVs:", data);
         
-        // Make sure we're handling both paginated and non-paginated responses
         const uavArray = Array.isArray(data) ? data : (data.results || []);
         setAvailableUAVs(uavArray);
       })
@@ -250,7 +236,6 @@ const Flightlog = () => {
     fetchUAVs();
   }, [fetchFlightLogs, fetchUAVs]);
 
-  // Ensure availableUAVs is always an array
   const safeAvailableUAVs = useMemo(() => {
     return Array.isArray(availableUAVs) ? availableUAVs : [];
   }, [availableUAVs]);
@@ -349,20 +334,17 @@ const Flightlog = () => {
   const handleFilterChange = useCallback((e) => {
     const { name, value } = e.target;
     
-    // Update the local filter state immediately for UI responsiveness
     setFilters(prev => ({
       ...prev,
       [name]: value
     }));
     
-    // Clear any existing timer
     if (filterTimer.current) {
       clearTimeout(filterTimer.current);
     }
     
-    // Set a new timer to update the debounced filters after 500ms
     filterTimer.current = setTimeout(() => {
-      // Reset to page 1 when filters change
+
       setCurrentPage(1);
       setDebouncedFilters(prev => ({
         ...prev,
@@ -508,29 +490,25 @@ const Flightlog = () => {
     setEditingLog(null);
   }, []);
 
-  const handleDeleteLog = useCallback(async (id) => {
-    if (!window.confirm('Are you sure you want to delete this flight log?')) {
-      return;
-    }
-    
+  const handleDeleteLog = useCallback((id) => {
+    setConfirmDeleteId(id);
+  }, []);
+
+  const performDeleteLog = useCallback(async (id) => {
     const token = localStorage.getItem('access_token');
-    
     if (!token) {
       navigate('/login');
       return;
     }
-
     try {
       const response = await fetch(`${API_URL}/api/flightlogs/${id}/`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-
       if (!response.ok) {
         if (handleAuthError(response)) return;
         throw new Error('Failed to delete flight log');
       }
-
       fetchFlightLogs();
       setEditingLogId(null);
       setEditingLog(null);
@@ -742,6 +720,29 @@ const Flightlog = () => {
             style={{ display: 'none' }} 
           />
         </div>
+        {/* ConfirmModal for delete */}
+        <ConfirmModal
+          open={!!confirmDeleteId}
+          title="Löschen bestätigen"
+          message="Möchten Sie diesen Fluglog wirklich löschen?"
+          onConfirm={() => {
+            performDeleteLog(confirmDeleteId);
+            setConfirmDeleteId(null);
+          }}
+          onCancel={() => setConfirmDeleteId(null)}
+          confirmText="Löschen"
+          cancelText="Abbrechen"
+        />
+        {/* ConfirmModal for import result */}
+        <ConfirmModal
+          open={!!importResult}
+          title="Import abgeschlossen"
+          message={importResult?.message || ''}
+          onConfirm={() => setImportResult(null)}
+          onCancel={() => setImportResult(null)}
+          confirmText="OK"
+          cancelText={null}
+        />
       </div>
     </div>
   );

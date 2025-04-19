@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { Sidebar, Alert, ResponsiveTable } from '../components';
+import { Sidebar, Alert, ResponsiveTable, Loading, ConfirmModal } from '../components';
 
-const Spinner = () => (
-  <div className="flex justify-center py-4">
-    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-  </div>
-);
+const Spinner = ({ message = "Loading..." }) => <Loading message={message} />;
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => (
   totalPages > 1 && (
@@ -103,6 +99,9 @@ const AdminPage = () => {
   const [editingFlightLogId, setEditingFlightLogId] = useState(null);
   const [editingFlightLog, setEditingFlightLog] = useState(null);
   const API_URL = import.meta.env.VITE_API_URL;
+  const [confirmDeleteUserId, setConfirmDeleteUserId] = useState(null);
+  const [confirmDeleteUavId, setConfirmDeleteUavId] = useState(null);
+  const [confirmDeleteFlightLogId, setConfirmDeleteFlightLogId] = useState(null);
 
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('access_token');
@@ -333,8 +332,11 @@ const AdminPage = () => {
     setEditingUser(null);
   }, []);
 
-  const handleDeleteUser = useCallback(async (id) => {
-    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+  const handleDeleteUser = useCallback((id) => {
+    setConfirmDeleteUserId(id);
+  }, []);
+
+  const performDeleteUser = useCallback(async (id) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/users/${id}/`, {
         method: 'DELETE',
@@ -431,8 +433,11 @@ const AdminPage = () => {
     setUavError(null);
   }, []);
 
-  const handleDeleteUav = useCallback(async (id) => {
-    if (!window.confirm('Are you sure you want to delete this UAV? All flight logs associated with this UAV will also be deleted. This action cannot be undone.')) return;
+  const handleDeleteUav = useCallback((id) => {
+    setConfirmDeleteUavId(id);
+  }, []);
+
+  const performDeleteUav = useCallback(async (id) => {
     try {
       const response = await fetch(`${API_URL}/api/admin/uavs/${id}/`, {
         method: 'DELETE',
@@ -498,8 +503,11 @@ const AdminPage = () => {
     setEditingFlightLog(null);
   };
 
-  const handleFlightLogDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this flight log?')) return;
+  const handleFlightLogDelete = useCallback((id) => {
+    setConfirmDeleteFlightLogId(id);
+  }, []);
+
+  const performDeleteFlightLog = useCallback(async (id) => {
     try {
       const response = await fetch(`${API_URL}/api/flightlogs/${id}/`, {
         method: 'DELETE',
@@ -516,7 +524,7 @@ const AdminPage = () => {
     } catch (err) {
       setFlightLogsError('An error occurred while deleting the flight log.');
     }
-  };
+  }, [API_URL, fetchUserFlightLogs, getAuthHeaders, handleAuthError, selectedUserId]);
 
   useEffect(() => {
     const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
@@ -623,7 +631,7 @@ const AdminPage = () => {
     { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Active Status', options: [{ value: true, label: 'Yes' }, { value: false, label: 'No' }] }
   ];
 
-  if (loading) return <div className="flex justify-center items-center h-screen"><Spinner /></div>;
+  if (loading) return <Loading />;
   if (!isStaff) return <Navigate to="/flightlog" state={{ from: location }} replace />;
 
   return (
@@ -644,7 +652,7 @@ const AdminPage = () => {
         }`}
         aria-label="Toggle sidebar for desktop"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
@@ -659,7 +667,7 @@ const AdminPage = () => {
           <h1 className="text-2xl font-semibold text-center flex-1">Admin Panel - User Management</h1>
         </div>
         <Alert type="error" message={error} />
-        {isLoading ? <Spinner /> : (
+        {isLoading ? <Loading /> : (
           <>
             <ResponsiveTable 
               columns={tableColumns}
@@ -686,7 +694,7 @@ const AdminPage = () => {
             {selectedUserId && (
               <div className="mt-10">
                 <h2 className="text-xl font-semibold mb-4">Aircraft for {selectedUserName}</h2>
-                {loadingUAVs ? <Spinner /> : userUAVs.length > 0 ? (
+                {loadingUAVs ? <Loading /> : userUAVs.length > 0 ? (
                   <>
                     <Alert type="error" message={uavError} />
                     <ResponsiveTable 
@@ -715,7 +723,7 @@ const AdminPage = () => {
                 )}
                 <div className="mt-10">
                   <h2 className="text-xl font-semibold mb-4">Flight Logs for {selectedUserName}</h2>
-                  {loadingFlightLogs ? <Spinner /> : flightLogsError ? (
+                  {loadingFlightLogs ? <Loading /> : flightLogsError ? (
                     <Alert type="error" message={flightLogsError} />
                   ) : userFlightLogs.length > 0 ? (
                     <>
@@ -753,6 +761,42 @@ const AdminPage = () => {
             )}
           </>
         )}
+        <ConfirmModal
+          open={!!confirmDeleteUserId}
+          title="Delete User"
+          message="Are you sure you want to delete this user? This action cannot be undone."
+          onConfirm={() => {
+            performDeleteUser(confirmDeleteUserId);
+            setConfirmDeleteUserId(null);
+          }}
+          onCancel={() => setConfirmDeleteUserId(null)}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
+        <ConfirmModal
+          open={!!confirmDeleteUavId}
+          title="Delete UAV"
+          message="Are you sure you want to delete this UAV? All flight logs associated with this UAV will also be deleted. This action cannot be undone."
+          onConfirm={() => {
+            performDeleteUav(confirmDeleteUavId);
+            setConfirmDeleteUavId(null);
+          }}
+          onCancel={() => setConfirmDeleteUavId(null)}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
+        <ConfirmModal
+          open={!!confirmDeleteFlightLogId}
+          title="Delete Flight Log"
+          message="Are you sure you want to delete this flight log?"
+          onConfirm={() => {
+            performDeleteFlightLog(confirmDeleteFlightLogId);
+            setConfirmDeleteFlightLogId(null);
+          }}
+          onCancel={() => setConfirmDeleteFlightLogId(null)}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
       </div>
     </div>
   );

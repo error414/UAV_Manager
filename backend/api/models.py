@@ -147,6 +147,21 @@ class FlightLog(models.Model):
     def __str__(self):
         return f"FlightLog {self.flightlog_id} for UAV {self.uav}"
 
+
+class FlightGPSLog(models.Model):
+    flight_log = models.ForeignKey('FlightLog', on_delete=models.CASCADE, related_name='gps_logs')
+    timestamp = models.BigIntegerField()  # time (us)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    altitude = models.FloatField(null=True, blank=True)
+    num_sat = models.IntegerField(null=True, blank=True)
+    speed = models.FloatField(null=True, blank=True)  # GPS_speed (m/s)
+    ground_course = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['timestamp']
+
+
 # Wartungsprotokolle (MAINTENANCELOGS)
 class MaintenanceLog(models.Model):
     maintenance_id = models.AutoField(primary_key=True)

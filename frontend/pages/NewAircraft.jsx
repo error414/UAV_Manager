@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Alert, Sidebar, AircraftForm } from '../components';
+import { Button, Alert, Sidebar, AircraftForm, Loading, ConfirmModal } from '../components';
 
 // Custom hook for form management
 const useAircraftForm = (isEditMode, uavId) => {
@@ -263,11 +263,6 @@ const useAircraftForm = (isEditMode, uavId) => {
     try {
       const token = localStorage.getItem('access_token');
       
-      // Confirm deletion
-      if (!window.confirm('Are you sure you want to delete this aircraft? This action cannot be undone.')) {
-        return;
-      }
-      
       const deleteResponse = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -291,10 +286,6 @@ const useAircraftForm = (isEditMode, uavId) => {
     
     try {
       const token = localStorage.getItem('access_token');
-      
-      if (!window.confirm('Are you sure you want to mark this aircraft as inactive?')) {
-        return;
-      }
       
       const updateResponse = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
         method: 'PATCH',
@@ -323,18 +314,6 @@ const useAircraftForm = (isEditMode, uavId) => {
     
     try {
       const token = localStorage.getItem('access_token');
-      
-      // If currently inactive, confirm reactivation
-      if (!formData.is_active) {
-        if (!window.confirm('Are you sure you want to reactivate this aircraft?')) {
-          return;
-        }
-      } else {
-        // If active, confirm deactivation
-        if (!window.confirm('Are you sure you want to deactivate this aircraft?')) {
-          return;
-        }
-      }
       
       const newActiveState = !formData.is_active;
       
@@ -392,6 +371,11 @@ const NewAircraftPage = () => {
   // Responsive sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   
+  // ConfirmModal states
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmInactive, setConfirmInactive] = useState(false);
+  const [confirmToggleActive, setConfirmToggleActive] = useState(null); // true = activate, false = deactivate
+
   // Form management hook
   const {
     formData,
@@ -400,14 +384,19 @@ const NewAircraftPage = () => {
     success,
     handleChange,
     handleSubmit,
-    handleDelete,
-    handleSetInactive,
-    handleToggleActive,
+    handleDelete: rawHandleDelete,
+    handleSetInactive: rawHandleSetInactive,
+    handleToggleActive: rawHandleToggleActive,
     handleSetTodayMaintDates,
     formatDateForInput,
     setError,
     canDelete
   } = useAircraftForm(isEditMode, uavId);
+
+  // Wrapped handlers for ConfirmModal
+  const handleDelete = () => setConfirmDelete(true);
+  const handleSetInactive = () => setConfirmInactive(true);
+  const handleToggleActive = () => setConfirmToggleActive(!formData.is_active);
 
   // Authentication check
   useEffect(() => {
@@ -430,14 +419,7 @@ const NewAircraftPage = () => {
 
   // Loading state
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-          <p>Loading aircraft data...</p>
-        </div>
-      </div>
-    );
+    return <Loading message="Loading aircraft data..." />;
   }
 
   return (
@@ -512,6 +494,49 @@ const NewAircraftPage = () => {
           isEditMode={isEditMode}
           isLoading={isLoading}
           canDelete={canDelete}
+        />
+        {/* ConfirmModal for delete */}
+        <ConfirmModal
+          open={confirmDelete}
+          title="Delete Aircraft"
+          message="Are you sure you want to delete this aircraft? This action cannot be undone."
+          onConfirm={async () => {
+            setConfirmDelete(false);
+            await rawHandleDelete();
+          }}
+          onCancel={() => setConfirmDelete(false)}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
+        {/* ConfirmModal for set inactive */}
+        <ConfirmModal
+          open={confirmInactive}
+          title="Mark Aircraft as Inactive"
+          message="Are you sure you want to mark this aircraft as inactive?"
+          onConfirm={async () => {
+            setConfirmInactive(false);
+            await rawHandleSetInactive();
+          }}
+          onCancel={() => setConfirmInactive(false)}
+          confirmText="Set Inactive"
+          cancelText="Cancel"
+        />
+        {/* ConfirmModal for toggle active/inactive */}
+        <ConfirmModal
+          open={confirmToggleActive !== null}
+          title={formData.is_active ? "Deactivate Aircraft" : "Reactivate Aircraft"}
+          message={
+            formData.is_active
+              ? "Are you sure you want to deactivate this aircraft?"
+              : "Are you sure you want to reactivate this aircraft?"
+          }
+          onConfirm={async () => {
+            setConfirmToggleActive(null);
+            await rawHandleToggleActive();
+          }}
+          onCancel={() => setConfirmToggleActive(null)}
+          confirmText={formData.is_active ? "Deactivate" : "Reactivate"}
+          cancelText="Cancel"
         />
       </div>
     </div>

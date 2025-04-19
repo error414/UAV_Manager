@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Alert, Sidebar, FormInput } from '../components';
+import { Button, Alert, Sidebar, FormInput, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
 
 const UserSettings = () => {
@@ -33,6 +33,7 @@ const UserSettings = () => {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -52,6 +53,7 @@ const UserSettings = () => {
     if (!token) {
       navigate('/login');
     } else {
+      setIsLoading(true);
       fetchUserData();
     }
   }, [navigate]);
@@ -67,6 +69,8 @@ const UserSettings = () => {
         setError('Authentication required. Please log in again.');
         return;
       }
+
+      setIsLoading(true);
 
       const userResponse = await fetch(`${API_URL}/api/users/${user_id}/`, {
         headers: {
@@ -118,9 +122,11 @@ const UserSettings = () => {
           });
         }
       }
+      setIsLoading(false);
     } catch (err) {
       console.error('Error fetching user data:', err);
       setError('Failed to load user data. Please try again.');
+      setIsLoading(false);
     }
   };
 
@@ -242,6 +248,10 @@ const UserSettings = () => {
       setError(err.message || 'An error occurred while saving settings.');
     }
   };
+
+  if (isLoading) {
+    return <Loading message="Loading user data..." />;
+  }
 
   return (
     <div className="flex h-screen relative">

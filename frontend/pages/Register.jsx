@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthLayout, FormInput, Alert, Button } from '../components';
+import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ const Register = () => {
 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Get API URL from environment variables
   const API_URL = import.meta.env.VITE_API_URL;
@@ -27,9 +28,11 @@ const Register = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setIsLoading(true);
 
     if (formData.password !== formData.re_password) {
       setError('Passwords do not match');
+      setIsLoading(false);
       return;
     }
 
@@ -72,18 +75,26 @@ const Register = () => {
             localStorage.setItem('access_token', loginData.access);
           } else {
             setError("Login failed after registration. Please try again.");
+            setIsLoading(false);
             return;
           }
         }
         setSuccess('Registration successful!');
+        setIsLoading(false);
         navigate('/AdditionalDetails');
       } else {
         setError(JSON.stringify(data));
+        setIsLoading(false);
       }
     } catch (err) {
       setError('An error occurred. Please try again later.');
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return <Loading message="Registering..." />;
+  }
 
   return (
     <AuthLayout title="Register">
