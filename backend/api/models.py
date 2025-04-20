@@ -170,7 +170,7 @@ class MaintenanceLog(models.Model):
     event_type = models.CharField(max_length=100)
     description = models.TextField()
     event_date = models.DateField()
-    file = models.FileField(upload_to='', null=True, blank=True)  # Store files directly under MEDIA_ROOT
+    file = models.FileField(upload_to='maint_logs/', null=True, blank=True)  # Removed 'uploads/' prefix
     created_at = models.DateTimeField(auto_now_add=True)
     
     def save(self, *args, **kwargs):

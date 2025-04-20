@@ -3,6 +3,41 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Alert, Sidebar, FormInput, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
+const LicenseField = ({ label, dateName, dateValue, onChange, reminderName, reminderChecked, onReminderChange }) => (
+  <div className="grid grid-cols-4 gap-2 items-center">
+    <div className="col-span-1">
+      <label>{label}</label>
+    </div>
+    <div className="col-span-1">
+      <label>Valid until:</label>
+    </div>
+    <div className="col-span-2">
+      <FormInput
+        type="date"
+        name={dateName}
+        id={dateName}
+        value={dateValue}
+        onChange={onChange}
+      />
+    </div>
+    <div className="col-span-4 flex items-center mt-1">
+      <input
+        type="checkbox"
+        name={reminderName}
+        id={reminderName}
+        checked={reminderChecked}
+        onChange={onReminderChange}
+        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+      />
+      <label htmlFor={reminderName} className="ml-2 text-sm text-gray-700">
+        Send me a reminder before expiry
+      </label>
+    </div>
+  </div>
+);
+
 const UserSettings = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
@@ -34,16 +69,9 @@ const UserSettings = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(true);
-      } else {
-        setSidebarOpen(false);
-      }
-    };
+    const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -53,12 +81,17 @@ const UserSettings = () => {
     if (!token) {
       navigate('/login');
     } else {
-      setIsLoading(true);
       fetchUserData();
     }
   }, [navigate]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  };
 
   const fetchUserData = async () => {
     try {
@@ -73,9 +106,7 @@ const UserSettings = () => {
       setIsLoading(true);
 
       const userResponse = await fetch(`${API_URL}/api/users/${user_id}/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (!userResponse.ok) {
@@ -85,26 +116,14 @@ const UserSettings = () => {
 
       const userData = await userResponse.json();
       setFormData({
-        first_name: userData.first_name || '',
-        last_name: userData.last_name || '',
-        email: userData.email || '',
-        company: userData.company || '',
-        drone_ops_nb: userData.drone_ops_nb || '',
-        pilot_license_nb: userData.pilot_license_nb || '',
-        phone: userData.phone || '',
-        street: userData.street || '',
-        zip: userData.zip || '',
-        city: userData.city || '',
-        country: userData.country || '',
+        ...userData,
         a1_a3: userData.a1_a3 ? formatDateForInput(userData.a1_a3) : '',
         a2: userData.a2 ? formatDateForInput(userData.a2) : '',
         sts: userData.sts ? formatDateForInput(userData.sts) : ''
       });
 
       const settingsResponse = await fetch(`${API_URL}/api/user-settings/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (settingsResponse.ok) {
@@ -124,7 +143,6 @@ const UserSettings = () => {
       }
       setIsLoading(false);
     } catch (err) {
-      console.error('Error fetching user data:', err);
       setError('Failed to load user data. Please try again.');
       setIsLoading(false);
     }
@@ -132,45 +150,28 @@ const UserSettings = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prevData => ({
-      ...prevData,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSettingsChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    // Create updated settings object
-    const updatedSettings = {
-      ...userSettings,
-      [name]: type === 'checkbox' ? checked : value
-    };
-    
-    // Auto-manage master notifications toggle based on individual selections
-    if (name === 'a1_a3_reminder' || name === 'a2_reminder' || name === 'sts_reminder') {
-      // If any license reminder is checked, enable notifications
-      // If all are unchecked, disable notifications
-      updatedSettings.notifications_enabled = 
-        updatedSettings.a1_a3_reminder || 
-        updatedSettings.a2_reminder || 
-        updatedSettings.sts_reminder;
-    }
-    
-    setUserSettings(updatedSettings);
-  };
-
-  const selectCountry = (val) => {
-    setFormData({
-      ...formData,
-      country: val
+    setUserSettings(prev => {
+      const updated = { ...prev, [name]: type === 'checkbox' ? checked : value };
+      
+      if (name === 'a1_a3_reminder' || name === 'a2_reminder' || name === 'sts_reminder') {
+        updated.notifications_enabled = 
+          updated.a1_a3_reminder || 
+          updated.a2_reminder || 
+          updated.sts_reminder;
+      }
+      
+      return updated;
     });
   };
 
-  const formatDateForInput = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+  const selectCountry = (val) => {
+    setFormData(prev => ({ ...prev, country: val }));
   };
 
   const handleSubmit = async (e) => {
@@ -192,10 +193,7 @@ const UserSettings = () => {
         return;
       }
 
-      const cleanedData = {
-        ...formData
-      };
-
+      const cleanedData = { ...formData };
       if (!cleanedData.a1_a3) delete cleanedData.a1_a3;
       if (!cleanedData.a2) delete cleanedData.a2;
       if (!cleanedData.sts) delete cleanedData.sts;
@@ -244,7 +242,6 @@ const UserSettings = () => {
 
       setSuccess('Settings saved successfully!');
     } catch (err) {
-      console.error('Error updating user settings:', err);
       setError(err.message || 'An error occurred while saving settings.');
     }
   };
@@ -253,29 +250,31 @@ const UserSettings = () => {
     return <Loading message="Loading user data..." />;
   }
 
+  const SidebarToggleButton = ({ position, onClick }) => (
+    <button
+      onClick={onClick}
+      className={position}
+      aria-label="Toggle sidebar"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  );
+
   return (
     <div className="flex h-screen relative">
-      <button
+      <SidebarToggleButton 
+        position="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
         onClick={toggleSidebar}
-        className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
-        aria-label="Toggle sidebar for mobile"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+      />
       
-      <button
-        onClick={toggleSidebar}
-        className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
+      <SidebarToggleButton 
+        position={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
           sidebarOpen ? 'left-2' : 'left-4'
         }`}
-        aria-label="Toggle sidebar for desktop"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+        onClick={toggleSidebar}
+      />
       
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
@@ -295,7 +294,7 @@ const UserSettings = () => {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="">First name</label>
+              <label>First name</label>
               <FormInput
                 type="text"
                 name="first_name"
@@ -308,7 +307,7 @@ const UserSettings = () => {
             </div>
             
             <div>
-              <label className="">Last name</label>
+              <label>Last name</label>
               <FormInput
                 type="text"
                 name="last_name"
@@ -321,7 +320,7 @@ const UserSettings = () => {
             </div>
             
             <div>
-              <label className="">Company Name</label>
+              <label>Company Name</label>
               <FormInput
                 type="text"
                 name="company"
@@ -329,11 +328,11 @@ const UserSettings = () => {
                 value={formData.company}
                 onChange={handleChange}
                 placeholder="Drone Solutions Inc."
-                />
+              />
             </div>
             
             <div>
-              <label className="">E-mail</label>
+              <label>E-mail</label>
               <FormInput
                 type="email"
                 name="email"
@@ -347,7 +346,7 @@ const UserSettings = () => {
             </div>
             
             <div>
-              <label className="">Phone number</label>
+              <label>Phone number</label>
               <FormInput
                 type="text"
                 name="phone"
@@ -355,11 +354,11 @@ const UserSettings = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+1 234 567 8901"
-                />
+              />
             </div>
             
             <div>
-              <label className="">Street Address</label>
+              <label>Street Address</label>
               <FormInput
                 type="text"
                 name="street"
@@ -367,12 +366,12 @@ const UserSettings = () => {
                 value={formData.street}
                 onChange={handleChange}
                 placeholder="123 Drone Street"
-                />
+              />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="">Zip Code</label>
+                <label>Zip Code</label>
                 <FormInput
                   type="text"
                   name="zip"
@@ -380,10 +379,10 @@ const UserSettings = () => {
                   value={formData.zip}
                   onChange={handleChange}
                   placeholder="12345"
-                  />
+                />
               </div>
               <div>
-                <label className="">City</label>
+                <label>City</label>
                 <FormInput
                   type="text"
                   name="city"
@@ -391,12 +390,12 @@ const UserSettings = () => {
                   value={formData.city}
                   onChange={handleChange}
                   placeholder="Drone City"
-                  />
+                />
               </div>
             </div>
             
             <div>
-              <label className="">Country</label>
+              <label>Country</label>
               <div className="mt-1">
                 <CountryDropdown
                   id="country"
@@ -412,7 +411,7 @@ const UserSettings = () => {
           
           <div className="space-y-4">
             <div>
-              <label className="">Drone Operator Number</label>
+              <label>Drone Operator Number</label>
               <FormInput
                 type="text"
                 name="drone_ops_nb"
@@ -420,11 +419,11 @@ const UserSettings = () => {
                 value={formData.drone_ops_nb}
                 onChange={handleChange}
                 placeholder="CHEdkI9245ddjG325"
-                />
+              />
             </div>
             
             <div>
-              <label className="">Pilot License number</label>
+              <label>Pilot License number</label>
               <FormInput
                 type="text"
                 name="pilot_license_nb"
@@ -432,103 +431,40 @@ const UserSettings = () => {
                 value={formData.pilot_license_nb}
                 onChange={handleChange}
                 placeholder="FCL.CH.345789"
-                />
+              />
             </div>
             
             <h3 className="text-lg font-medium pt-2 text-black">License Category</h3>
             
-            <div className="grid grid-cols-4 gap-2 items-center">
-              <div className="col-span-1">
-                <label className="">A1 / A3</label>
-              </div>
-              <div className="col-span-1">
-                <label className="">Valid until:</label>
-              </div>
-              <div className="col-span-2">
-                <FormInput
-                  type="date"
-                  name="a1_a3"
-                  id="a1_a3"
-                  value={formData.a1_a3}
-                  onChange={handleChange}
-                  />
-              </div>
-              <div className="col-span-4 flex items-center mt-1">
-                <input
-                  type="checkbox"
-                  name="a1_a3_reminder"
-                  id="a1_a3_reminder"
-                  checked={userSettings.a1_a3_reminder}
-                  onChange={handleSettingsChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="a1_a3_reminder" className="ml-2 text-sm text-gray-700">
-                  Send me a reminder before expiry
-                </label>
-              </div>
-            </div>
+            <LicenseField 
+              label="A1 / A3"
+              dateName="a1_a3"
+              dateValue={formData.a1_a3}
+              onChange={handleChange}
+              reminderName="a1_a3_reminder"
+              reminderChecked={userSettings.a1_a3_reminder}
+              onReminderChange={handleSettingsChange}
+            />
             
-            <div className="grid grid-cols-4 gap-2 items-center">
-              <div className="col-span-1">
-                <label className="">A2</label>
-              </div>
-              <div className="col-span-1">
-                <label className="">Valid until:</label>
-              </div>
-              <div className="col-span-2">
-                <FormInput
-                  type="date"
-                  name="a2"
-                  id="a2"
-                  value={formData.a2}
-                  onChange={handleChange}
-                  />
-              </div>
-              <div className="col-span-4 flex items-center mt-1">
-                <input
-                  type="checkbox"
-                  name="a2_reminder"
-                  id="a2_reminder"
-                  checked={userSettings.a2_reminder}
-                  onChange={handleSettingsChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="a2_reminder" className="ml-2 text-sm text-gray-700">
-                  Send me a reminder before expiry
-                </label>
-              </div>
-            </div>
+            <LicenseField 
+              label="A2"
+              dateName="a2"
+              dateValue={formData.a2}
+              onChange={handleChange}
+              reminderName="a2_reminder"
+              reminderChecked={userSettings.a2_reminder}
+              onReminderChange={handleSettingsChange}
+            />
             
-            <div className="grid grid-cols-4 gap-2 items-center">
-              <div className="col-span-1">
-                <label className="">STS</label>
-              </div>
-              <div className="col-span-1">
-                <label className="">Valid until:</label>
-              </div>
-              <div className="col-span-2">
-                <FormInput
-                  type="date"
-                  name="sts"
-                  id="sts"
-                  value={formData.sts}
-                  onChange={handleChange}
-                  />
-              </div>
-              <div className="col-span-4 flex items-center mt-1">
-                <input
-                  type="checkbox"
-                  name="sts_reminder"
-                  id="sts_reminder"
-                  checked={userSettings.sts_reminder}
-                  onChange={handleSettingsChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="sts_reminder" className="ml-2 text-sm text-gray-700">
-                  Send me a reminder before expiry
-                </label>
-              </div>
-            </div>
+            <LicenseField 
+              label="STS"
+              dateName="sts"
+              dateValue={formData.sts}
+              onChange={handleChange}
+              reminderName="sts_reminder"
+              reminderChecked={userSettings.sts_reminder}
+              onReminderChange={handleSettingsChange}
+            />
             
             <div className="mt-4 border-t pt-4">
               <h3 className="text-lg font-medium text-black">Notification Settings</h3>

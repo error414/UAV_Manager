@@ -4,7 +4,9 @@ import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
 
 const AdditionalDetails = () => {
+  const API_URL = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
+  
   const [details, setDetails] = useState({
     first_name: '',
     last_name: '',
@@ -18,20 +20,16 @@ const AdditionalDetails = () => {
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const API_URL = import.meta.env.VITE_API_URL;
-
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
 
-    // Wenn nicht eingeloggt, zur Login-Seite weiterleiten
     if (!token || !user_id) {
       navigate('/login');
       return;
     }
 
     setIsLoading(true);
-    // Daten des aktuellen Benutzers abrufen und Formularfelder vorbelegen
     fetch(`${API_URL}/api/users/${user_id}/`, {
       headers: {
         'Content-Type': 'application/json',
@@ -63,7 +61,6 @@ const AdditionalDetails = () => {
         setIsLoading(false);
       })
       .catch(err => {
-        console.error("Error fetching user details", err);
         setIsLoading(false);
       });
   }, [navigate, API_URL]);
@@ -77,7 +74,6 @@ const AdditionalDetails = () => {
 
   const handleNumericInput = (e) => {
     const { name, value } = e.target;
-    
     const numericValue = value.replace(/\D/g, '');
     
     setDetails({
@@ -130,7 +126,6 @@ const AdditionalDetails = () => {
       }
 
       const data = await response.json();
-      console.log('Update response:', data);
       setSuccess('Details updated successfully!');
       navigate('/flightlog');
     } catch (err) {

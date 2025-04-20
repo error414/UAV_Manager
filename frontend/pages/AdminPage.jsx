@@ -693,7 +693,7 @@ const AdminPage = () => {
             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
             {selectedUserId && (
               <div className="mt-10">
-                <h2 className="text-xl font-semibold mb-4">Aircraft for {selectedUserName}</h2>
+                <h2 className="text-xl font-semibold mb-4 text-center">Aircraft for {selectedUserName}</h2>
                 {loadingUAVs ? <Loading /> : userUAVs.length > 0 ? (
                   <>
                     <Alert type="error" message={uavError} />
@@ -722,7 +722,7 @@ const AdminPage = () => {
                   <div className="text-center py-4 bg-gray-100 rounded-md">This user has no registered aircraft.</div>
                 )}
                 <div className="mt-10">
-                  <h2 className="text-xl font-semibold mb-4">Flight Logs for {selectedUserName}</h2>
+                  <h2 className="text-xl font-semibold mb-4 text-center">Flight Logs for {selectedUserName}</h2>
                   {loadingFlightLogs ? <Loading /> : flightLogsError ? (
                     <Alert type="error" message={flightLogsError} />
                   ) : userFlightLogs.length > 0 ? (

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button, ResponsiveTable, ConfirmModal } from '../components';
 
-// Utility functions
 const calculateFlightDuration = (deptTime, landTime) => {
   if (!deptTime || !landTime) return '';
   
@@ -18,7 +17,6 @@ const calculateFlightDuration = (deptTime, landTime) => {
     
     return Math.round(durationInSeconds);
   } catch (error) {
-    console.error("Error calculating flight duration:", error);
     return '';
   }
 };
@@ -55,35 +53,9 @@ const INITIAL_FLIGHT_STATE = {
   comments: ''
 };
 
-const Flightlog = () => {
+const useAuth = () => {
   const navigate = useNavigate();
-  const [logs, setLogs] = useState([]);
-  const [availableUAVs, setAvailableUAVs] = useState([]);
-  const [error, setError] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   
-  const API_URL = import.meta.env.VITE_API_URL;
-  
-  const [editingLogId, setEditingLogId] = useState(null);
-  const [editingLog, setEditingLog] = useState(null);
-  const [filters, setFilters] = useState({...INITIAL_FLIGHT_STATE});
-  const [newFlight, setNewFlight] = useState({...INITIAL_FLIGHT_STATE});
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [pageSize, setPageSize] = useState(20);
-  const [isLoading, setIsLoading] = useState(false);
-  const [sortField, setSortField] = useState('-departure_date');
-
-  const fileInputRef = useRef(null);
-
-  const [debouncedFilters, setDebouncedFilters] = useState({});
-  const filterTimer = useRef(null);
-
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-
-  const [importResult, setImportResult] = useState(null);
-
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('access_token');
     return { Authorization: `Bearer ${token}` };
@@ -98,58 +70,369 @@ const Flightlog = () => {
     }
     return false;
   }, [navigate]);
-
-  const fetchFlightLogs = useCallback(() => {
+  
+  const checkAuthAndGetUser = useCallback(() => {
     const token = localStorage.getItem('access_token');
     const user_id = localStorage.getItem('user_id');
+    
     if (!token || !user_id) {
       navigate('/login');
-      return;
+      return null;
     }
     
-    setIsLoading(true);
-    
-    const queryParams = new URLSearchParams();
-    
-    Object.entries(debouncedFilters).forEach(([key, value]) => {
-      if (value) {
-        if (key === 'uav' && typeof value === 'object' && value.uav_id) {
-          queryParams.append(key, value.uav_id);
-        } else {
-          queryParams.append(key, value);
-        }
+    return { token, user_id };
+  }, [navigate]);
+  
+  return { getAuthHeaders, handleAuthError, checkAuthAndGetUser };
+};
+
+const useApi = (baseUrl, setError) => {
+  const { getAuthHeaders, handleAuthError } = useAuth();
+  
+  const fetchData = useCallback(async (endpoint, queryParams = {}, method = 'GET', body = null) => {
+    const url = new URL(`${baseUrl}${endpoint}`);
+    Object.entries(queryParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.append(key, value);
       }
     });
     
-    queryParams.append('page', currentPage);
-    queryParams.append('page_size', pageSize);
-    
-    queryParams.append('ordering', sortField);
-    
-    fetch(`${API_URL}/api/flightlogs/?${queryParams.toString()}`, {
-      headers: getAuthHeaders()
-    })
-      .then((res) => {
-        if (!res.ok) {
-          if (handleAuthError(res)) return;
-          throw new Error('Failed to fetch flight logs');
+    try {
+      const options = {
+        method,
+        headers: getAuthHeaders()
+      };
+      
+      if (body && method !== 'GET') {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+      }
+      
+      const response = await fetch(url, options);
+      
+      if (!response.ok) {
+        if (handleAuthError(response)) return { error: true };
+        
+        let errorData = 'Unknown error';
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const text = await response.text();
+          if (text) {
+            try {
+              errorData = JSON.parse(text);
+            } catch (e) {
+              errorData = text;
+            }
+          }
         }
-        return res.json();
-      })
-      .then((data) => {
-        // Handle paginated response
-        setLogs(data.results || []);
-        setTotalPages(Math.ceil((data.count || 0) / pageSize));
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError('Could not load flight logs.');
-        setIsLoading(false);
-      });
-  }, [API_URL, getAuthHeaders, handleAuthError, navigate, debouncedFilters, currentPage, pageSize, sortField]);
+        
+        setError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
+        return { error: true };
+      }
+      
+      if (method === 'DELETE' || response.status === 204 || response.headers.get('content-length') === '0') {
+        return { error: false, data: {} };
+      }
+      
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const text = await response.text();
+          const data = text ? JSON.parse(text) : {};
+          return { error: false, data };
+        } else {
+          return { error: false, data: {} };
+        }
+      } catch (err) {
+        return { error: false, data: {} };
+      }
+    } catch (err) {
+      setError('An unexpected error occurred.');
+      return { error: true };
+    }
+  }, [baseUrl, getAuthHeaders, handleAuthError, setError]);
+  
+  return { fetchData };
+};
 
-  const handleFileUpload = async (event) => {
+const Flightlog = () => {
+  const navigate = useNavigate();
+  const API_URL = import.meta.env.VITE_API_URL;
+  
+  const [logs, setLogs] = useState([]);
+  const [availableUAVs, setAvailableUAVs] = useState([]);
+  const [error, setError] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [editingLogId, setEditingLogId] = useState(null);
+  const [editingLog, setEditingLog] = useState(null);
+  const [filters, setFilters] = useState({...INITIAL_FLIGHT_STATE});
+  const [newFlight, setNewFlight] = useState({...INITIAL_FLIGHT_STATE});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sortField, setSortField] = useState('-departure_date,-departure_time');
+  const [debouncedFilters, setDebouncedFilters] = useState({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [importResult, setImportResult] = useState(null);
+
+  const fileInputRef = useRef(null);
+  const filterTimer = useRef(null);
+  
+  const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
+  const { fetchData } = useApi(API_URL, setError);
+  
+  const safeAvailableUAVs = useMemo(() => {
+    return Array.isArray(availableUAVs) ? availableUAVs : [];
+  }, [availableUAVs]);
+  
+  const tableColumns = useMemo(() => [
+    { header: 'Dept Place', accessor: 'departure_place' },
+    { header: 'Date', accessor: 'departure_date' },
+    { header: 'Dept Time', accessor: 'departure_time' },
+    { header: 'LDG Time', accessor: 'landing_time' },
+    { header: 'LDG Place', accessor: 'landing_place' },
+    { header: 'Duration', accessor: 'flight_duration' },
+    { header: 'T/O', accessor: 'takeoffs' },
+    { header: 'LDG', accessor: 'landings' },
+    { header: 'Light', accessor: 'light_conditions' },
+    { header: 'OPS', accessor: 'ops_conditions' },
+    { header: 'Pilot Type', accessor: 'pilot_type' },
+    { 
+      header: 'UAV', 
+      accessor: 'uav', 
+      render: (value) => {
+        if (value && typeof value === 'object' && value.drone_name) {
+          return value.drone_name;
+        }
+        
+        if (value) {
+          const uavId = typeof value === 'object' ? value.uav_id : value;
+          const foundUav = safeAvailableUAVs.find(uav => uav.uav_id == uavId);
+          return foundUav ? foundUav.drone_name : `UAV #${uavId}`;
+        }
+        
+        return '';
+      } 
+    },
+    { header: 'Comments', accessor: 'comments' }
+  ], [safeAvailableUAVs]);
+  
+  const getFormFields = useCallback((isFilter = false) => {
+    return [
+      { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
+      { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },
+      { name: 'departure_time', label: 'Departure Time', type: 'time', placeholder: 'Departure Time', step: '1' },
+      { name: 'landing_time', label: 'LDG Time', type: 'time', placeholder: 'LDG Time', step: '1' },
+      { name: 'landing_place', label: 'LDG Place', type: 'text', placeholder: 'LDG Place' },
+      { name: 'flight_duration', label: 'Duration', type: 'number', placeholder: 'Duration (s)', step: '1', min: '0' },
+      { name: 'takeoffs', label: 'T/O', type: 'number', placeholder: 'T/O', step: '1', min: '0' },
+      { name: 'landings', label: 'LDG', type: 'number', placeholder: 'LDG', step: '1', min: '0' },
+      { name: 'light_conditions', label: 'Light', type: 'select', placeholder: 'Light', options: OPTIONS.light_conditions },
+      { name: 'ops_conditions', label: 'OPS', type: 'select', placeholder: 'OPS', options: OPTIONS.ops_conditions },
+      { name: 'pilot_type', label: 'Pilot Type', type: 'select', placeholder: 'Pilot Type', options: OPTIONS.pilot_type },
+      { 
+        name: 'uav', 
+        label: 'UAV', 
+        type: 'select', 
+        placeholder: 'Select UAV',
+        options: safeAvailableUAVs.map(uav => ({ value: uav.uav_id, label: uav.drone_name }))
+      },
+      { name: 'comments', label: 'Comments', type: 'text', placeholder: 'Comments' }
+    ];
+  }, [safeAvailableUAVs]);
+  
+  const filterFormFields = useMemo(() => getFormFields(true), [getFormFields]);
+  const addFormFields = useMemo(() => getFormFields(false), [getFormFields]);
+  
+  const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
+
+  const fetchFlightLogs = useCallback(async () => {
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
+    
+    setIsLoading(true);
+    
+    const queryParams = {
+      ...debouncedFilters,
+      page: currentPage,
+      page_size: pageSize,
+      ordering: sortField
+    };
+    
+    if (queryParams.uav && typeof queryParams.uav === 'object' && queryParams.uav.uav_id) {
+      queryParams.uav = queryParams.uav.uav_id;
+    }
+    
+    const result = await fetchData('/api/flightlogs/', queryParams);
+    
+    if (!result.error) {
+      setLogs(result.data.results || []);
+      setTotalPages(Math.ceil((result.data.count || 0) / pageSize));
+    }
+    
+    setIsLoading(false);
+  }, [checkAuthAndGetUser, fetchData, debouncedFilters, currentPage, pageSize, sortField]);
+
+  const fetchUAVs = useCallback(async () => {
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
+    
+    const result = await fetchData('/api/uavs/');
+    
+    if (!result.error) {
+      const uavArray = Array.isArray(result.data) ? result.data : (result.data.results || []);
+      setAvailableUAVs(uavArray);
+    }
+  }, [checkAuthAndGetUser, fetchData]);
+
+  const handleFormChange = useCallback((setter, e) => {
+    const { name, value } = e.target;
+    
+    setter(prev => {
+      const newState = { ...prev, [name]: value };
+      
+      if ((name === 'departure_time' || name === 'landing_time') && name !== 'flight_duration') {
+        const deptTime = name === 'departure_time' ? value : prev.departure_time;
+        const landTime = name === 'landing_time' ? value : prev.landing_time;
+        
+        const duration = calculateFlightDuration(deptTime, landTime);
+        if (duration !== '') {
+          newState.flight_duration = duration;
+        }
+      }
+      
+      return newState;
+    });
+  }, []);
+
+  const handleFilterChange = useCallback((e) => {
+    const { name, value } = e.target;
+    
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    if (filterTimer.current) {
+      clearTimeout(filterTimer.current);
+    }
+    
+    filterTimer.current = setTimeout(() => {
+      setCurrentPage(1);
+      setDebouncedFilters(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }, 500);
+  }, []);
+
+  const handleNewFlightChange = useCallback((e) => handleFormChange(setNewFlight, e), [handleFormChange]);
+  const handleEditChange = useCallback((e) => handleFormChange(setEditingLog, e), [handleFormChange]);
+
+  const handleNewFlightAdd = useCallback(async () => {
+    const requiredFields = ['departure_date', 'departure_time', 'landing_time', 'uav', 
+      'departure_place', 'landing_place', 'light_conditions', 'ops_conditions', 'pilot_type'];
+      
+    const missingFields = requiredFields.filter(field => !newFlight[field]);
+    if (missingFields.length > 0) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+  
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
+  
+    const flightPayload = {
+      ...newFlight,
+      flight_duration: parseInt(newFlight.flight_duration) || 0,
+      takeoffs: parseInt(newFlight.takeoffs) || 1,  
+      landings: parseInt(newFlight.landings) || 1,
+      comments: newFlight.comments || '',
+      user: auth.user_id
+    };
+  
+    const result = await fetchData('/api/flightlogs/', {}, 'POST', flightPayload);
+    
+    if (!result.error) {
+      fetchFlightLogs();
+      setNewFlight({...INITIAL_FLIGHT_STATE});
+      setError(null);
+    }
+  }, [fetchData, checkAuthAndGetUser, fetchFlightLogs, newFlight]);
+
+  const handleRowClick = useCallback((id) => {
+    navigate(`/flightdetails/${id}`);
+  }, [navigate]);
+
+  const handleEdit = useCallback((id) => {
+    const logToEdit = logs.find(log => log.flightlog_id === id);
+    
+    if (logToEdit) {
+      let uavValue = logToEdit.uav;
+      if (uavValue && typeof uavValue === 'object' && uavValue.uav_id) {
+        uavValue = uavValue.uav_id;
+      }
+      
+      setEditingLog({
+        ...logToEdit,
+        uav: uavValue,
+        ...Object.keys(INITIAL_FLIGHT_STATE).reduce((acc, key) => {
+          acc[key] = logToEdit[key] !== undefined ? logToEdit[key] : '';
+          return acc;
+        }, {})
+      });
+      
+      setEditingLogId(id);
+    }
+  }, [logs]);
+
+  const handleSaveEdit = useCallback(async () => {
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
+
+    const updatedFlightLog = {
+      ...editingLog,
+      flight_duration: parseInt(editingLog.flight_duration) || 0,
+      takeoffs: parseInt(editingLog.takeoffs) || 0,
+      landings: parseInt(editingLog.landings) || 0,
+      user: auth.user_id
+    };
+
+    const result = await fetchData(`/api/flightlogs/${editingLogId}/`, {}, 'PUT', updatedFlightLog);
+    
+    if (!result.error) {
+      fetchFlightLogs();
+      setEditingLogId(null);
+      setEditingLog(null);
+      setError(null);
+    }
+  }, [fetchData, checkAuthAndGetUser, editingLog, editingLogId, fetchFlightLogs]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingLogId(null);
+    setEditingLog(null);
+  }, []);
+
+  const handleDeleteLog = useCallback((id) => {
+    setConfirmDeleteId(id);
+  }, []);
+
+  const performDeleteLog = useCallback(async (id) => {
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
+    
+    const result = await fetchData(`/api/flightlogs/${id}/`, {}, 'DELETE');
+    
+    if (!result.error) {
+      fetchFlightLogs();
+      setEditingLogId(null);
+      setEditingLog(null);
+      setError(null);
+    }
+  }, [fetchData, checkAuthAndGetUser, fetchFlightLogs]);
+
+  const handleFileUpload = useCallback(async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -187,374 +470,51 @@ const Flightlog = () => {
       setImportResult({
         message: (result.message || '') + (result.details?.unmapped_message || '')
       });
-      setIsLoading(false);
     } catch (err) {
-      console.error('Error uploading CSV:', err);
       setError('Failed to upload CSV. Please try again.');
+    } finally {
       setIsLoading(false);
     }
-  };
+  }, [API_URL, fetchFlightLogs, getAuthHeaders, handleAuthError]);
 
-  const handleImportClick = () => {
+  const handleImportClick = useCallback(() => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
-  };
+  }, []);
 
-  const fetchUAVs = useCallback(() => {
-    const token = localStorage.getItem('access_token');
-    const user_id = localStorage.getItem('user_id');
-    if (!token || !user_id) {
-      navigate('/login');
-      return;
-    }
-    
-    fetch(`${API_URL}/api/uavs/`, {
-      headers: getAuthHeaders()
-    })
-      .then((res) => {
-        if (!res.ok) {
-          if (handleAuthError(res)) return;
-          throw new Error('Failed to fetch UAVs');
-        }
-        return res.json();
-      })
-      .then((data) => {
-        console.log("Fetched UAVs:", data);
-        
-        const uavArray = Array.isArray(data) ? data : (data.results || []);
-        setAvailableUAVs(uavArray);
-      })
-      .catch((err) => {
-        console.error("Error fetching UAVs:", err);
-        setError('Could not load UAVs.');
-      });
-  }, [API_URL, getAuthHeaders, navigate, handleAuthError]);
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handleSortChange = useCallback((field) => {
+    setSortField(prevSort => {
+      if (field === 'departure_date') {
+        return prevSort === field ? `-${field},-departure_time` : `${field},departure_time`;
+      }
+      
+      return prevSort === field ? `-${field}` : (prevSort === `-${field}` ? field : field);
+    });
+  }, []);
 
   useEffect(() => {
     fetchFlightLogs();
     fetchUAVs();
   }, [fetchFlightLogs, fetchUAVs]);
 
-  const safeAvailableUAVs = useMemo(() => {
-    return Array.isArray(availableUAVs) ? availableUAVs : [];
-  }, [availableUAVs]);
-
-  const tableColumns = useMemo(() => [
-    { header: 'Dept Place', accessor: 'departure_place' },
-    { header: 'Date', accessor: 'departure_date' },
-    { header: 'Dept Time', accessor: 'departure_time' },
-    { header: 'LDG Time', accessor: 'landing_time' },
-    { header: 'LDG Place', accessor: 'landing_place' },
-    { header: 'Duration', accessor: 'flight_duration' },
-    { header: 'T/O', accessor: 'takeoffs' },
-    { header: 'LDG', accessor: 'landings' },
-    { header: 'Light', accessor: 'light_conditions' },
-    { header: 'OPS', accessor: 'ops_conditions' },
-    { header: 'Pilot Type', accessor: 'pilot_type' },
-    { 
-      header: 'UAV', 
-      accessor: 'uav', 
-      render: (value, row) => {
-        // Log the UAV value for debugging
-        console.log("UAV value in table:", value);
-        
-        if (value && typeof value === 'object' && value.drone_name) {
-          return value.drone_name;
-        }
-        
-        if (value) {
-          const uavId = typeof value === 'object' ? value.uav_id : value;
-          const foundUav = safeAvailableUAVs.find(uav => uav.uav_id == uavId);
-          return foundUav ? foundUav.drone_name : `UAV #${uavId}`;
-        }
-        
-        return '';
-      } 
-    },
-    { header: 'Comments', accessor: 'comments' }
-  ], [safeAvailableUAVs]);
-
-  const handleRowClick = useCallback((id) => {
-    navigate(`/flightdetails/${id}`);
-  }, [navigate]);
-
-  const getFormFields = useCallback((isFilter = false) => {
-    const fields = [
-      { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
-      { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },
-      { name: 'departure_time', label: 'Departure Time', type: 'time', placeholder: 'Departure Time', step: '1' },
-      { name: 'landing_time', label: 'LDG Time', type: 'time', placeholder: 'LDG Time', step: '1' },
-      { name: 'landing_place', label: 'LDG Place', type: 'text', placeholder: 'LDG Place' },
-      { name: 'flight_duration', label: 'Duration', type: 'number', placeholder: 'Duration (s)', step: '1', min: '0' },
-      { name: 'takeoffs', label: 'T/O', type: 'number', placeholder: 'T/O', step: '1', min: '0' },
-      { name: 'landings', label: 'LDG', type: 'number', placeholder: 'LDG', step: '1', min: '0' },
-      { name: 'light_conditions', label: 'Light', type: 'select', placeholder: 'Light', options: OPTIONS.light_conditions },
-      { name: 'ops_conditions', label: 'OPS', type: 'select', placeholder: 'OPS', options: OPTIONS.ops_conditions },
-      { name: 'pilot_type', label: 'Pilot Type', type: 'select', placeholder: 'Pilot Type', options: OPTIONS.pilot_type },
-      { 
-        name: 'uav', 
-        label: 'UAV', 
-        type: 'select', 
-        placeholder: 'Select UAV',
-        options: safeAvailableUAVs.map(uav => ({ 
-          value: uav.uav_id, 
-          label: uav.drone_name 
-        }))
-      },
-      { name: 'comments', label: 'Comments', type: 'text', placeholder: 'Comments' }
-    ];
-    
-    return fields;
-  }, [safeAvailableUAVs]);
-
-  const filterFormFields = useMemo(() => getFormFields(true), [getFormFields]);
-  const addFormFields = useMemo(() => getFormFields(false), [getFormFields]);
-
-  const handleFormChange = useCallback((setter, e) => {
-    const { name, value } = e.target;
-    
-    setter(prev => {
-      const newState = { ...prev, [name]: value };
-      
-      if ((name === 'departure_time' || name === 'landing_time') && name !== 'flight_duration') {
-        const deptTime = name === 'departure_time' ? value : prev.departure_time;
-        const landTime = name === 'landing_time' ? value : prev.landing_time;
-        
-        const duration = calculateFlightDuration(deptTime, landTime);
-        if (duration !== '') {
-          newState.flight_duration = duration;
-        }
-      }
-      
-      return newState;
-    });
-  }, []);
-
-  const handleFilterChange = useCallback((e) => {
-    const { name, value } = e.target;
-    
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    if (filterTimer.current) {
-      clearTimeout(filterTimer.current);
-    }
-    
-    filterTimer.current = setTimeout(() => {
-
-      setCurrentPage(1);
-      setDebouncedFilters(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }, 500);
-  }, []);
-
-  const handleNewFlightChange = useCallback((e) => handleFormChange(setNewFlight, e), [handleFormChange]);
-  const handleEditChange = useCallback((e) => handleFormChange(setEditingLog, e), [handleFormChange]);
-
-  const handleNewFlightAdd = useCallback(async () => {
-    if (!newFlight.departure_date || !newFlight.departure_time || 
-        !newFlight.landing_time || !newFlight.uav || 
-        !newFlight.departure_place || !newFlight.landing_place || 
-        !newFlight.light_conditions || !newFlight.ops_conditions || 
-        !newFlight.pilot_type) {
-      setError('Please fill in all required fields.');
-      return;
-    }
-  
-    const token = localStorage.getItem('access_token');
-    const user_id = localStorage.getItem('user_id');
-    if (!token || !user_id) {
-      navigate('/login');
-      return;
-    }
-  
-    const flightPayload = {
-      ...newFlight,
-      flight_duration: parseInt(newFlight.flight_duration) || 0,
-      takeoffs: parseInt(newFlight.takeoffs) || 1,  
-      landings: parseInt(newFlight.landings) || 1,
-      comments: newFlight.comments || '',
-      user: user_id
-    };
-  
-    try {
-      const response = await fetch(`${API_URL}/api/flightlogs/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify(flightPayload)
-      });
-  
-      if (!response.ok) {
-        if (handleAuthError(response)) return;
-        const errorData = await response.json();
-        setError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
-        return;
-      }
-  
-      fetchFlightLogs();
-      setNewFlight({...INITIAL_FLIGHT_STATE});
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError('An error occurred while adding the flight log.');
-    }
-  }, [API_URL, fetchFlightLogs, getAuthHeaders, handleAuthError, navigate, newFlight]);
-
-  const handleEdit = useCallback((id) => {
-    const logToEdit = logs.find(log => log.flightlog_id === id);
-    
-    if (logToEdit) {
-      let uavValue;
-  
-      if (logToEdit.uav && typeof logToEdit.uav === 'object' && logToEdit.uav.uav_id) {
-        uavValue = logToEdit.uav.uav_id;
-      } else {
-        uavValue = logToEdit.uav;
-      }
-      
-      setEditingLog({
-        ...logToEdit,
-        uav: uavValue,
-        departure_place: logToEdit.departure_place || '',
-        departure_date: logToEdit.departure_date || '',
-        departure_time: logToEdit.departure_time || '',
-        landing_time: logToEdit.landing_time || '',
-        landing_place: logToEdit.landing_place || '',
-        flight_duration: logToEdit.flight_duration !== undefined ? logToEdit.flight_duration : '',
-        takeoffs: logToEdit.takeoffs !== undefined ? logToEdit.takeoffs : '',
-        landings: logToEdit.landings !== undefined ? logToEdit.landings : '',
-        light_conditions: logToEdit.light_conditions || '',
-        ops_conditions: logToEdit.ops_conditions || '',
-        pilot_type: logToEdit.pilot_type || '',
-        comments: logToEdit.comments || ''
-      });
-      
-      setEditingLogId(id);
-    }
-  }, [logs]);
-
-  const handleSaveEdit = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
-    const user_id = localStorage.getItem('user_id');
-    
-    if (!token || !user_id) {
-      navigate('/login');
-      return;
-    }
-
-    const updatedFlightLog = {
-      ...editingLog,
-      flight_duration: parseInt(editingLog.flight_duration) || 0,
-      takeoffs: parseInt(editingLog.takeoffs) || 0,
-      landings: parseInt(editingLog.landings) || 0,
-      user: user_id
-    };
-
-    try {
-      const response = await fetch(`${API_URL}/api/flightlogs/${editingLogId}/`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify(updatedFlightLog)
-      });
-
-      if (!response.ok) {
-        if (handleAuthError(response)) return;
-        const errorData = await response.json();
-        setError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
-        return;
-      }
-
-      fetchFlightLogs();
-      setEditingLogId(null);
-      setEditingLog(null);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError('An error occurred while saving the flight log.');
-    }
-  }, [API_URL, editingLog, editingLogId, fetchFlightLogs, getAuthHeaders, handleAuthError, navigate]);
-
-  const handleCancelEdit = useCallback(() => {
-    setEditingLogId(null);
-    setEditingLog(null);
-  }, []);
-
-  const handleDeleteLog = useCallback((id) => {
-    setConfirmDeleteId(id);
-  }, []);
-
-  const performDeleteLog = useCallback(async (id) => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-    try {
-      const response = await fetch(`${API_URL}/api/flightlogs/${id}/`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
-      });
-      if (!response.ok) {
-        if (handleAuthError(response)) return;
-        throw new Error('Failed to delete flight log');
-      }
-      fetchFlightLogs();
-      setEditingLogId(null);
-      setEditingLog(null);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError('An error occurred while deleting the flight log.');
-    }
-  }, [API_URL, fetchFlightLogs, getAuthHeaders, handleAuthError, navigate]);
-
-  const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
-
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(true);
-      } else {
-        setSidebarOpen(false);
-      }
+      setSidebarOpen(window.innerWidth >= 1024);
     };
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Handle pagination
-  const handlePageChange = useCallback((page) => {
-    setCurrentPage(page);
-  }, []);
-
-  // Handle sorting
-  const handleSortChange = useCallback((field) => {
-    setSortField(prevSort => {
-      // If already sorting by this field, toggle direction
-      if (prevSort === field) return `-${field}`;
-      if (prevSort === `-${field}`) return field;
-      // Default to ascending for new field
-      return field;
-    });
-  }, []);
-
   useEffect(() => {
     fetchFlightLogs();
   }, [fetchFlightLogs, debouncedFilters, currentPage, sortField]);
 
-  // Clear timeout on unmount
   useEffect(() => {
     return () => {
       if (filterTimer.current) {
@@ -596,7 +556,6 @@ const Flightlog = () => {
       >
         <div className="flex items-center h-10 mb-4">
           <div className="w-10 lg:hidden"></div>
-          
           <h1 className="text-2xl font-semibold text-center flex-1">Flight Log</h1>
         </div>
         
@@ -625,9 +584,7 @@ const Flightlog = () => {
             onSaveEdit={handleSaveEdit}
             onCancelEdit={handleCancelEdit}
             onDelete={handleDeleteLog}
-            availableOptions={{
-              availableUAVs: safeAvailableUAVs
-            }}
+            availableOptions={{ availableUAVs: safeAvailableUAVs }}
             rowClickable={true}
             showActionColumn={true}
             actionColumnText="Actions"
@@ -635,7 +592,6 @@ const Flightlog = () => {
           />
         )}
         
-        {/* Pagination controls */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center mt-4 gap-2">
             <button 
@@ -647,12 +603,11 @@ const Flightlog = () => {
             </button>
             
             <div className="flex items-center gap-1">
-              {/* First page */}
               {currentPage > 3 && (
                 <>
                   <button 
                     onClick={() => handlePageChange(1)}
-                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                    className="w-8 h-8 flex items-center justify-center rounded bg-gray-200"
                   >
                     1
                   </button>
@@ -660,34 +615,32 @@ const Flightlog = () => {
                 </>
               )}
               
-              {/* Page numbers */}
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter(page => {
-                  // Don't show page 1 or last page in the middle section if they're already shown separately
                   if ((currentPage > 3 && page === 1) || (currentPage < totalPages - 2 && page === totalPages)) {
                     return false;
                   }
-                  // Show pages around current page
                   return page >= currentPage - 1 && page <= currentPage + 1;
                 })
                 .map(page => (
                   <button
                     key={page}
                     onClick={() => handlePageChange(page)}
-                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${
+                      currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'
+                    }`}
                   >
                     {page}
                   </button>
                 ))
               }
               
-              {/* Last page */}
               {currentPage < totalPages - 2 && (
                 <>
                   {currentPage < totalPages - 3 && <span className="px-1">...</span>}
                   <button 
                     onClick={() => handlePageChange(totalPages)}
-                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                    className="w-8 h-8 flex items-center justify-center rounded bg-gray-200"
                   >
                     {totalPages}
                   </button>
@@ -720,23 +673,23 @@ const Flightlog = () => {
             style={{ display: 'none' }} 
           />
         </div>
-        {/* ConfirmModal for delete */}
+
         <ConfirmModal
           open={!!confirmDeleteId}
-          title="Löschen bestätigen"
-          message="Möchten Sie diesen Fluglog wirklich löschen?"
+          title="Confirm Deletion"
+          message="Do you really want to delete this flight log?"
           onConfirm={() => {
             performDeleteLog(confirmDeleteId);
             setConfirmDeleteId(null);
           }}
           onCancel={() => setConfirmDeleteId(null)}
-          confirmText="Löschen"
-          cancelText="Abbrechen"
+          confirmText="Delete"
+          cancelText="Cancel"
         />
-        {/* ConfirmModal for import result */}
+        
         <ConfirmModal
           open={!!importResult}
-          title="Import abgeschlossen"
+          title="Import completed"
           message={importResult?.message || ''}
           onConfirm={() => setImportResult(null)}
           onCancel={() => setImportResult(null)}

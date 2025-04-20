@@ -33,14 +33,12 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
               </select>
             ) : (
               <input
-                type={field.type || "text"}
+                type="text"
                 name={field.name}
                 placeholder={field.placeholder || ""}
                 value={filters[field.name] || ""}
                 onChange={onFilterChange}
                 className="w-full px-2 py-1 border border-gray-300 rounded"
-                step={field.step}
-                min={field.min}
               />
             )}
           </td>
@@ -82,14 +80,12 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
             </select>
           ) : (
             <input
-              type={field.type || "text"}
+              type="text"
               name={field.name}
               placeholder={field.placeholder || ""}
               value={filters[field.name] || ""}
               onChange={onFilterChange}
               className="w-full px-2 py-1 border border-gray-300 rounded"
-              step={field.step}
-              min={field.min}
             />
           )}
         </div>

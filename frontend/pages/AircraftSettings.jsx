@@ -1,148 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sidebar, Button, Loading, ConfirmModal } from '../components';
-import Alert from '../components/Alert';
 
 const AircraftSettings = () => {
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const { uavId } = useParams();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  
   const [aircraft, setAircraft] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
-  const [newLog, setNewLog] = useState({ 
-    event_type: 'LOG', 
-    description: '', 
-    event_date: '',
-    file: null 
-  });
+  const [newLog, setNewLog] = useState({ event_type: 'LOG', description: '', event_date: '', file: null });
   const [editingLogId, setEditingLogId] = useState(null);
   const [editingLog, setEditingLog] = useState(null);
   const [deleteLogId, setDeleteLogId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+  const [editFormErrors, setEditFormErrors] = useState({});
 
-  const API_URL = import.meta.env.VITE_API_URL;
-
-  const submitMaintenanceLog = async (logData, file, method, logId = null) => {
-    const token = localStorage.getItem('access_token');
-    const endpoint = logId 
-      ? `${API_URL}/api/maintenance/${logId}/` 
-      : `${API_URL}/api/maintenance/`;
-    
-    try {
-      let response;
-      
-      if (file) {
-        const formData = new FormData();
-        formData.append('description', logData.description);
-        formData.append('event_date', logData.event_date);
-        formData.append('event_type', 'LOG');
-        formData.append('uav', uavId);
-        formData.append('file', file);
-        
-        response = await fetch(endpoint, {
-          method,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        });
-      } else {
-        response = await fetch(endpoint, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ...logData,
-            event_type: 'LOG',
-            uav: uavId,
-          }),
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error details:', errorData);
-        throw new Error(`Failed to ${method === 'POST' ? 'add' : 'update'} maintenance log`);
-      }
-      
-      return true;
-    } catch (error) {
-      console.error(error);
-      return false;
-    }
-  };
-
-  const fetchAircraft = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch aircraft data');
-      const data = await response.json();
-
-      const logsResponse = await fetch(`${API_URL}/api/maintenance/?uav=${uavId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (logsResponse.ok) {
-        const logsData = await logsResponse.json();
-        data.maintenance_logs = logsData;
-      }
-
-      const remindersResponse = await fetch(`${API_URL}/api/maintenance-reminders/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (remindersResponse.ok) {
-        const remindersData = await remindersResponse.json();
-        const uavReminders = remindersData.filter(reminder =>
-          reminder.uav === parseInt(uavId)
-        );
-
-        uavReminders.forEach(reminder => {
-          if (reminder.component === 'props') {
-            data.next_props_maint_date = reminder.next_maintenance;
-          } else if (reminder.component === 'motor') {
-            data.next_motor_maint_date = reminder.next_maintenance;
-          } else if (reminder.component === 'frame') {
-            data.next_frame_maint_date = reminder.next_maintenance;
-          }
-        });
-      }
-
-      setAircraft(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
+  useEffect(() => { fetchAircraft(); }, [uavId, API_URL]);
+  
   useEffect(() => {
-    fetchAircraft();
-  }, [uavId, API_URL]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(true);
-      } else {
-        setSidebarOpen(false);
-      }
-    };
-
+    const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleModifyClick = () => {
-    navigate(`/edit-aircraft/${uavId}`);
-  };
+  const na = v => v || 'N/A';
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
-  const formatFlightHours = (hours) => {
+  const formatFlightHours = hours => {
     if (!hours) return 'N/A';
     const totalMinutes = Math.round(hours * 60);
     const hh = Math.floor(totalMinutes / 60);
@@ -150,75 +37,139 @@ const AircraftSettings = () => {
     return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
+  const formatDate = dateString => dateString ? new Date(dateString).toLocaleDateString() : 'N/A';
+
+  const validateForm = (log, setErrors) => {
+    const errors = {};
+    if (!log.event_date) errors.event_date = 'Date is required';
+    if (!log.description?.trim()) errors.description = 'Description is required';
+    setErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleLogChange = (e) => {
-    const { name, value, files } = e.target;
-    if (name === 'file') {
-      setNewLog({ ...newLog, file: files[0] });
-    } else {
-      setNewLog({ ...newLog, [name]: value });
+  const fetchAircraft = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const [aircraftRes, logsRes, remindersRes] = await Promise.all([
+        fetch(`${API_URL}/api/uavs/${uavId}/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/maintenance/?uav=${uavId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/maintenance-reminders/`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      if (!aircraftRes.ok) throw new Error('Failed to fetch aircraft data');
+      const data = await aircraftRes.json();
+      if (logsRes.ok) data.maintenance_logs = await logsRes.json();
+      if (remindersRes.ok) {
+        const remindersData = await remindersRes.json();
+        remindersData.filter(r => r.uav === parseInt(uavId)).forEach(reminder => {
+          if (reminder.component === 'props') data.next_props_maint_date = reminder.next_maintenance;
+          else if (reminder.component === 'motor') data.next_motor_maint_date = reminder.next_maintenance;
+          else if (reminder.component === 'frame') data.next_frame_maint_date = reminder.next_maintenance;
+        });
+      }
+      setAircraft(data);
+    } catch (error) {
     }
   };
 
-  const handleEditLog = (logId) => {
+  const submitMaintenanceLog = async (logData, file, method, logId = null, keepExistingFile = false) => {
+    const token = localStorage.getItem('access_token');
+    const endpoint = logId 
+      ? `${API_URL}/api/maintenance/${logId}/` 
+      : `${API_URL}/api/maintenance/`;
+    try {
+      let response;
+      if (file) {
+        const formData = new FormData();
+        formData.append('description', logData.description);
+        formData.append('event_date', logData.event_date);
+        formData.append('event_type', 'LOG');
+        formData.append('uav', uavId);
+        formData.append('file', file);
+        response = await fetch(endpoint, {
+          method,
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+      } else {
+        const requestData = { ...logData, event_type: 'LOG', uav: uavId };
+        if (method === 'PUT' && keepExistingFile) {
+          delete requestData.file;
+          delete requestData.originalFile;
+        }
+        response = await fetch(endpoint, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(requestData),
+        });
+      }
+      if (!response.ok) throw new Error(`Failed to ${method === 'POST' ? 'add' : 'update'} maintenance log`);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const toggleSidebar = () => setSidebarOpen(v => !v);
+  const handleModifyClick = () => navigate(`/edit-aircraft/${uavId}`);
+
+  const handleLogChange = e => {
+    const { name, value, files } = e.target;
+    setNewLog(l => ({ ...l, [name]: name === 'file' ? files[0] : value }));
+  };
+  
+  const handleEditLogChange = e => {
+    const { name, value, files } = e.target;
+    setEditingLog(l => ({ ...l, [name]: name === 'file' ? files[0] : value }));
+  };
+
+  const handleEditLog = logId => {
     const logToEdit = aircraft.maintenance_logs.find(log => log.maintenance_id === logId);
     if (logToEdit) {
       setEditingLogId(logId);
-      setEditingLog({ 
-        ...logToEdit,
-        file: null
-      });
-    }
-  };
-
-  const handleEditLogChange = (e) => {
-    const { name, value, files } = e.target;
-    if (name === 'file') {
-      setEditingLog({ ...editingLog, file: files[0] });
-    } else {
-      setEditingLog({ ...editingLog, [name]: value });
+      setEditingLog({ ...logToEdit, originalFile: logToEdit.file, file: null });
+      setEditFormErrors({});
     }
   };
 
   const handleSaveEdit = async () => {
+    if (!validateForm(editingLog, setEditFormErrors)) return;
+    const hasNewFile = editingLog.file !== null;
     const success = await submitMaintenanceLog(
       editingLog,
-      editingLog.file,
+      hasNewFile ? editingLog.file : null,
       'PUT',
-      editingLogId
+      editingLogId,
+      !hasNewFile && editingLog.originalFile
     );
-    
     if (success) {
       await fetchAircraft();
       setEditingLogId(null);
       setEditingLog(null);
+      setEditFormErrors({});
     }
   };
 
   const handleCancelEdit = () => {
     setEditingLogId(null);
     setEditingLog(null);
+    setEditFormErrors({});
   };
 
   const handleAddLog = async () => {
-    const success = await submitMaintenanceLog(
-      newLog,
-      newLog.file,
-      'POST'
-    );
-    
+    if (!validateForm(newLog, setFormErrors)) return;
+    const success = await submitMaintenanceLog(newLog, newLog.file, 'POST');
     if (success) {
       await fetchAircraft();
       setNewLog({ event_type: 'LOG', description: '', event_date: '', file: null });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setFormErrors({});
     }
   };
 
-  const handleDeleteLog = (logId) => {
+  const handleDeleteLog = logId => {
     setDeleteLogId(logId);
     setShowDeleteModal(true);
   };
@@ -230,24 +181,46 @@ const AircraftSettings = () => {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!response.ok) throw new Error('Failed to delete maintenance log');
-      
       await fetchAircraft();
       setEditingLogId(null);
       setEditingLog(null);
     } catch (error) {
-      console.error(error);
     } finally {
       setShowDeleteModal(false);
       setDeleteLogId(null);
     }
   };
 
-  const cancelDeleteLog = () => {
-    setShowDeleteModal(false);
-    setDeleteLogId(null);
-  };
+  const renderInput = ({ type, name, value, onChange, placeholder, error, ...rest }) => (
+    <>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`w-full px-2 py-1 border rounded ${error ? 'border-red-500' : 'border-gray-300'}`}
+        required
+        {...rest}
+      />
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </>
+  );
+
+  const InfoRow = ({ label, value }) => (
+    <div className="flex items-center">
+      <span className="font-semibold text-gray-700 w-40">{label}</span>
+      <span className="text-gray-900">{na(value)}</span>
+    </div>
+  );
+
+  const GridInfo = ({ label, value }) => (
+    <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
+      <span className="font-semibold text-gray-700">{label}</span>
+      <span className="text-gray-900">{na(value)}</span>
+    </div>
+  );
 
   if (!aircraft) return <Loading message="Loading..." />;
 
@@ -262,26 +235,21 @@ const AircraftSettings = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
-
       <button
         onClick={toggleSidebar}
-        className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
-          sidebarOpen ? 'left-2' : 'left-4'
-        }`}
+        className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${sidebarOpen ? 'left-2' : 'left-4'}`}
         aria-label="Toggle sidebar for desktop"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
-
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <div className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${sidebarOpen ? 'lg:ml-64' : ''}`}>
         <div className="flex items-center h-10 mb-4">
           <div className="w-10 lg:hidden"></div>
           <h1 className="text-2xl font-semibold text-center flex-1">Aircraft Settings</h1>
         </div>
-        
         {aircraft.is_active === false && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4">
             <div className="flex items-center">
@@ -292,150 +260,74 @@ const AircraftSettings = () => {
             </div>
           </div>
         )}
-        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-6">
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">General Information</h3>
               <div className="space-y-2">
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Drone Name:</span>
-                  <span className="text-gray-900">{aircraft.drone_name || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Manufacturer:</span>
-                  <span className="text-gray-900">{aircraft.manufacturer || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Type:</span>
-                  <span className="text-gray-900">{aircraft.type || 'N/A'}</span>
-                </div>
+                <InfoRow label="Drone Name:" value={aircraft.drone_name} />
+                <InfoRow label="Manufacturer:" value={aircraft.manufacturer} />
+                <InfoRow label="Type:" value={aircraft.type} />
               </div>
             </div>
-
+            
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Motors</h3>
               <div className="space-y-2">
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Motors:</span>
-                  <span className="text-gray-900">{aircraft.motors || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Type of Motor:</span>
-                  <span className="text-gray-900">{aircraft.motor_type || 'N/A'}</span>
-                </div>
+                <InfoRow label="Motors:" value={aircraft.motors} />
+                <InfoRow label="Type of Motor:" value={aircraft.motor_type} />
               </div>
             </div>
-
+            
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Video Information</h3>
               <div className="space-y-2">
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Video:</span>
-                  <span className="text-gray-900">{aircraft.video || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Video System:</span>
-                  <span className="text-gray-900">{aircraft.video_system || 'N/A'}</span>
-                </div>
+                <InfoRow label="Video:" value={aircraft.video} />
+                <InfoRow label="Video System:" value={aircraft.video_system} />
               </div>
             </div>
-
+            
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Firmware and Components</h3>
               <div className="space-y-2">
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Firmware:</span>
-                  <span className="text-gray-900">{aircraft.firmware || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Firmware Version:</span>
-                  <span className="text-gray-900">{aircraft.firmware_version || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">ESC:</span>
-                  <span className="text-gray-900">{aircraft.esc || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">ESC Firmware:</span>
-                  <span className="text-gray-900">{aircraft.esc_firmware || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Receiver:</span>
-                  <span className="text-gray-900">{aircraft.receiver || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Receiver Firmware:</span>
-                  <span className="text-gray-900">{aircraft.receiver_firmware || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Flight Controller:</span>
-                  <span className="text-gray-900">{aircraft.flight_controller || 'N/A'}</span>
-                </div>
+                <InfoRow label="Firmware:" value={aircraft.firmware} />
+                <InfoRow label="Firmware Version:" value={aircraft.firmware_version} />
+                <InfoRow label="ESC:" value={aircraft.esc} />
+                <InfoRow label="ESC Firmware:" value={aircraft.esc_firmware} />
+                <InfoRow label="Receiver:" value={aircraft.receiver} />
+                <InfoRow label="Receiver Firmware:" value={aircraft.receiver_firmware} />
+                <InfoRow label="Flight Controller:" value={aircraft.flight_controller} />
               </div>
             </div>
             
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Sensors</h3>
               <div className="grid grid-cols-5 gap-4">
-                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
-                  <span className="font-semibold text-gray-700">GPS</span>
-                  <span className="text-gray-900">{aircraft.gps || 'N/A'}</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
-                  <span className="font-semibold text-gray-700">MAG</span>
-                  <span className="text-gray-900">{aircraft.mag || 'N/A'}</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
-                  <span className="font-semibold text-gray-700">BARO</span>
-                  <span className="text-gray-900">{aircraft.baro || 'N/A'}</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
-                  <span className="font-semibold text-gray-700">GYRO</span>
-                  <span className="text-gray-900">{aircraft.gyro || 'N/A'}</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
-                  <span className="font-semibold text-gray-700">ACC</span>
-                  <span className="text-gray-900">{aircraft.acc || 'N/A'}</span>
-                </div>
+                <GridInfo label="GPS" value={aircraft.gps} />
+                <GridInfo label="MAG" value={aircraft.mag} />
+                <GridInfo label="BARO" value={aircraft.baro} />
+                <GridInfo label="GYRO" value={aircraft.gyro} />
+                <GridInfo label="ACC" value={aircraft.acc} />
               </div>
             </div>
           </div>
-
+          
           <div className="space-y-6">
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Registration and Serial</h3>
               <div className="space-y-2">
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Registration Number:</span>
-                  <span className="text-gray-900">{aircraft.registration_number || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Serial Number:</span>
-                  <span className="text-gray-900">{aircraft.serial_number || 'N/A'}</span>
-                </div>
+                <InfoRow label="Registration Number:" value={aircraft.registration_number} />
+                <InfoRow label="Serial Number:" value={aircraft.serial_number} />
               </div>
             </div>
-
+            
             <div className="bg-white shadow rounded-lg p-6">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Statistics</h3>
               <div className="space-y-2">
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Total Flights:</span>
-                  <span className="text-gray-900">{aircraft.total_flights || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Total Flight Time:</span>
-                  <span className="text-gray-900">{formatFlightHours(aircraft.total_flight_time / 3600)}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Total Takeoffs (TO):</span>
-                  <span className="text-gray-900">{aircraft.total_takeoffs || 'N/A'}</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-semibold text-gray-700 w-40">Total Landings (LDG):</span>
-                  <span className="text-gray-900">{aircraft.total_landings || 'N/A'}</span>
-                </div>
+                <InfoRow label="Total Flights:" value={aircraft.total_flights} />
+                <InfoRow label="Total Flight Time:" value={formatFlightHours(aircraft.total_flight_time / 3600)} />
+                <InfoRow label="Total Takeoffs (TO):" value={aircraft.total_takeoffs} />
+                <InfoRow label="Total Landings (LDG):" value={aircraft.total_landings} />
               </div>
             </div>
             
@@ -474,7 +366,7 @@ const AircraftSettings = () => {
                 </div>
               </div>
             </div>
-
+            
             <div className="bg-white shadow rounded-lg p-6">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Maintenance Logs</h3>
               <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
@@ -492,50 +384,42 @@ const AircraftSettings = () => {
                       {editingLogId === log.maintenance_id ? (
                         <>
                           <td className="px-4 py-2">
-                            <input
-                              type="date"
-                              name="event_date"
-                              value={editingLog.event_date}
-                              onChange={handleEditLogChange}
-                              className="w-full px-2 py-1 border border-gray-300 rounded"
-                            />
+                            {renderInput({
+                              type: "date",
+                              name: "event_date",
+                              value: editingLog.event_date,
+                              onChange: handleEditLogChange,
+                              error: editFormErrors.event_date
+                            })}
                           </td>
                           <td className="px-4 py-2">
-                            <input
-                              type="text"
-                              name="description"
-                              value={editingLog.description}
-                              onChange={handleEditLogChange}
-                              className="w-full px-2 py-1 border border-gray-300 rounded"
-                            />
+                            {renderInput({
+                              type: "text",
+                              name: "description",
+                              value: editingLog.description,
+                              onChange: handleEditLogChange,
+                              error: editFormErrors.description
+                            })}
                           </td>
                           <td className="px-4 py-2">
+                            {editingLog.originalFile && (
+                              <div className="mb-2 text-sm">
+                                <span>Current file: </span>
+                                <a href={editingLog.originalFile} download className="text-blue-500 hover:underline">Download</a>
+                              </div>
+                            )}
                             <input
                               type="file"
                               name="file"
                               onChange={handleEditLogChange}
                               className="w-full px-2 py-1 border border-gray-300 rounded"
                             />
+                            <p className="text-xs text-gray-500 mt-1">Leave empty to keep current file</p>
                           </td>
                           <td className="px-4 py-2 space-x-2 flex">
-                            <Button
-                              onClick={handleSaveEdit}
-                              className="bg-green-500 hover:bg-green-600 text-white"
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              onClick={handleCancelEdit}
-                              className="bg-gray-500 hover:bg-gray-600 text-white"
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              onClick={() => handleDeleteLog(log.maintenance_id)}
-                              className="bg-red-500 hover:bg-red-600 text-white"
-                            >
-                              Delete
-                            </Button>
+                            <Button onClick={handleSaveEdit} className="bg-green-500 hover:bg-green-600 text-white">Save</Button>
+                            <Button onClick={handleCancelEdit} className="bg-gray-500 hover:bg-gray-600 text-white">Cancel</Button>
+                            <Button onClick={() => handleDeleteLog(log.maintenance_id)} className="bg-red-500 hover:bg-red-600 text-white">Delete</Button>
                           </td>
                         </>
                       ) : (
@@ -544,22 +428,11 @@ const AircraftSettings = () => {
                           <td className="px-4 py-2">{log.description || 'N/A'}</td>
                           <td className="px-4 py-2">
                             {log.file ? (
-                              <a 
-                                href={log.file} 
-                                download 
-                                className="text-blue-500 hover:underline"
-                              >
-                                Download File
-                              </a>
+                              <a href={log.file} download className="text-blue-500 hover:underline">Download File</a>
                             ) : 'N/A'}
                           </td>
                           <td className="px-4 py-2">
-                            <Button
-                              onClick={() => handleEditLog(log.maintenance_id)}
-                              className="bg-blue-500 hover:bg-blue-600 text-white"
-                            >
-                              Edit
-                            </Button>
+                            <Button onClick={() => handleEditLog(log.maintenance_id)} className="bg-blue-500 hover:bg-blue-600 text-white">Edit</Button>
                           </td>
                         </>
                       )}
@@ -567,23 +440,23 @@ const AircraftSettings = () => {
                   ))}
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2">
-                      <input
-                        type="date"
-                        name="event_date"
-                        value={newLog.event_date}
-                        onChange={handleLogChange}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      />
+                      {renderInput({
+                        type: "date",
+                        name: "event_date",
+                        value: newLog.event_date,
+                        onChange: handleLogChange,
+                        error: formErrors.event_date
+                      })}
                     </td>
                     <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        name="description"
-                        value={newLog.description}
-                        onChange={handleLogChange}
-                        placeholder="Description"
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      />
+                      {renderInput({
+                        type: "text",
+                        name: "description",
+                        value: newLog.description,
+                        onChange: handleLogChange,
+                        placeholder: "Description",
+                        error: formErrors.description
+                      })}
                     </td>
                     <td className="px-4 py-2">
                       <input
@@ -591,15 +464,11 @@ const AircraftSettings = () => {
                         name="file"
                         onChange={handleLogChange}
                         className="w-full px-2 py-1 border border-gray-300 rounded"
+                        ref={fileInputRef}
                       />
                     </td>
                     <td className="px-4 py-2">
-                      <Button
-                        onClick={handleAddLog}
-                        className="bg-green-500 hover:bg-green-600 text-white"
-                      >
-                        Add
-                      </Button>
+                      <Button onClick={handleAddLog} className="bg-green-500 hover:bg-green-600 text-white">Add</Button>
                     </td>
                   </tr>
                 </tbody>
@@ -607,24 +476,19 @@ const AircraftSettings = () => {
             </div>
           </div>
         </div>
-
+        
         <div className="mt-6 flex justify-center space-x-4">
-          <Button
-            onClick={handleModifyClick}
-            className="max-w-md bg-blue-500 hover:bg-blue-600 text-white"
-          >
-            Modify Aircraft
-          </Button>
+          <Button onClick={handleModifyClick} className="max-w-md bg-blue-500 hover:bg-blue-600 text-white">Modify Aircraft</Button>
         </div>
-
+        
         <ConfirmModal
           open={showDeleteModal}
-          title="Log löschen bestätigen"
-          message="Möchten Sie diesen Maintenance Log wirklich löschen?"
+          title="Confirm Delete Log"
+          message="Are you sure you want to delete this maintenance log?"
           onConfirm={confirmDeleteLog}
-          onCancel={cancelDeleteLog}
-          confirmText="Löschen"
-          cancelText="Abbrechen"
+          onCancel={() => setShowDeleteModal(false)}
+          confirmText="Delete"
+          cancelText="Cancel"
         />
       </div>
     </div>

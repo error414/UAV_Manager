@@ -102,7 +102,7 @@ class FlightLogListCreateView(generics.ListCreateAPIView):
     pagination_class = FlightLogPagination
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['departure_date', 'departure_time', 'landing_time', 'flight_duration']
-    ordering = ['-departure_date', '-departure_time']  # Default sorting
+    ordering = ['-departure_date', '-departure_time']  # Default sorting - newest first
     
     def get_queryset(self):
         return FlightLogService.get_flightlog_queryset(
@@ -441,7 +441,8 @@ class FlightLogImportView(APIView):
                 'duplicate_count': import_results['duplicate_count'],
                 'unmapped_count': import_results['unmapped_count'],
                 'error_count': import_results['error_count'],
-                'unmapped_message': import_results['unmapped_message']
+                'unmapped_message': import_results['unmapped_message'],
+                'duplicate_message': import_results.get('duplicate_message', '')
             }
         }
         

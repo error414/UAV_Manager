@@ -3,6 +3,38 @@ import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button, ResponsiveTable, Loading, ConfirmModal } from '../components';
 
 const AircraftList = () => {
+  const API_URL = import.meta.env.VITE_API_URL;
+  
+  const formatFlightTime = (seconds) => {
+    if (!seconds) return 'N/A';
+    const hh = Math.floor(seconds / 3600);
+    const mm = Math.floor((seconds % 3600) / 60);
+    return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+  };
+  
+  const tableColumns = [
+    { header: 'Aircraft', accessor: 'drone_name' },
+    { header: 'Manufacturer', accessor: 'manufacturer' },
+    { header: 'Type', accessor: 'type' },
+    { header: 'Motors', accessor: 'motors' },
+    { header: 'Type of Motor', accessor: 'motor_type' },
+    { header: 'Flight Time', accessor: 'total_flight_time', render: formatFlightTime },
+    { header: 'TO', accessor: 'total_takeoffs' },
+    { header: 'LDG', accessor: 'total_landings' },
+    { header: 'Firmware', accessor: 'firmware_version' },
+    { header: 'Video System', accessor: 'video_system' },
+    { header: 'GPS', accessor: 'gps' },
+    { header: 'MAG', accessor: 'mag' },
+    { header: 'BARO', accessor: 'baro' },
+    { header: 'GYRO', accessor: 'gyro' },
+    { header: 'ACC', accessor: 'acc' }
+  ];
+  
+  const filterFieldsForTable = tableColumns.map(col => ({
+    name: col.accessor,
+    placeholder: col.header,
+  }));
+
   const navigate = useNavigate();
   const [aircrafts, setAircrafts] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
@@ -16,37 +48,6 @@ const AircraftList = () => {
   const [debouncedFilters, setDebouncedFilters] = useState({});
   const filterTimer = useRef(null);
   const [importResult, setImportResult] = useState(null);
-  
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(true);
-      } else {
-        setSidebarOpen(false);
-      }
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  
-  const API_URL = import.meta.env.VITE_API_URL;
-  
-  const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem('access_token');
-    return { Authorization: `Bearer ${token}` };
-  }, []);
-  
-  const handleAuthError = useCallback((res) => {
-    if (res.status === 401) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_id');
-      navigate('/login');
-      return true;
-    }
-    return false;
-  }, [navigate]);
-  
   const [filters, setFilters] = useState({
     drone_name: '',
     manufacturer: '',
@@ -63,6 +64,22 @@ const AircraftList = () => {
     registration_number: '',
     serial_number: ''
   });
+  const filtersRef = useRef(filters);
+
+  const getAuthHeaders = useCallback(() => {
+    const token = localStorage.getItem('access_token');
+    return { Authorization: `Bearer ${token}` };
+  }, []);
+  
+  const handleAuthError = useCallback((res) => {
+    if (res.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_id');
+      navigate('/login');
+      return true;
+    }
+    return false;
+  }, [navigate]);
 
   const fetchAircrafts = useCallback(async () => {
     const token = localStorage.getItem('access_token');
@@ -102,11 +119,39 @@ const AircraftList = () => {
       setTotalPages(Math.ceil((data.count || 0) / pageSize));
       setIsLoading(false);
     } catch (err) {
-      console.error(err);
       setError('Could not load aircraft data.');
       setIsLoading(false);
     }
   }, [API_URL, getAuthHeaders, handleAuthError, navigate, debouncedFilters, currentPage, pageSize, sortField]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  useEffect(() => {
+    fetchAircrafts();
+  }, [fetchAircrafts]);
+
+  useEffect(() => {
+    return () => {
+      if (filterTimer.current) {
+        clearTimeout(filterTimer.current);
+      }
+    };
+  }, []);
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -148,35 +193,26 @@ const AircraftList = () => {
       });
       setIsLoading(false);
     } catch (err) {
-      console.error('Error uploading CSV:', err);
       setError('Failed to upload CSV. Please try again.');
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchAircrafts();
-  }, [fetchAircrafts]);
-
   const handleFilterChange = useCallback((e) => {
     const { name, value } = e.target;
-    
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    if (filterTimer.current) {
-      clearTimeout(filterTimer.current);
-    }
-    
-    filterTimer.current = setTimeout(() => {
-      setCurrentPage(1);
-      setDebouncedFilters(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }, 500);
+
+    setFilters(prev => {
+      const updated = { ...prev, [name]: value };
+      filtersRef.current = updated;
+      if (filterTimer.current) {
+        clearTimeout(filterTimer.current);
+      }
+      filterTimer.current = setTimeout(() => {
+        setCurrentPage(1);
+        setDebouncedFilters({ ...filtersRef.current });
+      }, 500);
+      return updated;
+    });
   }, []);
 
   const handleNewAircraft = () => {
@@ -205,31 +241,6 @@ const AircraftList = () => {
     });
   }, []);
 
-  const formatFlightTime = (seconds) => {
-    if (!seconds) return 'N/A';
-    const hh = Math.floor(seconds / 3600);
-    const mm = Math.floor((seconds % 3600) / 60);
-    return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
-  };
-
-  const tableColumns = [
-    { header: 'Aircraft', accessor: 'drone_name' },
-    { header: 'Manufacturer', accessor: 'manufacturer' },
-    { header: 'Type', accessor: 'type' },
-    { header: 'Motors', accessor: 'motors' },
-    { header: 'Type of Motor', accessor: 'motor_type' },
-    { header: 'Flight Time', accessor: 'total_flight_time', render: formatFlightTime },
-    { header: 'TO', accessor: 'total_takeoffs' },
-    { header: 'LDG', accessor: 'total_landings' },
-    { header: 'Firmware', accessor: 'firmware_version' },
-    { header: 'Video System', accessor: 'video_system' },
-    { header: 'GPS', accessor: 'gps' },
-    { header: 'MAG', accessor: 'mag' },
-    { header: 'BARO', accessor: 'baro' },
-    { header: 'GYRO', accessor: 'gyro' },
-    { header: 'ACC', accessor: 'acc' }
-  ];
-
   const handleExportCSV = () => {
     if (aircrafts.length === 0) {
       alert('No aircraft data to export.');
@@ -237,10 +248,10 @@ const AircraftList = () => {
     }
     
     const headers = [
-      'DroneName', 'Manufacturer', 'Type', 'Motors', 'MotorType',
-      'Video', 'VideoSystem', 'ESC', 'ESCFirmware', 'Receiver',
-      'ReceiverFirmware', 'FlightController', 'Firmware', 'FirmwareVersion',
-      'GPS', 'MAG', 'BARO', 'GYRO', 'ACC', 'RegistrationNumber', 'SerialNumber'
+      'drone_name', 'manufacturer', 'type', 'motors', 'motor_type',
+      'video', 'video_system', 'esc', 'esc_firmware', 'receiver',
+      'receiver_firmware', 'flight_controller', 'firmware', 'firmware_version',
+      'gps', 'mag', 'baro', 'gyro', 'acc', 'registration_number', 'serial_number'
     ];
     
     const csvData = aircrafts.map(aircraft => [
@@ -301,15 +312,6 @@ const AircraftList = () => {
     }, 100);
   };
 
-  // Clear timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (filterTimer.current) {
-        clearTimeout(filterTimer.current);
-      }
-    };
-  }, []);
-
   const modifiedAircrafts = aircrafts.map(aircraft => ({
     ...aircraft,
     flightlog_id: aircraft.uav_id
@@ -360,7 +362,7 @@ const AircraftList = () => {
           <ResponsiveTable
             columns={tableColumns}
             data={modifiedAircrafts || []}
-            filterFields={tableColumns}
+            filterFields={filterFieldsForTable}
             filters={filters}
             onFilterChange={handleFilterChange}
             onEdit={handleAircraftClick}

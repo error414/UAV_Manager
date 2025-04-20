@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime
-from django.db.models import Q, Sum, Count
+from django.db.models import Q, Sum, Count, Value, IntegerField
+from django.db.models.functions import Coalesce
 from ..models import UAV, FlightLog, MaintenanceReminder
 
 class UAVService:
@@ -8,7 +9,14 @@ class UAVService:
     def get_uav_queryset(user, query_params=None):
         """Filter UAV queryset based on user and query parameters"""
         queryset = UAV.objects.filter(user=user)
-        
+
+        # Annotate *before* filtering on aggregated values
+        # Use Coalesce to handle cases where there are no flight logs (Sum would be None)
+        queryset = queryset.annotate(
+            total_takeoffs_agg=Coalesce(Sum('flightlogs__takeoffs'), Value(0), output_field=IntegerField()),
+            total_landings_agg=Coalesce(Sum('flightlogs__landings'), Value(0), output_field=IntegerField())
+        )
+
         # Add filtering if needed
         if query_params:
             if 'is_active' in query_params:
@@ -78,6 +86,22 @@ class UAVService:
             # Filter by serial number (partial match)
             if query_params.get('serial_number'):
                 queryset = queryset.filter(serial_number__icontains=query_params['serial_number'])
+
+            # Filter by total_takeoffs (exact match on annotated value)
+            if query_params.get('total_takeoffs'):
+                try:
+                    takeoffs_val = int(query_params['total_takeoffs'])
+                    queryset = queryset.filter(total_takeoffs_agg=takeoffs_val)
+                except (ValueError, TypeError):
+                    pass # Ignore if not a valid integer
+
+            # Filter by total_landings (exact match on annotated value)
+            if query_params.get('total_landings'):
+                try:
+                    landings_val = int(query_params['total_landings'])
+                    queryset = queryset.filter(total_landings_agg=landings_val)
+                except (ValueError, TypeError):
+                    pass # Ignore if not a valid integer
         
         return queryset
 
@@ -147,14 +171,16 @@ class UAVService:
                         if not row.get(field):
                             raise ValueError(f"Missing required field: {field}")
                     
-                    # Check for duplicates
-                    serial_number = row.get('serial_number')
-                    if serial_number:
-                        existing_uav = UAV.objects.filter(user=user, serial_number=serial_number).first()
-                        if existing_uav:
-                            results['duplicate_count'] += 1
-                            duplicates.append(serial_number)
-                            continue
+                    # Check for duplicate drone_name
+                    drone_name = row.get('drone_name')
+                    serial_number = row.get('serial_number', '')
+                    
+                    # Check if drone with same name already exists
+                    existing_uav = UAV.objects.filter(user=user, drone_name=drone_name).first()
+                    if existing_uav:
+                        results['duplicate_count'] += 1
+                        duplicates.append(drone_name)
+                        continue
                     
                     # Convert motors to int
                     try:
@@ -162,14 +188,28 @@ class UAVService:
                     except ValueError:
                         motors = 0
                     
-                    # Create UAV object
+                    # Create UAV object with all fields from CSV
                     uav = UAV(
                         user=user,
-                        drone_name=row.get('drone_name', ''),
+                        drone_name=drone_name,
                         manufacturer=row.get('manufacturer', ''),
                         type=row.get('type', ''),
                         motors=motors,
                         motor_type=row.get('motor_type', ''),
+                        video=row.get('video', ''),
+                        video_system=row.get('video_system', ''),
+                        esc=row.get('esc', ''),
+                        esc_firmware=row.get('esc_firmware', ''),
+                        receiver=row.get('receiver', ''),
+                        receiver_firmware=row.get('receiver_firmware', ''),
+                        flight_controller=row.get('flight_controller', ''),
+                        firmware=row.get('firmware', ''),
+                        firmware_version=row.get('firmware_version', ''),
+                        gps=row.get('gps', ''),
+                        mag=row.get('mag', ''),
+                        baro=row.get('baro', ''),
+                        gyro=row.get('gyro', ''),
+                        acc=row.get('acc', ''),
                         registration_number=row.get('registration_number', ''),
                         serial_number=serial_number,
                     )
@@ -181,7 +221,7 @@ class UAVService:
                     results['errors'].append(f"Row {row_num}: {str(e)}")
             
             if duplicates:
-                results['duplicate_message'] = f"Duplicates found with serial numbers: {', '.join(duplicates)}"
+                results['duplicate_message'] = f"Duplicates found with drone names: {', '.join(duplicates)}"
                 
             return results
         except Exception as e:
@@ -198,10 +238,12 @@ class FlightLogService:
         
         # Add filtering if needed
         if query_params:
+            # UAV filter - already implemented
             uav_id = query_params.get('uav')
             if uav_id:
                 queryset = queryset.filter(uav_id=uav_id)
-                
+            
+            # Date range filters - already implemented
             date_from = query_params.get('date_from')
             if date_from:
                 queryset = queryset.filter(departure_date__gte=date_from)
@@ -209,7 +251,59 @@ class FlightLogService:
             date_to = query_params.get('date_to')
             if date_to:
                 queryset = queryset.filter(departure_date__lte=date_to)
-        
+            
+            # Add filtering for each field in the flight log
+            
+            # Text fields (case-insensitive partial match)
+            for field in ['departure_place', 'landing_place', 'comments']:
+                value = query_params.get(field)
+                if value:
+                    queryset = queryset.filter(**{f"{field}__icontains": value})
+            
+            # Time fields - use more flexible matching for time fields
+            for field in ['departure_time', 'landing_time']:
+                value = query_params.get(field)
+                if value:
+                    # Add flexible time matching - look for times that contain this value
+                    queryset = queryset.filter(**{f"{field}__contains": value})
+            
+            # Exact match fields for non-time fields
+            for field in ['light_conditions', 'ops_conditions', 'pilot_type']:
+                value = query_params.get(field)
+                if value:
+                    queryset = queryset.filter(**{field: value})
+            
+            # Numeric fields
+            for field in ['flight_duration', 'takeoffs', 'landings']:
+                value = query_params.get(field)
+                if value and value.isdigit():
+                    queryset = queryset.filter(**{field: int(value)})
+            
+            # Date field - departure_date - use more flexible matching for dates
+            departure_date = query_params.get('departure_date')
+            if departure_date:
+                try:
+                    # If it's a complete date, use exact match
+                    if len(departure_date) == 10 and departure_date.count('-') == 2:
+                        queryset = queryset.filter(departure_date=departure_date)
+                    # If it looks like a year (4 digits), match by year
+                    elif len(departure_date) == 4 and departure_date.isdigit():
+                        queryset = queryset.filter(departure_date__year=int(departure_date))
+                    # If it looks like a year-month (YYYY-MM)
+                    elif len(departure_date) == 7 and departure_date.count('-') == 1:
+                        year, month = departure_date.split('-')
+                        if year.isdigit() and month.isdigit():
+                            queryset = queryset.filter(
+                                departure_date__year=int(year),
+                                departure_date__month=int(month)
+                            )
+                    # Otherwise use a contains search on the string representation
+                    else:
+                        queryset = queryset.filter(departure_date__contains=departure_date)
+                except Exception:
+                    # If any error occurs, use a simple contains filter as fallback
+                    queryset = queryset.filter(departure_date__contains=departure_date)
+            
         return queryset
         
     @staticmethod
@@ -242,10 +336,12 @@ class FlightLogService:
             'unmapped_count': 0,
             'error_count': 0,
             'errors': [],
-            'unmapped_message': ''
+            'unmapped_message': '',
+            'duplicate_message': ''  # Initialize this key
         }
         
         unmapped_uavs = set()
+        duplicate_entries = []
         
         try:
             csv_text = csv_file.read().decode('utf-8')
@@ -256,7 +352,11 @@ class FlightLogService:
                 
                 try:
                     # Try to find the UAV
-                    uav_identifier = row.get('uav_serial', '') or row.get('drone_name', '')
+                    uav_identifier = (
+                        row.get('uav_serial', '') or
+                        row.get('drone_name', '') or
+                        row.get('ModelName', '')
+                    )
                     
                     uav = None
                     if uav_identifier:
@@ -273,17 +373,70 @@ class FlightLogService:
                         results['unmapped_count'] += 1
                         unmapped_uavs.add(uav_identifier)
                         continue
+
+                    # Map CSV fields to FlightLog fields
+                    # Compose departure_place and landing_place from GPS fields if available
+                    if row.get('GPS-Arming-Lat') and row.get('GPS-Arming-Lon'):
+                        gps_departure = f"{row.get('GPS-Arming-Lat')},{row.get('GPS-Arming-Lon')}"
+                        if gps_departure == "0.000000,0.000000":
+                            departure_place = "Unknown"
+                        else:
+                            departure_place = gps_departure
+                    else:
+                        departure_place = row.get('departure_place', '') or row.get('Arming', '')
+                    if row.get('GPS-Disarming-Lat') and row.get('GPS-Disarming-Lon'):
+                        gps_landing = f"{row.get('GPS-Disarming-Lat')},{row.get('GPS-Disarming-Lon')}"
+                        if gps_landing == "0.000000,0.000000":
+                            landing_place = "Unknown"
+                        else:
+                            landing_place = gps_landing
+                    else:
+                        landing_place = row.get('landing_place', '') or row.get('Disarming', '')
                     
-                    # Create flight log
+                    # Parse date and time values properly to ensure correct comparison
+                    departure_date_str = row.get('departure_date') or row.get('Date')
+                    departure_time_str = row.get('departure_time') or row.get('Timestamp-TO')
+                    landing_time_str = row.get('landing_time') or row.get('Timestamp-LDG')
+                    
+                    if not departure_date_str or not departure_time_str:
+                        raise ValueError("Missing required date or departure time")
+                    
+                    # Duration in CSV is float seconds, FlightLog expects int seconds
+                    duration_val = row.get('flight_duration') or row.get('Duration')
+                    try:
+                        flight_duration = int(float(duration_val)) if duration_val else 0
+                    except Exception:
+                        flight_duration = 0
+                    
+                    # Check if a flight log with the same date, time, and UAV already exists
+                    try:
+                        existing_log = FlightLog.objects.filter(
+                            user=user,
+                            uav=uav,
+                            departure_date=departure_date_str,
+                            departure_time=departure_time_str
+                        ).first()
+
+                        if existing_log:
+                            # Skip this row as it's a duplicate
+                            results['duplicate_count'] += 1
+                            duplicate_info = f"{uav.drone_name} - {departure_date_str} {departure_time_str}"
+                            duplicate_entries.append(duplicate_info)
+                            continue
+                    except Exception as e:
+                        # If there's an error in the duplicate check, log it and continue with import
+                        results['errors'].append(f"Row {row_num}: Error checking for duplicates: {str(e)}")
+
+                    # Create flight log with parsed values
                     flight_log = FlightLog(
                         user=user,
                         uav=uav,
-                        departure_place=row.get('departure_place', ''),
-                        landing_place=row.get('landing_place', ''),
-                        departure_date=row.get('departure_date'),
-                        departure_time=row.get('departure_time'),
-                        landing_time=row.get('landing_time'),
-                        flight_duration=int(row.get('flight_duration', 0)),
+                        departure_place=departure_place,
+                        landing_place=landing_place,
+                        departure_date=departure_date_str,
+                        departure_time=departure_time_str,
+                        landing_time=landing_time_str,
+                        flight_duration=flight_duration,  # Now flight_duration is defined
                         takeoffs=int(row.get('takeoffs', 1)),
                         landings=int(row.get('landings', 1)),
                         light_conditions=row.get('light_conditions', 'Day'),
@@ -301,9 +454,22 @@ class FlightLogService:
             
             if unmapped_uavs:
                 results['unmapped_message'] = f"Could not map UAVs with identifiers: {', '.join(unmapped_uavs)}"
+            
+            if duplicate_entries:
+                # Add the first few duplicates to the message (limit to avoid overly long messages)
+                max_display = 5
+                display_entries = duplicate_entries[:max_display]
+                additional = len(duplicate_entries) - max_display
+                
+                duplicate_msg = f"Skipped {len(duplicate_entries)} duplicate entries: {', '.join(display_entries)}"
+                if additional > 0:
+                    duplicate_msg += f" and {additional} more"
+                results['duplicate_message'] = duplicate_msg
                 
             return results
         except Exception as e:
             results['error_count'] += 1
             results['errors'].append(f"Error processing file: {str(e)}")
             return results
+
+
