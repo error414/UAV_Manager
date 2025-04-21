@@ -14,7 +14,6 @@ const FormInput = ({
   min,
   options = [],
 }) => {
-  // For rendering regular inputs (text, number, date, etc.)
   if (type !== 'select') {
     return (
       <div className={`mb-4 ${className}`}>
@@ -41,7 +40,6 @@ const FormInput = ({
     );
   }
 
-  // For rendering select inputs
   return (
     <div className={`mb-4 ${className}`}>
       {label && (

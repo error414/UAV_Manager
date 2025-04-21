@@ -2,217 +2,151 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Alert, Sidebar, AircraftForm, Loading, ConfirmModal } from '../components';
 
-// Custom hook for form management
+const DEFAULT_FORM_DATA = {
+  drone_name: '',
+  manufacturer: '',
+  type: 'Quad',
+  motors: '4',
+  motor_type: 'Electric',
+  video: 'Analog',
+  video_system: 'HD-Zero',
+  flight_controller: '',
+  firmware: 'Betaflight',
+  firmware_version: '',
+  esc: '',
+  esc_firmware: '',
+  receiver: '',
+  receiver_firmware: '',
+  registration_number: '',
+  serial_number: '',
+  gps: '1',
+  mag: '1',
+  baro: '1',
+  gyro: '1',
+  acc: '1',
+  props_maint_date: '',
+  motor_maint_date: '',
+  frame_maint_date: '',
+  props_reminder_date: '',
+  motor_reminder_date: '',
+  frame_reminder_date: '',
+  is_active: true  
+};
+
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toISOString().split('T')[0];
+};
+
+const getNextYearDate = (dateString) => {
+  const date = new Date(dateString);
+  const nextYear = new Date(date);
+  nextYear.setFullYear(nextYear.getFullYear() + 1);
+  return nextYear.toISOString().split('T')[0];
+};
+
 const useAircraftForm = (isEditMode, uavId) => {
   const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL;
+
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [canDelete, setCanDelete] = useState(true);
-  
-  // Default form values - add is_active field
-  const defaultFormData = {
-    drone_name: '',
-    manufacturer: '',
-    type: 'Quad',
-    motors: '4',
-    motor_type: 'Electric',
-    video: 'Analog',
-    video_system: 'HD-Zero',
-    flight_controller: '',
-    firmware: 'Betaflight',
-    firmware_version: '',
-    esc: '',
-    esc_firmware: '',
-    receiver: '',
-    receiver_firmware: '',
-    registration_number: '',
-    serial_number: '',
-    gps: '1',
-    mag: '1',
-    baro: '1',
-    gyro: '1',
-    acc: '1',
-    props_maint_date: '',
-    motor_maint_date: '',
-    frame_maint_date: '',
-    props_reminder_date: '',
-    motor_reminder_date: '',
-    frame_reminder_date: '',
-    is_active: true  
-  };
-  
-  const [formData, setFormData] = useState(defaultFormData);
+  const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
 
-  // Format date for input fields
-  const formatDateForInput = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+  const makeApiRequest = async (url, method, body = null) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setError('Authentication required. Please log in again.');
+      navigate('/login');
+      return null;
+    }
+    
+    try {
+      const options = {
+        method,
+        headers: { 'Authorization': `Bearer ${token}` }
+      };
+      
+      if (body) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+      }
+      
+      const response = await fetch(url, options);
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user_id');
+          navigate('/login');
+          return null;
+        }
+        const errorData = await response.json().catch(() => 'Request failed');
+        throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
+      }
+      
+      return method === 'DELETE' ? true : await response.json();
+    } catch (err) {
+      setError(err.message || `An error occurred during the ${method} request.`);
+      return null;
+    }
   };
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevData => {
-      const newData = {
-        ...prevData,
-        [name]: value
-      };
+      const newData = { ...prevData, [name]: value };
       
-      // If this is a maintenance date, automatically set reminder date to 1 year later
       if (name.endsWith('_maint_date') && value) {
         const reminderFieldName = name.replace('_maint_date', '_reminder_date');
-        const maintDate = new Date(value);
-        const reminderDate = new Date(maintDate);
-        reminderDate.setFullYear(reminderDate.getFullYear() + 1);
-        newData[reminderFieldName] = reminderDate.toISOString().split('T')[0];
+        newData[reminderFieldName] = getNextYearDate(value);
       }
       
       return newData;
     });
   };
 
-  // Handle setting today's date for all maintenance fields
   const handleSetTodayMaintDates = () => {
     const today = new Date().toISOString().split('T')[0];
-    const nextYear = new Date();
-    nextYear.setFullYear(nextYear.getFullYear() + 1);
-    const nextYearStr = nextYear.toISOString().split('T')[0];
+    const nextYear = getNextYearDate(today);
     
     setFormData(prevData => ({
       ...prevData,
       props_maint_date: today,
       motor_maint_date: today,
       frame_maint_date: today,
-      props_reminder_date: nextYearStr,
-      motor_reminder_date: nextYearStr,
-      frame_reminder_date: nextYearStr
+      props_reminder_date: nextYear,
+      motor_reminder_date: nextYear,
+      frame_reminder_date: nextYear
     }));
   };
 
-  // Fetch aircraft data for edit mode
-  useEffect(() => {
-    if (!isEditMode) return;
-    
-    const fetchAircraftData = async () => {
-      setIsLoading(true);
-      const token = localStorage.getItem('access_token');
-      
-      try {
-        const response = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('user_id');
-            navigate('/login');
-            return;
-          }
-          throw new Error('Failed to fetch aircraft data');
-        }
-        
-        const aircraftData = await response.json();
-        
-        // Convert numeric values to strings for form inputs
-        setFormData({
-          ...aircraftData,
-          motors: aircraftData.motors?.toString() || '4',
-          gps: aircraftData.gps?.toString() || '1',
-          mag: aircraftData.mag?.toString() || '1',
-          baro: aircraftData.baro?.toString() || '1',
-          gyro: aircraftData.gyro?.toString() || '1',
-          acc: aircraftData.acc?.toString() || '1',
-        });
-      } catch (err) {
-        console.error('Error fetching aircraft data:', err);
-        setError('Failed to load aircraft data. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchAircraftData();
-  }, [API_URL, isEditMode, navigate, uavId]);
-
-  // Check if the UAV can be deleted
-  useEffect(() => {
-    if (!isEditMode) return;
-    
-    const checkCanDelete = async () => {
-      const token = localStorage.getItem('access_token');
-      
-      try {
-        // Query specifically for flight logs related to this UAV
-        const checkResponse = await fetch(`${API_URL}/api/flightlogs/?uav=${uavId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (!checkResponse.ok) {
-          throw new Error('Failed to check flight logs');
-        }
-        
-        const flightLogs = await checkResponse.json();
-        // Handle paginated response - check if results array is empty
-        if (flightLogs && Array.isArray(flightLogs.results)) {
-          setCanDelete(flightLogs.results.length === 0);
-        } else if (Array.isArray(flightLogs)) {
-          // Direct array response
-          setCanDelete(flightLogs.length === 0);
-        } else {
-          // Unexpected response format
-          console.error('Unexpected response format:', flightLogs);
-          setCanDelete(true); // Default to allowing deletion if we can't determine
-        }
-      } catch (err) {
-        console.error('Error checking if aircraft can be deleted:', err);
-      }
-    };
-    
-    checkCanDelete();
-  }, [API_URL, isEditMode, uavId]);
-
-  // Form submission handler
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
     try {
-      const token = localStorage.getItem('access_token');
       const user_id = localStorage.getItem('user_id');
       
-      if (!token || !user_id) {
-        setError('Authentication required. Please log in again.');
-        return;
-      }
-
-      // Required fields validation
       if (!formData.drone_name || !formData.type || !formData.motors || !formData.motor_type) {
         setError('Please fill in all required fields: Drone Name, Type, Motors, and Type of Motor');
         return;
       }
 
-      // Prepare payload for backend by removing empty date fields
       const filteredFormData = { ...formData };
       
-      // List of all date fields that should be removed if empty
-      const dateFields = [
-        'props_maint_date', 'motor_maint_date', 'frame_maint_date',
-        'props_reminder_date', 'motor_reminder_date', 'frame_reminder_date'
-      ];
-      
-      // Remove empty date fields
-      dateFields.forEach(field => {
+      ['props_maint_date', 'motor_maint_date', 'frame_maint_date',
+       'props_reminder_date', 'motor_reminder_date', 'frame_reminder_date'
+      ].forEach(field => {
         if (!filteredFormData[field] || filteredFormData[field].trim() === '') {
           delete filteredFormData[field];
         }
       });
 
-      // Prepare final payload
       const aircraftPayload = {
         ...filteredFormData,
         user: user_id,
@@ -226,124 +160,96 @@ const useAircraftForm = (isEditMode, uavId) => {
 
       const url = isEditMode ? `${API_URL}/api/uavs/${uavId}/` : `${API_URL}/api/uavs/`;
       const method = isEditMode ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(aircraftPayload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
-      }
-
-      await response.json();
-      setSuccess(isEditMode ? 'Aircraft successfully updated!' : 'Aircraft successfully registered!');
       
-      // Reset form or navigate based on mode
-      if (!isEditMode) {
-        setFormData(defaultFormData);
-      } else {
-        setTimeout(() => navigate('/AircraftList'), 1500);
+      const result = await makeApiRequest(url, method, aircraftPayload);
+      
+      if (result) {
+        setSuccess(isEditMode ? 'Aircraft successfully updated!' : 'Aircraft successfully registered!');
+        
+        if (!isEditMode) {
+          setFormData(DEFAULT_FORM_DATA);
+        } else {
+          setTimeout(() => navigate('/AircraftList'), 1500);
+        }
       }
     } catch (err) {
-      console.error('Error handling aircraft:', err);
       setError(err.message || 'An error occurred. Please try again.');
     }
   };
 
-  // Simplified handleDelete function
   const handleDelete = async () => {
     if (!isEditMode) return;
     
-    try {
-      const token = localStorage.getItem('access_token');
-      
-      const deleteResponse = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (!deleteResponse.ok) {
-        throw new Error('Failed to delete aircraft');
-      }
-      
+    const result = await makeApiRequest(`${API_URL}/api/uavs/${uavId}/`, 'DELETE');
+    if (result) {
       setSuccess('Aircraft successfully deleted!');
       setTimeout(() => navigate('/AircraftList'), 1500);
-    } catch (err) {
-      console.error('Error deleting aircraft:', err);
-      setError(err.message || 'An error occurred while processing your request.');
     }
   };
 
-  // Add a new function to mark as inactive
-  const handleSetInactive = async () => {
-    if (!isEditMode) return;
-    
-    try {
-      const token = localStorage.getItem('access_token');
-      
-      const updateResponse = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ is_active: false })
-      });
-      
-      if (!updateResponse.ok) {
-        throw new Error('Failed to mark aircraft as inactive');
-      }
-      
-      setSuccess('Aircraft successfully marked as inactive');
-      setTimeout(() => navigate('/AircraftList'), 1500);
-    } catch (err) {
-      console.error('Error marking aircraft as inactive:', err);
-      setError(err.message || 'An error occurred while processing your request.');
-    }
-  };
-
-  // Add this function to the useAircraftForm hook
   const handleToggleActive = async () => {
     if (!isEditMode) return;
     
-    try {
-      const token = localStorage.getItem('access_token');
-      
-      const newActiveState = !formData.is_active;
-      
-      const updateResponse = await fetch(`${API_URL}/api/uavs/${uavId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ is_active: newActiveState })
-      });
-      
-      if (!updateResponse.ok) {
-        throw new Error(`Failed to ${newActiveState ? 'reactivate' : 'deactivate'} aircraft`);
-      }
-      
-      // Update local state
+    const newActiveState = !formData.is_active;
+    const result = await makeApiRequest(
+      `${API_URL}/api/uavs/${uavId}/`, 
+      'PATCH', 
+      { is_active: newActiveState }
+    );
+    
+    if (result) {
       setFormData(prev => ({ ...prev, is_active: newActiveState }));
       setSuccess(`Aircraft successfully ${newActiveState ? 'reactivated' : 'deactivated'}`);
       
-      // If reactivating, just update the UI
-      // If deactivating and has references, navigate away
       if (!newActiveState && !canDelete) {
         setTimeout(() => navigate('/AircraftList'), 1500);
       }
-    } catch (err) {
-      console.error('Error toggling active status:', err);
-      setError(err.message || 'An error occurred while processing your request.');
     }
   };
+
+  const handleSetInactive = () => handleToggleActive();
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    
+    const fetchAircraftData = async () => {
+      setIsLoading(true);
+      const aircraftData = await makeApiRequest(`${API_URL}/api/uavs/${uavId}/`, 'GET');
+      
+      if (aircraftData) {
+        setFormData({
+          ...aircraftData,
+          motors: aircraftData.motors?.toString() || '4',
+          gps: aircraftData.gps?.toString() || '1',
+          mag: aircraftData.mag?.toString() || '1',
+          baro: aircraftData.baro?.toString() || '1',
+          gyro: aircraftData.gyro?.toString() || '1',
+          acc: aircraftData.acc?.toString() || '1',
+        });
+      }
+      setIsLoading(false);
+    };
+    
+    fetchAircraftData();
+  }, [API_URL, isEditMode, navigate, uavId]);
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    
+    const checkCanDelete = async () => {
+      const flightLogs = await makeApiRequest(`${API_URL}/api/flightlogs/?uav=${uavId}`, 'GET');
+      
+      if (flightLogs) {
+        if (Array.isArray(flightLogs.results)) {
+          setCanDelete(flightLogs.results.length === 0);
+        } else if (Array.isArray(flightLogs)) {
+          setCanDelete(flightLogs.length === 0);
+        }
+      }
+    };
+    
+    checkCanDelete();
+  }, [API_URL, isEditMode, uavId]);
 
   return {
     formData,
@@ -368,15 +274,13 @@ const NewAircraftPage = () => {
   const { uavId } = useParams();
   const isEditMode = !!uavId;
   
-  // Responsive sidebar state
+  // 3. State & Lifecycle
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
-  
-  // ConfirmModal states
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmInactive, setConfirmInactive] = useState(false);
-  const [confirmToggleActive, setConfirmToggleActive] = useState(null); // true = activate, false = deactivate
+  const [confirmModal, setConfirmModal] = useState({
+    type: null, 
+    isOpen: false
+  });
 
-  // Form management hook
   const {
     formData,
     isLoading,
@@ -384,27 +288,68 @@ const NewAircraftPage = () => {
     success,
     handleChange,
     handleSubmit,
-    handleDelete: rawHandleDelete,
-    handleSetInactive: rawHandleSetInactive,
-    handleToggleActive: rawHandleToggleActive,
+    handleDelete: executeDelete,
+    handleSetInactive: executeSetInactive,
+    handleToggleActive: executeToggleActive,
     handleSetTodayMaintDates,
     formatDateForInput,
-    setError,
     canDelete
   } = useAircraftForm(isEditMode, uavId);
 
-  // Wrapped handlers for ConfirmModal
-  const handleDelete = () => setConfirmDelete(true);
-  const handleSetInactive = () => setConfirmInactive(true);
-  const handleToggleActive = () => setConfirmToggleActive(!formData.is_active);
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  
+  const handleDelete = () => setConfirmModal({ type: 'delete', isOpen: true });
+  const handleSetInactive = () => setConfirmModal({ type: 'inactive', isOpen: true });
+  const handleToggleActive = () => setConfirmModal({ type: 'toggle', isOpen: true });
 
-  // Authentication check
+  const handleModalConfirm = async () => {
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    
+    switch (confirmModal.type) {
+      case 'delete':
+        await executeDelete();
+        break;
+      case 'inactive':
+        await executeSetInactive();
+        break;
+      case 'toggle':
+        await executeToggleActive();
+        break;
+    }
+  };
+
+  const getModalConfig = () => {
+    switch (confirmModal.type) {
+      case 'delete':
+        return {
+          title: "Delete Aircraft",
+          message: "Are you sure you want to delete this aircraft? This action cannot be undone.",
+          confirmText: "Delete"
+        };
+      case 'inactive':
+        return {
+          title: "Mark Aircraft as Inactive",
+          message: "Are you sure you want to mark this aircraft as inactive?",
+          confirmText: "Set Inactive"
+        };
+      case 'toggle':
+        return {
+          title: formData.is_active ? "Deactivate Aircraft" : "Reactivate Aircraft",
+          message: formData.is_active
+            ? "Are you sure you want to deactivate this aircraft?"
+            : "Are you sure you want to reactivate this aircraft?",
+          confirmText: formData.is_active ? "Deactivate" : "Reactivate"
+        };
+      default:
+        return { title: "", message: "", confirmText: "Confirm" };
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) navigate('/login');
   }, [navigate]);
   
-  // Handle responsive sidebar
   useEffect(() => {
     const handleResize = () => {
       setSidebarOpen(window.innerWidth >= 1024);
@@ -414,13 +359,12 @@ const NewAircraftPage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Toggle sidebar function
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
-  // Loading state
+  // 6. Render
   if (isLoading) {
     return <Loading message="Loading aircraft data..." />;
   }
+
+  const modalConfig = getModalConfig();
 
   return (
     <div className="flex h-screen relative">
@@ -495,47 +439,14 @@ const NewAircraftPage = () => {
           isLoading={isLoading}
           canDelete={canDelete}
         />
-        {/* ConfirmModal for delete */}
+        
         <ConfirmModal
-          open={confirmDelete}
-          title="Delete Aircraft"
-          message="Are you sure you want to delete this aircraft? This action cannot be undone."
-          onConfirm={async () => {
-            setConfirmDelete(false);
-            await rawHandleDelete();
-          }}
-          onCancel={() => setConfirmDelete(false)}
-          confirmText="Delete"
-          cancelText="Cancel"
-        />
-        {/* ConfirmModal for set inactive */}
-        <ConfirmModal
-          open={confirmInactive}
-          title="Mark Aircraft as Inactive"
-          message="Are you sure you want to mark this aircraft as inactive?"
-          onConfirm={async () => {
-            setConfirmInactive(false);
-            await rawHandleSetInactive();
-          }}
-          onCancel={() => setConfirmInactive(false)}
-          confirmText="Set Inactive"
-          cancelText="Cancel"
-        />
-        {/* ConfirmModal for toggle active/inactive */}
-        <ConfirmModal
-          open={confirmToggleActive !== null}
-          title={formData.is_active ? "Deactivate Aircraft" : "Reactivate Aircraft"}
-          message={
-            formData.is_active
-              ? "Are you sure you want to deactivate this aircraft?"
-              : "Are you sure you want to reactivate this aircraft?"
-          }
-          onConfirm={async () => {
-            setConfirmToggleActive(null);
-            await rawHandleToggleActive();
-          }}
-          onCancel={() => setConfirmToggleActive(null)}
-          confirmText={formData.is_active ? "Deactivate" : "Reactivate"}
+          open={confirmModal.isOpen}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          onConfirm={handleModalConfirm}
+          onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+          confirmText={modalConfig.confirmText}
           cancelText="Cancel"
         />
       </div>

@@ -1,6 +1,5 @@
 import React from 'react';
 
-// Options for select fields
 const OPTIONS = {
   light_conditions: [
     { value: 'Day', label: 'Day' },
@@ -29,7 +28,6 @@ const EditableRow = React.memo(({
   onDelete,
   onEdit
 }) => {
-  // Render edit field logic extracted from main component
   const renderEditField = (col) => {
     if (!isEditing) {
       return (

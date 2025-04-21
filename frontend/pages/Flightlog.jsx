@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button, ResponsiveTable, ConfirmModal } from '../components';
+import { getEnhancedFlightLogColumns } from '../utils/tableDefinitions';
 
 const calculateFlightDuration = (deptTime, landTime) => {
   if (!deptTime || !landTime) return '';
@@ -185,38 +186,6 @@ const Flightlog = () => {
   const safeAvailableUAVs = useMemo(() => {
     return Array.isArray(availableUAVs) ? availableUAVs : [];
   }, [availableUAVs]);
-  
-  const tableColumns = useMemo(() => [
-    { header: 'Dept Place', accessor: 'departure_place' },
-    { header: 'Date', accessor: 'departure_date' },
-    { header: 'Dept Time', accessor: 'departure_time' },
-    { header: 'LDG Time', accessor: 'landing_time' },
-    { header: 'LDG Place', accessor: 'landing_place' },
-    { header: 'Duration', accessor: 'flight_duration' },
-    { header: 'T/O', accessor: 'takeoffs' },
-    { header: 'LDG', accessor: 'landings' },
-    { header: 'Light', accessor: 'light_conditions' },
-    { header: 'OPS', accessor: 'ops_conditions' },
-    { header: 'Pilot Type', accessor: 'pilot_type' },
-    { 
-      header: 'UAV', 
-      accessor: 'uav', 
-      render: (value) => {
-        if (value && typeof value === 'object' && value.drone_name) {
-          return value.drone_name;
-        }
-        
-        if (value) {
-          const uavId = typeof value === 'object' ? value.uav_id : value;
-          const foundUav = safeAvailableUAVs.find(uav => uav.uav_id == uavId);
-          return foundUav ? foundUav.drone_name : `UAV #${uavId}`;
-        }
-        
-        return '';
-      } 
-    },
-    { header: 'Comments', accessor: 'comments' }
-  ], [safeAvailableUAVs]);
   
   const getFormFields = useCallback((isFilter = false) => {
     return [
@@ -497,6 +466,10 @@ const Flightlog = () => {
     });
   }, []);
 
+  const flightLogTableColumns = useMemo(() => {
+    return getEnhancedFlightLogColumns(safeAvailableUAVs);
+  }, [safeAvailableUAVs]);
+
   useEffect(() => {
     fetchFlightLogs();
     fetchUAVs();
@@ -567,7 +540,7 @@ const Flightlog = () => {
           </div>
         ) : (
           <ResponsiveTable 
-            columns={tableColumns}
+            columns={flightLogTableColumns}
             data={logs}
             onEdit={handleEdit}
             onRowClick={handleRowClick}

@@ -1,36 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, Alert, Button, ResponsiveTable, Loading, ConfirmModal } from '../components';
+import { uavTableColumns } from '../utils/tableDefinitions';
 
 const AircraftList = () => {
   const API_URL = import.meta.env.VITE_API_URL;
-  
-  const formatFlightTime = (seconds) => {
-    if (!seconds) return 'N/A';
-    const hh = Math.floor(seconds / 3600);
-    const mm = Math.floor((seconds % 3600) / 60);
-    return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
-  };
-  
-  const tableColumns = [
-    { header: 'Aircraft', accessor: 'drone_name' },
-    { header: 'Manufacturer', accessor: 'manufacturer' },
-    { header: 'Type', accessor: 'type' },
-    { header: 'Motors', accessor: 'motors' },
-    { header: 'Type of Motor', accessor: 'motor_type' },
-    { header: 'Flight Time', accessor: 'total_flight_time', render: formatFlightTime },
-    { header: 'TO', accessor: 'total_takeoffs' },
-    { header: 'LDG', accessor: 'total_landings' },
-    { header: 'Firmware', accessor: 'firmware_version' },
-    { header: 'Video System', accessor: 'video_system' },
-    { header: 'GPS', accessor: 'gps' },
-    { header: 'MAG', accessor: 'mag' },
-    { header: 'BARO', accessor: 'baro' },
-    { header: 'GYRO', accessor: 'gyro' },
-    { header: 'ACC', accessor: 'acc' }
-  ];
-  
-  const filterFieldsForTable = tableColumns.map(col => ({
+
+  const filterFieldsForTable = uavTableColumns.map(col => ({
     name: col.accessor,
     placeholder: col.header,
   }));
@@ -360,7 +336,7 @@ const AircraftList = () => {
           <Loading message="Loading aircraft data..." />
         ) : (
           <ResponsiveTable
-            columns={tableColumns}
+            columns={uavTableColumns}
             data={modifiedAircrafts || []}
             filterFields={filterFieldsForTable}
             filters={filters}

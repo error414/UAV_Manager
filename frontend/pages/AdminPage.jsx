@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Sidebar, Alert, ResponsiveTable, Loading, ConfirmModal } from '../components';
+import { userTableColumns, uavTableColumns, flightLogTableColumns } from '../utils/tableDefinitions';
 
 const Spinner = ({ message = "Loading..." }) => <Loading message={message} />;
 
@@ -63,16 +64,59 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => (
   )
 );
 
+const filterFormFields = [
+  { name: 'email', label: 'Email', type: 'text', placeholder: 'Search by email' },
+  { name: 'first_name', label: 'First Name', type: 'text', placeholder: 'Search by first name' },
+  { name: 'last_name', label: 'Last Name', type: 'text', placeholder: 'Search by last name' },
+  { name: 'phone', label: 'Phone', type: 'text', placeholder: 'Search by phone' },
+  { name: 'street', label: 'Street', type: 'text', placeholder: 'Search by street' },
+  { name: 'zip', label: 'ZIP', type: 'text', placeholder: 'Search by ZIP' },
+  { name: 'city', label: 'City', type: 'text', placeholder: 'Search by city' },
+  { name: 'country', label: 'Country', type: 'text', placeholder: 'Search by country' },
+  { name: 'is_staff', label: 'Staff Status', type: 'select', placeholder: 'Select staff status', options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }] },
+  { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Select active status', options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }] }
+];
+
+const uavEditFormFields = [
+  { name: 'drone_name', label: 'Aircraft Name', type: 'text', placeholder: 'Aircraft Name' },
+  { name: 'manufacturer', label: 'Manufacturer', type: 'text', placeholder: 'Manufacturer' },
+  { name: 'type', label: 'Type', type: 'text', placeholder: 'Type' },
+  { name: 'motors', label: 'Motors', type: 'number', placeholder: 'Number of Motors' },
+  { name: 'motor_type', label: 'Motor Type', type: 'text', placeholder: 'Motor Type' },
+  { name: 'video', label: 'Video', type: 'text', placeholder: 'Video' },
+  { name: 'video_system', label: 'Video System', type: 'text', placeholder: 'Video System' },
+  { name: 'esc', label: 'ESC', type: 'text', placeholder: 'ESC' },
+  { name: 'esc_firmware', label: 'ESC Firmware', type: 'text', placeholder: 'ESC Firmware' },
+  { name: 'receiver', label: 'Receiver', type: 'text', placeholder: 'Receiver' },
+  { name: 'receiver_firmware', label: 'Receiver Firmware', type: 'text', placeholder: 'Receiver Firmware' },
+  { name: 'flight_controller', label: 'Flight Controller', type: 'text', placeholder: 'Flight Controller' },
+  { name: 'firmware', label: 'Firmware', type: 'text', placeholder: 'Firmware' },
+  { name: 'firmware_version', label: 'Firmware Version', type: 'text', placeholder: 'Firmware Version' },
+  { name: 'gps', label: 'GPS', type: 'text', placeholder: 'GPS' },
+  { name: 'mag', label: 'MAG', type: 'text', placeholder: 'MAG' },
+  { name: 'baro', label: 'BARO', type: 'text', placeholder: 'BARO' },
+  { name: 'gyro', label: 'GYRO', type: 'text', placeholder: 'GYRO' },
+  { name: 'acc', label: 'ACC', type: 'text', placeholder: 'ACC' },
+  { name: 'registration_number', label: 'Registration Number', type: 'text', placeholder: 'Registration Number' },
+  { name: 'serial_number', label: 'Serial Number', type: 'text', placeholder: 'Serial Number' },
+  { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Active Status', options: [{ value: true, label: 'Yes' }, { value: false, label: 'No' }] }
+];
+
 const AdminPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const API_URL = import.meta.env.VITE_API_URL;
+  
   const [isStaff, setIsStaff] = useState(null);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
+  const [confirmDeleteUserId, setConfirmDeleteUserId] = useState(null);
+  
   const [filters, setFilters] = useState({});
   const [debouncedFilters, setDebouncedFilters] = useState({});
   const filterTimer = useRef(null);
@@ -80,8 +124,10 @@ const AdminPage = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [pageSize] = useState(20);
   const [isLoading, setIsLoading] = useState(false);
+  
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [selectedUserName, setSelectedUserName] = useState('');
+  
   const [userUAVs, setUserUAVs] = useState([]);
   const [loadingUAVs, setLoadingUAVs] = useState(false);
   const [uavCurrentPage, setUavCurrentPage] = useState(1);
@@ -90,6 +136,8 @@ const AdminPage = () => {
   const [editingUavId, setEditingUavId] = useState(null);
   const [editingUav, setEditingUav] = useState(null);
   const [uavError, setUavError] = useState(null);
+  const [confirmDeleteUavId, setConfirmDeleteUavId] = useState(null);
+  
   const [userFlightLogs, setUserFlightLogs] = useState([]);
   const [loadingFlightLogs, setLoadingFlightLogs] = useState(false);
   const [flightLogsError, setFlightLogsError] = useState(null);
@@ -98,9 +146,6 @@ const AdminPage = () => {
   const [flightLogPageSize] = useState(10);
   const [editingFlightLogId, setEditingFlightLogId] = useState(null);
   const [editingFlightLog, setEditingFlightLog] = useState(null);
-  const API_URL = import.meta.env.VITE_API_URL;
-  const [confirmDeleteUserId, setConfirmDeleteUserId] = useState(null);
-  const [confirmDeleteUavId, setConfirmDeleteUavId] = useState(null);
   const [confirmDeleteFlightLogId, setConfirmDeleteFlightLogId] = useState(null);
 
   const getAuthHeaders = useCallback(() => {
@@ -117,34 +162,6 @@ const AdminPage = () => {
     }
     return false;
   }, [navigate]);
-
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      const token = localStorage.getItem('access_token');
-      const user_id = localStorage.getItem('user_id');
-      if (!token || !user_id) {
-        setIsStaff(false);
-        setLoading(false);
-        return;
-      }
-      try {
-        const response = await fetch(`${API_URL}/api/users/${user_id}/`, {
-          headers: getAuthHeaders()
-        });
-        if (response.ok) {
-          const userData = await response.json();
-          setIsStaff(userData.is_staff === true);
-        } else {
-          setIsStaff(false);
-        }
-      } catch {
-        setIsStaff(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkAdminStatus();
-  }, [API_URL, getAuthHeaders]);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -182,40 +199,21 @@ const AdminPage = () => {
     }
   }, [API_URL, currentPage, debouncedFilters, getAuthHeaders, handleAuthError, navigate, pageSize]);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  useEffect(() => {
-    if (filterTimer.current) clearTimeout(filterTimer.current);
-    filterTimer.current = setTimeout(() => {
-      setDebouncedFilters(filters);
-      setCurrentPage(1);
-    }, 500);
-    return () => {
-      if (filterTimer.current) clearTimeout(filterTimer.current);
-    };
-  }, [filters]);
-
   const fetchUserUAVs = useCallback(async (userId) => {
     if (!userId) return;
-
     setLoadingUAVs(true);
     const queryParams = new URLSearchParams();
     queryParams.append('user_id', userId);
     queryParams.append('page', uavCurrentPage);
     queryParams.append('page_size', uavPageSize);
-
     try {
       const response = await fetch(`${API_URL}/api/admin/uavs/?${queryParams.toString()}`, {
         headers: getAuthHeaders()
       });
-
       if (!response.ok) {
         if (handleAuthError(response)) return;
         throw new Error('Failed to fetch user UAVs');
       }
-
       const data = await response.json();
       if (data.results && data.count !== undefined) {
         setUserUAVs(data.results);
@@ -265,6 +263,49 @@ const AdminPage = () => {
   }, [API_URL, getAuthHeaders, handleAuthError, flightLogCurrentPage, flightLogPageSize]);
 
   useEffect(() => {
+    const checkAdminStatus = async () => {
+      const token = localStorage.getItem('access_token');
+      const user_id = localStorage.getItem('user_id');
+      if (!token || !user_id) {
+        setIsStaff(false);
+        setLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch(`${API_URL}/api/users/${user_id}/`, {
+          headers: getAuthHeaders()
+        });
+        if (response.ok) {
+          const userData = await response.json();
+          setIsStaff(userData.is_staff === true);
+        } else {
+          setIsStaff(false);
+        }
+      } catch {
+        setIsStaff(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkAdminStatus();
+  }, [API_URL, getAuthHeaders]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    if (filterTimer.current) clearTimeout(filterTimer.current);
+    filterTimer.current = setTimeout(() => {
+      setDebouncedFilters(filters);
+      setCurrentPage(1);
+    }, 500);
+    return () => {
+      if (filterTimer.current) clearTimeout(filterTimer.current);
+    };
+  }, [filters]);
+
+  useEffect(() => {
     if (selectedUserId) {
       fetchUserUAVs(selectedUserId);
       fetchUserFlightLogs(selectedUserId);
@@ -274,6 +315,12 @@ const AdminPage = () => {
       setFlightLogTotalPages(0);
     }
   }, [fetchUserUAVs, fetchUserFlightLogs, selectedUserId, uavCurrentPage, flightLogCurrentPage]);
+
+  useEffect(() => {
+    const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleFilterChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -295,7 +342,6 @@ const AdminPage = () => {
     if (userToEdit) {
       setEditingUser({ ...userToEdit });
       setEditingUserId(id);
-
       setSelectedUserId(null);
       setSelectedUserName('');
     }
@@ -355,23 +401,12 @@ const AdminPage = () => {
     }
   }, [API_URL, fetchUsers, getAuthHeaders, handleAuthError]);
 
-  const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
-
-  const handlePageChange = useCallback((page) => {
-    setCurrentPage(page);
-  }, []);
-
-  const handleUavPageChange = useCallback((page) => {
-    setUavCurrentPage(page);
-  }, []);
-
   const handleUserSelect = useCallback((id) => {
     const selectedUser = users.find(user => user.user_id === id);
     if (selectedUser) {
       setSelectedUserId(id);
       setSelectedUserName(`${selectedUser.first_name || ''} ${selectedUser.last_name || ''} (${selectedUser.email})`);
       setUavCurrentPage(1);
-
       setEditingUavId(null);
       setEditingUav(null);
     }
@@ -410,14 +445,12 @@ const AdminPage = () => {
         },
         body: JSON.stringify(editingUav)
       });
-
       if (!response.ok) {
         if (handleAuthError(response)) return;
         const errorData = await response.json();
         setUavError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
         return;
       }
-
       fetchUserUAVs(selectedUserId);
       setEditingUavId(null);
       setEditingUav(null);
@@ -443,12 +476,10 @@ const AdminPage = () => {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-
       if (!response.ok) {
         if (handleAuthError(response)) return;
         throw new Error('Failed to delete UAV');
       }
-
       fetchUserUAVs(selectedUserId);
       setEditingUavId(null);
       setEditingUav(null);
@@ -526,110 +557,9 @@ const AdminPage = () => {
     }
   }, [API_URL, fetchUserFlightLogs, getAuthHeaders, handleAuthError, selectedUserId]);
 
-  useEffect(() => {
-    const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const tableColumns = [
-    { header: 'Email', accessor: 'email' },
-    { header: 'First Name', accessor: 'first_name' },
-    { header: 'Last Name', accessor: 'last_name' },
-    { header: 'Phone', accessor: 'phone' },
-    { header: 'Street', accessor: 'street' },
-    { header: 'ZIP', accessor: 'zip' },
-    { header: 'City', accessor: 'city' },
-    { header: 'Country', accessor: 'country' },
-    { header: 'Staff Status', accessor: 'is_staff', render: (value) => value ? 'Yes' : 'No' },
-    { header: 'Active', accessor: 'is_active', render: (value) => value ? 'Yes' : 'No' }
-  ];
-
-  const uavTableColumns = [
-    { header: 'Aircraft', accessor: 'drone_name' },
-    { header: 'Manufacturer', accessor: 'manufacturer' },
-    { header: 'Type', accessor: 'type' },
-    { header: 'Motors', accessor: 'motors' },
-    { header: 'Motor Type', accessor: 'motor_type' },
-    { header: 'Flight Time', accessor: 'total_flight_time', render: (seconds) => {
-      if (!seconds) return 'N/A';
-      const hh = Math.floor(seconds / 3600);
-      const mm = Math.floor((seconds % 3600) / 60);
-      return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
-    }},
-    { header: 'TO', accessor: 'total_takeoffs' },
-    { header: 'LDG', accessor: 'total_landings' },
-    { header: 'Flight Controller', accessor: 'flight_controller' },
-    { header: 'Firmware', accessor: 'firmware' },
-    { header: 'Version', accessor: 'firmware_version' },
-    { header: 'ESC', accessor: 'esc' },
-    { header: 'ESC Firmware', accessor: 'esc_firmware' },
-    { header: 'Video', accessor: 'video' },
-    { header: 'Video System', accessor: 'video_system' },
-    { header: 'Receiver', accessor: 'receiver' },
-    { header: 'Receiver FW', accessor: 'receiver_firmware' },
-    { header: 'GPS', accessor: 'gps' },
-    { header: 'MAG', accessor: 'mag' },
-    { header: 'BARO', accessor: 'baro' },
-    { header: 'GYRO', accessor: 'gyro' },
-    { header: 'ACC', accessor: 'acc' },
-    { header: 'Reg. Number', accessor: 'registration_number' },
-    { header: 'Serial Number', accessor: 'serial_number' },
-    { header: 'Status', accessor: 'is_active', render: (value) => value ? 'Active' : 'Inactive' }
-  ];
-
-  const flightLogTableColumns = [
-    { header: 'Dept Place', accessor: 'departure_place' },
-    { header: 'Date', accessor: 'departure_date' },
-    { header: 'Dept Time', accessor: 'departure_time' },
-    { header: 'LDG Time', accessor: 'landing_time' },
-    { header: 'LDG Place', accessor: 'landing_place' },
-    { header: 'Duration', accessor: 'flight_duration' },
-    { header: 'T/O', accessor: 'takeoffs' },
-    { header: 'LDG', accessor: 'landings' },
-    { header: 'Light', accessor: 'light_conditions' },
-    { header: 'OPS', accessor: 'ops_conditions' },
-    { header: 'Pilot Type', accessor: 'pilot_type' },
-    { header: 'Comments', accessor: 'comments' }
-  ];
-
-  const filterFormFields = [
-    { name: 'email', label: 'Email', type: 'text', placeholder: 'Search by email' },
-    { name: 'first_name', label: 'First Name', type: 'text', placeholder: 'Search by first name' },
-    { name: 'last_name', label: 'Last Name', type: 'text', placeholder: 'Search by last name' },
-    { name: 'phone', label: 'Phone', type: 'text', placeholder: 'Search by phone' },
-    { name: 'street', label: 'Street', type: 'text', placeholder: 'Search by street' },
-    { name: 'zip', label: 'ZIP', type: 'text', placeholder: 'Search by ZIP' },
-    { name: 'city', label: 'City', type: 'text', placeholder: 'Search by city' },
-    { name: 'country', label: 'Country', type: 'text', placeholder: 'Search by country' },
-    { name: 'is_staff', label: 'Staff Status', type: 'select', placeholder: 'Select staff status', options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }] },
-    { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Select active status', options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }] }
-  ];
-
-  const uavEditFormFields = [
-    { name: 'drone_name', label: 'Aircraft Name', type: 'text', placeholder: 'Aircraft Name' },
-    { name: 'manufacturer', label: 'Manufacturer', type: 'text', placeholder: 'Manufacturer' },
-    { name: 'type', label: 'Type', type: 'text', placeholder: 'Type' },
-    { name: 'motors', label: 'Motors', type: 'number', placeholder: 'Number of Motors' },
-    { name: 'motor_type', label: 'Motor Type', type: 'text', placeholder: 'Motor Type' },
-    { name: 'video', label: 'Video', type: 'text', placeholder: 'Video' },
-    { name: 'video_system', label: 'Video System', type: 'text', placeholder: 'Video System' },
-    { name: 'esc', label: 'ESC', type: 'text', placeholder: 'ESC' },
-    { name: 'esc_firmware', label: 'ESC Firmware', type: 'text', placeholder: 'ESC Firmware' },
-    { name: 'receiver', label: 'Receiver', type: 'text', placeholder: 'Receiver' },
-    { name: 'receiver_firmware', label: 'Receiver Firmware', type: 'text', placeholder: 'Receiver Firmware' },
-    { name: 'flight_controller', label: 'Flight Controller', type: 'text', placeholder: 'Flight Controller' },
-    { name: 'firmware', label: 'Firmware', type: 'text', placeholder: 'Firmware' },
-    { name: 'firmware_version', label: 'Firmware Version', type: 'text', placeholder: 'Firmware Version' },
-    { name: 'gps', label: 'GPS', type: 'text', placeholder: 'GPS' },
-    { name: 'mag', label: 'MAG', type: 'text', placeholder: 'MAG' },
-    { name: 'baro', label: 'BARO', type: 'text', placeholder: 'BARO' },
-    { name: 'gyro', label: 'GYRO', type: 'text', placeholder: 'GYRO' },
-    { name: 'acc', label: 'ACC', type: 'text', placeholder: 'ACC' },
-    { name: 'registration_number', label: 'Registration Number', type: 'text', placeholder: 'Registration Number' },
-    { name: 'serial_number', label: 'Serial Number', type: 'text', placeholder: 'Serial Number' },
-    { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Active Status', options: [{ value: true, label: 'Yes' }, { value: false, label: 'No' }] }
-  ];
+  const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
+  const handlePageChange = useCallback((page) => setCurrentPage(page), []);
+  const handleUavPageChange = useCallback((page) => setUavCurrentPage(page), []);
 
   if (loading) return <Loading />;
   if (!isStaff) return <Navigate to="/flightlog" state={{ from: location }} replace />;
@@ -670,7 +600,7 @@ const AdminPage = () => {
         {isLoading ? <Loading /> : (
           <>
             <ResponsiveTable 
-              columns={tableColumns}
+              columns={userTableColumns}
               data={users}
               onEdit={handleEdit}
               filterFields={filterFormFields}

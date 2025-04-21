@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sidebar, Button, Loading, ConfirmModal } from '../components';
+import { maintenanceLogTableColumns } from '../utils/tableDefinitions';
 
 const AircraftSettings = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -372,9 +373,9 @@ const AircraftSettings = () => {
               <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2">Date</th>
-                    <th className="px-4 py-2">Log</th>
-                    <th className="px-4 py-2">File</th>
+                    {maintenanceLogTableColumns.map(col => (
+                      <th key={col.accessor} className="px-4 py-2">{col.header}</th>
+                    ))}
                     <th className="px-4 py-2">Actions</th>
                   </tr>
                 </thead>
@@ -424,13 +425,17 @@ const AircraftSettings = () => {
                         </>
                       ) : (
                         <>
-                          <td className="px-4 py-2">{log.event_date || 'N/A'}</td>
-                          <td className="px-4 py-2">{log.description || 'N/A'}</td>
-                          <td className="px-4 py-2">
-                            {log.file ? (
-                              <a href={log.file} download className="text-blue-500 hover:underline">Download File</a>
-                            ) : 'N/A'}
-                          </td>
+                          {maintenanceLogTableColumns.map(col => (
+                            <td className="px-4 py-2" key={col.accessor}>
+                              {col.render
+                                ? col.render(log[col.accessor], log)
+                                : log[col.accessor] || 'N/A'}
+                              {col.accessor === 'file' && log.file
+                                ? (
+                                  <a href={log.file} download className="text-blue-500 hover:underline ml-2">Download File</a>
+                                ) : null}
+                            </td>
+                          ))}
                           <td className="px-4 py-2">
                             <Button onClick={() => handleEditLog(log.maintenance_id)} className="bg-blue-500 hover:bg-blue-600 text-white">Edit</Button>
                           </td>
