@@ -12,7 +12,6 @@ import AircraftSettings from '../pages/AircraftSettings.jsx';
 import FlightDetails from '../pages/FlightDetails.jsx';
 import AdminPage from '../pages/AdminPage';
 import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
 
 function Home() {
   const [count, setCount] = useState(0);
