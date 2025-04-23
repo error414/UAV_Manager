@@ -2,44 +2,54 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Alert, Sidebar, FormInput, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
+import { useAuth, useApi } from '../utils/authUtils';
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-const LicenseField = ({ label, dateName, dateValue, onChange, reminderName, reminderChecked, onReminderChange }) => (
-  <div className="grid grid-cols-4 gap-2 items-center">
-    <div className="col-span-1">
-      <label>{label}</label>
+const LicenseField = ({
+  label, dateName, dateValue, onChange, reminderName, reminderChecked, onReminderChange
+}) => {
+  const isDateValid = dateValue && new Date(dateValue) > new Date();
+  return (
+    <div className="grid grid-cols-4 gap-2 items-center">
+      <div className="col-span-1">
+        <label>{label}</label>
+      </div>
+      <div className="col-span-1">
+        <label>Valid until:</label>
+      </div>
+      <div className="col-span-2">
+        <FormInput
+          type="date"
+          name={dateName}
+          id={dateName}
+          value={dateValue}
+          onChange={onChange}
+        />
+      </div>
+      <div className="col-span-4 flex items-center mt-1">
+        <input
+          type="checkbox"
+          name={reminderName}
+          id={reminderName}
+          checked={reminderChecked}
+          onChange={onReminderChange}
+          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          disabled={!isDateValid}
+        />
+        <label htmlFor={reminderName} className={`ml-2 text-sm text-gray-700 ${!isDateValid ? 'text-gray-400' : ''}`}>
+          Send me a reminder before expiry
+        </label>
+        {!isDateValid && (
+          <span className="ml-2 text-xs text-gray-400">(Set a future date to enable)</span>
+        )}
+      </div>
     </div>
-    <div className="col-span-1">
-      <label>Valid until:</label>
-    </div>
-    <div className="col-span-2">
-      <FormInput
-        type="date"
-        name={dateName}
-        id={dateName}
-        value={dateValue}
-        onChange={onChange}
-      />
-    </div>
-    <div className="col-span-4 flex items-center mt-1">
-      <input
-        type="checkbox"
-        name={reminderName}
-        id={reminderName}
-        checked={reminderChecked}
-        onChange={onReminderChange}
-        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-      />
-      <label htmlFor={reminderName} className="ml-2 text-sm text-gray-700">
-        Send me a reminder before expiry
-      </label>
-    </div>
-  </div>
-);
+  );
+};
 
 const UserSettings = () => {
   const navigate = useNavigate();
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [formData, setFormData] = useState({
     first_name: '',
@@ -70,6 +80,9 @@ const UserSettings = () => {
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { checkAuthAndGetUser } = useAuth();
+  const { fetchData } = useApi(API_URL, setError);
+
   useEffect(() => {
     const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
     window.addEventListener('resize', handleResize);
@@ -77,16 +90,14 @@ const UserSettings = () => {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      navigate('/login');
-    } else {
-      fetchUserData();
-    }
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
+
+    fetchUserData();
   }, [navigate]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  
+
   const formatDateForInput = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -95,52 +106,48 @@ const UserSettings = () => {
 
   const fetchUserData = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const user_id = localStorage.getItem('user_id');
-
-      if (!token || !user_id) {
-        setError('Authentication required. Please log in again.');
-        return;
-      }
+      const auth = checkAuthAndGetUser();
+      if (!auth) return;
 
       setIsLoading(true);
 
-      const userResponse = await fetch(`${API_URL}/api/users/${user_id}/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const userResult = await fetchData(`/api/users/${auth.user_id}/`);
 
-      if (!userResponse.ok) {
-        const errorData = await userResponse.json();
-        throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
-      }
+      if (!userResult.error) {
+        const userData = userResult.data;
+        const a1_a3 = userData.a1_a3 ? formatDateForInput(userData.a1_a3) : '';
+        const a2 = userData.a2 ? formatDateForInput(userData.a2) : '';
+        const sts = userData.sts ? formatDateForInput(userData.sts) : '';
+        setFormData({
+          ...userData,
+          a1_a3,
+          a2,
+          sts
+        });
 
-      const userData = await userResponse.json();
-      setFormData({
-        ...userData,
-        a1_a3: userData.a1_a3 ? formatDateForInput(userData.a1_a3) : '',
-        a2: userData.a2 ? formatDateForInput(userData.a2) : '',
-        sts: userData.sts ? formatDateForInput(userData.sts) : ''
-      });
+        const settingsResult = await fetchData('/api/user-settings/');
 
-      const settingsResponse = await fetch(`${API_URL}/api/user-settings/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (settingsResponse.ok) {
-        const settingsData = await settingsResponse.json();
-        if (settingsData && settingsData.length > 0) {
-          setUserSettings({
-            notifications_enabled: settingsData[0].notifications_enabled ?? true,
-            a1_a3_reminder: settingsData[0].a1_a3_reminder ?? false,
-            a2_reminder: settingsData[0].a2_reminder ?? false,
-            sts_reminder: settingsData[0].sts_reminder ?? false,
-            reminder_months_before: settingsData[0].reminder_months_before ?? 3,
-            theme: settingsData[0].theme || '',
-            preferred_units: settingsData[0].preferred_units || '',
-            settings_id: settingsData[0].settings_id
-          });
+        if (!settingsResult.error) {
+          const settingsData = settingsResult.data;
+          if (settingsData && settingsData.length > 0) {
+            const today = new Date();
+            const isA1A3Valid = a1_a3 && new Date(a1_a3) > today;
+            const isA2Valid = a2 && new Date(a2) > today;
+            const isSTSValid = sts && new Date(sts) > today;
+            setUserSettings({
+              notifications_enabled: settingsData[0].notifications_enabled ?? true,
+              a1_a3_reminder: (settingsData[0].a1_a3_reminder ?? false) && isA1A3Valid,
+              a2_reminder: (settingsData[0].a2_reminder ?? false) && isA2Valid,
+              sts_reminder: (settingsData[0].sts_reminder ?? false) && isSTSValid,
+              reminder_months_before: settingsData[0].reminder_months_before ?? 3,
+              theme: settingsData[0].theme || '',
+              preferred_units: settingsData[0].preferred_units || '',
+              settings_id: settingsData[0].settings_id
+            });
+          }
         }
       }
+
       setIsLoading(false);
     } catch (err) {
       setError('Failed to load user data. Please try again.');
@@ -155,17 +162,29 @@ const UserSettings = () => {
 
   const handleSettingsChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     setUserSettings(prev => {
       const updated = { ...prev, [name]: type === 'checkbox' ? checked : value };
-      
+
+      if (type === 'checkbox' && checked) {
+        if (name === 'a1_a3_reminder' && (!formData.a1_a3 || new Date(formData.a1_a3) <= new Date())) {
+          updated.a1_a3_reminder = false;
+        }
+        if (name === 'a2_reminder' && (!formData.a2 || new Date(formData.a2) <= new Date())) {
+          updated.a2_reminder = false;
+        }
+        if (name === 'sts_reminder' && (!formData.sts || new Date(formData.sts) <= new Date())) {
+          updated.sts_reminder = false;
+        }
+      }
+
       if (name === 'a1_a3_reminder' || name === 'a2_reminder' || name === 'sts_reminder') {
-        updated.notifications_enabled = 
-          updated.a1_a3_reminder || 
-          updated.a2_reminder || 
+        updated.notifications_enabled =
+          updated.a1_a3_reminder ||
+          updated.a2_reminder ||
           updated.sts_reminder;
       }
-      
+
       return updated;
     });
   };
@@ -180,13 +199,8 @@ const UserSettings = () => {
     setSuccess(null);
 
     try {
-      const token = localStorage.getItem('access_token');
-      const user_id = localStorage.getItem('user_id');
-
-      if (!token || !user_id) {
-        setError('Authentication required. Please log in again.');
-        return;
-      }
+      const auth = checkAuthAndGetUser();
+      if (!auth) return;
 
       if (!formData.first_name || !formData.last_name || !formData.email) {
         setError('Please fill in all required fields: First Name, Last Name, and Email');
@@ -198,33 +212,21 @@ const UserSettings = () => {
       if (!cleanedData.a2) delete cleanedData.a2;
       if (!cleanedData.sts) delete cleanedData.sts;
 
-      const userResponse = await fetch(`${API_URL}/api/users/${user_id}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(cleanedData)
-      });
+      const userResult = await fetchData(
+        `/api/users/${auth.user_id}/`,
+        {},
+        'PATCH',
+        cleanedData
+      );
 
-      if (!userResponse.ok) {
-        const errorData = await userResponse.json();
-        throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
-      }
+      if (!userResult.error) {
+        const settingsMethod = userSettings.settings_id ? 'PUT' : 'POST';
+        const settingsEndpoint = userSettings.settings_id
+          ? `/api/user-settings/${userSettings.settings_id}/`
+          : '/api/user-settings/';
 
-      const settingsMethod = userSettings.settings_id ? 'PUT' : 'POST';
-      const settingsUrl = userSettings.settings_id 
-        ? `${API_URL}/api/user-settings/${userSettings.settings_id}/`
-        : `${API_URL}/api/user-settings/`;
-
-      const settingsResponse = await fetch(settingsUrl, {
-        method: settingsMethod,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          user: user_id,
+        const settingsData = {
+          user: auth.user_id,
           notifications_enabled: userSettings.notifications_enabled,
           a1_a3_reminder: userSettings.a1_a3_reminder,
           a2_reminder: userSettings.a2_reminder,
@@ -232,15 +234,19 @@ const UserSettings = () => {
           reminder_months_before: userSettings.reminder_months_before,
           theme: userSettings.theme,
           preferred_units: userSettings.preferred_units
-        })
-      });
+        };
 
-      if (!settingsResponse.ok) {
-        const errorData = await settingsResponse.json();
-        throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
+        const settingsResult = await fetchData(
+          settingsEndpoint,
+          {},
+          settingsMethod,
+          settingsData
+        );
+
+        if (!settingsResult.error) {
+          setSuccess('Settings saved successfully!');
+        }
       }
-
-      setSuccess('Settings saved successfully!');
     } catch (err) {
       setError(err.message || 'An error occurred while saving settings.');
     }
@@ -250,32 +256,8 @@ const UserSettings = () => {
     return <Loading message="Loading user data..." />;
   }
 
-  const SidebarToggleButton = ({ position, onClick }) => (
-    <button
-      onClick={onClick}
-      className={position}
-      aria-label="Toggle sidebar"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
-    </button>
-  );
-
   return (
     <div className="flex h-screen relative">
-      <SidebarToggleButton 
-        position="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
-        onClick={toggleSidebar}
-      />
-      
-      <SidebarToggleButton 
-        position={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
-          sidebarOpen ? 'left-2' : 'left-4'
-        }`}
-        onClick={toggleSidebar}
-      />
-      
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
       <div 

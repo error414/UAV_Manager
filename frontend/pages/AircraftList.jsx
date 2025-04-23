@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar, Alert, Button, ResponsiveTable, Loading, ConfirmModal } from '../components';
+import { Sidebar, Alert, Button, ResponsiveTable, Loading, ConfirmModal, Pagination } from '../components';
 import { uavTableColumns } from '../utils/tableDefinitions';
+import { UAV_INITIAL_FILTERS } from '../utils/filterDefinitions';
+import { useAuth, useApi } from '../utils/authUtils';
 
 const AircraftList = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -24,81 +26,34 @@ const AircraftList = () => {
   const [debouncedFilters, setDebouncedFilters] = useState({});
   const filterTimer = useRef(null);
   const [importResult, setImportResult] = useState(null);
-  const [filters, setFilters] = useState({
-    drone_name: '',
-    manufacturer: '',
-    type: '',
-    motors: '',
-    motor_type: '',
-    firmware_version: '',
-    video_system: '',
-    gps: '',
-    mag: '',
-    baro: '',
-    gyro: '',
-    acc: '',
-    registration_number: '',
-    serial_number: ''
-  });
+  const [filters, setFilters] = useState(UAV_INITIAL_FILTERS);
   const filtersRef = useRef(filters);
-
-  const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem('access_token');
-    return { Authorization: `Bearer ${token}` };
-  }, []);
   
-  const handleAuthError = useCallback((res) => {
-    if (res.status === 401) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_id');
-      navigate('/login');
-      return true;
-    }
-    return false;
-  }, [navigate]);
+  const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
+  const { fetchData } = useApi(API_URL, setError);
 
   const fetchAircrafts = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
-    const user_id = localStorage.getItem('user_id');
-    
-    if (!token || !user_id) {
-      navigate('/login');
-      return;
-    }
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
     
     setIsLoading(true);
     
-    const queryParams = new URLSearchParams();
+    const queryParams = {
+      ...debouncedFilters,
+      page: currentPage,
+      page_size: pageSize,
+      ordering: sortField
+    };
     
-    Object.entries(debouncedFilters).forEach(([key, value]) => {
-      if (value) {
-        queryParams.append(key, value);
-      }
-    });
+    const result = await fetchData('/api/uavs/', queryParams);
     
-    queryParams.append('page', currentPage);
-    queryParams.append('page_size', pageSize);
-    queryParams.append('ordering', sortField);
-    
-    try {
-      const response = await fetch(`${API_URL}/api/uavs/?${queryParams.toString()}`, {
-        headers: getAuthHeaders()
-      });
-      
-      if (!response.ok) {
-        if (handleAuthError(response)) return;
-        throw new Error('Failed to fetch aircraft data');
-      }
-      
-      const data = await response.json();
-      setAircrafts(data.results || []);
-      setTotalPages(Math.ceil((data.count || 0) / pageSize));
-      setIsLoading(false);
-    } catch (err) {
-      setError('Could not load aircraft data.');
-      setIsLoading(false);
+    if (!result.error) {
+      setAircrafts(result.data.results || []);
+      setTotalPages(Math.ceil((result.data.count || 0) / pageSize));
     }
-  }, [API_URL, getAuthHeaders, handleAuthError, navigate, debouncedFilters, currentPage, pageSize, sortField]);
+    
+    setIsLoading(false);
+  }, [fetchData, checkAuthAndGetUser, debouncedFilters, currentPage, pageSize, sortField]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -192,7 +147,7 @@ const AircraftList = () => {
   }, []);
 
   const handleNewAircraft = () => {
-    navigate('/new-aircraft');
+    navigate('/newaircraft');
   };
 
   const handleImportCSV = () => {
@@ -200,7 +155,7 @@ const AircraftList = () => {
   };
 
   const handleAircraftClick = (uavId) => {
-    navigate(`/aircraft-settings/${uavId}`);
+    navigate(`/aircraftsettings/${uavId}`);
   };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -295,28 +250,6 @@ const AircraftList = () => {
 
   return (
     <div className="flex h-screen relative">
-      <button
-        onClick={toggleSidebar}
-        className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
-        aria-label="Toggle sidebar for mobile"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      
-      <button
-        onClick={toggleSidebar}
-        className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
-          sidebarOpen ? 'left-2' : 'left-4'
-        }`}
-        aria-label="Toggle sidebar for desktop"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div 
@@ -351,69 +284,11 @@ const AircraftList = () => {
           />
         )}
         
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center mt-4 gap-2">
-            <button 
-              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-            >
-              &laquo; Prev
-            </button>
-            
-            <div className="flex items-center gap-1">
-              {currentPage > 3 && (
-                <>
-                  <button 
-                    onClick={() => handlePageChange(1)}
-                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-                  >
-                    1
-                  </button>
-                  {currentPage > 4 && <span className="px-1">...</span>}
-                </>
-              )}
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(page => {
-                  if ((currentPage > 3 && page === 1) || (currentPage < totalPages - 2 && page === totalPages)) {
-                    return false;
-                  }
-                  return page >= currentPage - 1 && page <= currentPage + 1;
-                })
-                .map(page => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-                  >
-                    {page}
-                  </button>
-                ))
-              }
-              
-              {currentPage < totalPages - 2 && (
-                <>
-                  {currentPage < totalPages - 3 && <span className="px-1">...</span>}
-                  <button 
-                    onClick={() => handlePageChange(totalPages)}
-                    className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-                  >
-                    {totalPages}
-                  </button>
-                </>
-              )}
-            </div>
-            
-            <button 
-              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-            >
-              Next &raquo;
-            </button>
-          </div>
-        )}
+        <Pagination 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          onPageChange={handlePageChange} 
+        />
 
         <div className="flex justify-center gap-4 p-4 mt-4">
           <Button 

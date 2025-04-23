@@ -18,6 +18,17 @@ class UserService:
     def update_user_settings(user, settings_data):
         """Create or update user settings"""
         settings, created = UserSettings.objects.get_or_create(user=user)
+        # Reset reminder flags if license date is not set or not in the future
+        today = datetime.now().date()
+        if ('a1_a3_reminder' in settings_data and settings_data['a1_a3_reminder']):
+            if not user.a1_a3 or user.a1_a3 <= today:
+                settings_data['a1_a3_reminder'] = False
+        if ('a2_reminder' in settings_data and settings_data['a2_reminder']):
+            if not user.a2 or user.a2 <= today:
+                settings_data['a2_reminder'] = False
+        if ('sts_reminder' in settings_data and settings_data['sts_reminder']):
+            if not user.sts or user.sts <= today:
+                settings_data['sts_reminder'] = False
         for key, value in settings_data.items():
             setattr(settings, key, value)
         settings.save()

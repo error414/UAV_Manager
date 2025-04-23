@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
+import { useApi } from '../utils/authUtils';
 
 const Login = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -8,6 +9,11 @@ const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [status, setStatus] = useState({ error: null, success: null, loading: false });
+  
+  // We use useApi but we'll only use it after successful login
+  const { fetchData } = useApi(API_URL, error => 
+    setStatus(prev => ({ ...prev, error, loading: false }))
+  );
 
   useEffect(() => {
     if (localStorage.getItem('access_token')) {
@@ -24,6 +30,7 @@ const Login = () => {
     setStatus({ error: null, success: null, loading: true });
 
     try {
+      // Authentication request - can't use fetchData yet as we don't have a token
       const response = await fetch(`${API_URL}/auth/jwt/create/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,18 +47,14 @@ const Login = () => {
         throw new Error('No access token received.');
       }
       
+      // Store the token - this enables authUtils to work for subsequent requests
       localStorage.setItem('access_token', data.access);
       
-      try {
-        const meResponse = await fetch(`${API_URL}/auth/users/me/`, {
-          headers: { 'Authorization': `Bearer ${data.access}` }
-        });
-        
-        if (meResponse.ok) {
-          const userData = await meResponse.json();
-          localStorage.setItem('user_id', userData.user_id);
-        }
-      } catch (err) {
+      // Now we can use fetchData to get user info
+      const userResult = await fetchData('/auth/users/me/');
+      
+      if (!userResult.error && userResult.data) {
+        localStorage.setItem('user_id', userResult.data.user_id);
       }
       
       setStatus({ error: null, success: 'Login successful!', loading: false });

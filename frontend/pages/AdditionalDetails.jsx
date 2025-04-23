@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
+import { useAuth, useApi } from '../utils/authUtils';
 
 const AdditionalDetails = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -20,50 +21,34 @@ const AdditionalDetails = () => {
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   
+  const { checkAuthAndGetUser } = useAuth();
+  const { fetchData } = useApi(API_URL, setError);
+  
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    const user_id = localStorage.getItem('user_id');
-
-    if (!token || !user_id) {
-      navigate('/login');
-      return;
-    }
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
 
     setIsLoading(true);
-    fetch(`${API_URL}/api/users/${user_id}/`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-    })
-      .then(response => {
-        if (!response.ok) {
-          if (response.status === 401) {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('user_id');
-            navigate('/login');
-            throw new Error('Token expired. Please login again.');
-          }
-          throw new Error('Failed to fetch user data');
+    
+    fetchData(`/api/users/${auth.user_id}/`)
+      .then(result => {
+        if (!result.error) {
+          setDetails({
+            first_name: result.data.first_name || '',
+            last_name: result.data.last_name || '',
+            phone: result.data.phone || '',
+            street: result.data.street || '',
+            zip: result.data.zip || '',
+            city: result.data.city || '',
+            country: result.data.country || '',
+          });
         }
-        return response.json();
-      })
-      .then(data => {
-        setDetails({
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          phone: data.phone || '',
-          street: data.street || '',
-          zip: data.zip || '',
-          city: data.city || '',
-          country: data.country || '',
-        });
         setIsLoading(false);
       })
-      .catch(err => {
+      .catch(() => {
         setIsLoading(false);
       });
-  }, [navigate, API_URL]);
+  }, [checkAuthAndGetUser, fetchData]);
 
   const handleChange = (e) => {
     setDetails({
@@ -94,42 +79,14 @@ const AdditionalDetails = () => {
     setError(null);
     setSuccess(null);
 
-    const token = localStorage.getItem('access_token');
-    const user_id = localStorage.getItem('user_id');
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
 
-    if (!user_id || !token) {
-      navigate('/login');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/api/users/${user_id}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(details),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user_id');
-          navigate('/login');
-          return;
-        }
-        
-        const errorData = await response.json();
-        setError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
-        return;
-      }
-
-      const data = await response.json();
+    const result = await fetchData(`/api/users/${auth.user_id}/`, {}, 'PATCH', details);
+    
+    if (!result.error) {
       setSuccess('Details updated successfully!');
       navigate('/flightlog');
-    } catch (err) {
-      setError('An error occurred. Please try again later.');
     }
   };
 

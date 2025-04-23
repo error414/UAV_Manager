@@ -8,8 +8,27 @@ class AdminService:
         # Ensure the requesting user is staff
         if not admin_user.is_staff:
             return User.objects.none()
+        
+        # Start with all users
+        queryset = User.objects.all()
+        
+        # Apply filters if query parameters exist
+        if query_params:
+            # Text-based filters (case-insensitive contains)
+            text_filters = ['email', 'first_name', 'last_name', 'phone', 'street', 'zip', 'city', 'country']
+            for field in text_filters:
+                if field in query_params and query_params[field]:
+                    queryset = queryset.filter(**{f"{field}__icontains": query_params[field]})
             
-        return User.objects.all()
+            # Boolean filters
+            bool_filters = ['is_staff', 'is_active']
+            for field in bool_filters:
+                if field in query_params and query_params[field]:
+                    # Convert string 'true'/'false' to boolean
+                    value = query_params[field].lower() == 'true'
+                    queryset = queryset.filter(**{field: value})
+        
+        return queryset
     
     @staticmethod
     def get_user_uavs(admin_user, user_id, query_params=None):

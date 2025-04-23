@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sidebar, Button, Loading, ConfirmModal } from '../components';
 import { maintenanceLogTableColumns } from '../utils/tableDefinitions';
+import { useAuth, useApi } from '../utils/authUtils';
 
 const AircraftSettings = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -19,8 +20,12 @@ const AircraftSettings = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [editFormErrors, setEditFormErrors] = useState({});
+  const [error, setError] = useState(null);
 
-  useEffect(() => { fetchAircraft(); }, [uavId, API_URL]);
+  const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
+  const { fetchData } = useApi(API_URL, setError);
+
+  useEffect(() => { fetchAircraft(); }, [uavId]);
   
   useEffect(() => {
     const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
@@ -50,35 +55,49 @@ const AircraftSettings = () => {
 
   const fetchAircraft = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const [aircraftRes, logsRes, remindersRes] = await Promise.all([
-        fetch(`${API_URL}/api/uavs/${uavId}/`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/maintenance/?uav=${uavId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/maintenance-reminders/`, { headers: { Authorization: `Bearer ${token}` } }),
+      const auth = checkAuthAndGetUser();
+      if (!auth) return;
+      
+      const [aircraftResult, logsResult, remindersResult] = await Promise.all([
+        fetchData(`/api/uavs/${uavId}/`),
+        fetchData(`/api/maintenance/?uav=${uavId}`),
+        fetchData('/api/maintenance-reminders/')
       ]);
-      if (!aircraftRes.ok) throw new Error('Failed to fetch aircraft data');
-      const data = await aircraftRes.json();
-      if (logsRes.ok) data.maintenance_logs = await logsRes.json();
-      if (remindersRes.ok) {
-        const remindersData = await remindersRes.json();
-        remindersData.filter(r => r.uav === parseInt(uavId)).forEach(reminder => {
-          if (reminder.component === 'props') data.next_props_maint_date = reminder.next_maintenance;
-          else if (reminder.component === 'motor') data.next_motor_maint_date = reminder.next_maintenance;
-          else if (reminder.component === 'frame') data.next_frame_maint_date = reminder.next_maintenance;
-        });
+      
+      if (!aircraftResult.error) {
+        const data = aircraftResult.data;
+        
+        if (!logsResult.error) {
+          data.maintenance_logs = logsResult.data;
+        }
+        
+        if (!remindersResult.error) {
+          const remindersData = remindersResult.data;
+          remindersData.filter(r => r.uav === parseInt(uavId)).forEach(reminder => {
+            if (reminder.component === 'props') data.next_props_maint_date = reminder.next_maintenance;
+            else if (reminder.component === 'motor') data.next_motor_maint_date = reminder.next_maintenance;
+            else if (reminder.component === 'frame') data.next_frame_maint_date = reminder.next_maintenance;
+          });
+        }
+        
+        setAircraft(data);
       }
-      setAircraft(data);
     } catch (error) {
+      setError("Failed to load aircraft data");
     }
   };
 
   const submitMaintenanceLog = async (logData, file, method, logId = null, keepExistingFile = false) => {
-    const token = localStorage.getItem('access_token');
+    const auth = checkAuthAndGetUser();
+    if (!auth) return false;
+    
     const endpoint = logId 
-      ? `${API_URL}/api/maintenance/${logId}/` 
-      : `${API_URL}/api/maintenance/`;
+      ? `/api/maintenance/${logId}/` 
+      : `/api/maintenance/`;
+      
     try {
       let response;
+      
       if (file) {
         const formData = new FormData();
         formData.append('description', logData.description);
@@ -86,35 +105,43 @@ const AircraftSettings = () => {
         formData.append('event_type', 'LOG');
         formData.append('uav', uavId);
         formData.append('file', file);
-        response = await fetch(endpoint, {
+        
+        response = await fetch(`${API_URL}${endpoint}`, {
           method,
-          headers: { Authorization: `Bearer ${token}` },
+          headers: getAuthHeaders(),
           body: formData,
         });
+        
+        if (!response.ok) {
+          if (handleAuthError(response)) return false;
+          throw new Error(`Failed to ${method === 'POST' ? 'add' : 'update'} maintenance log`);
+        }
       } else {
         const requestData = { ...logData, event_type: 'LOG', uav: uavId };
         if (method === 'PUT' && keepExistingFile) {
           delete requestData.file;
           delete requestData.originalFile;
         }
-        response = await fetch(endpoint, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(requestData),
-        });
+        
+        const result = await fetchData(
+          endpoint, 
+          {}, 
+          method, 
+          requestData
+        );
+        
+        if (result.error) return false;
       }
-      if (!response.ok) throw new Error(`Failed to ${method === 'POST' ? 'add' : 'update'} maintenance log`);
+      
       return true;
     } catch (error) {
+      setError(`Failed to ${method === 'POST' ? 'add' : 'update'} maintenance log`);
       return false;
     }
   };
 
   const toggleSidebar = () => setSidebarOpen(v => !v);
-  const handleModifyClick = () => navigate(`/edit-aircraft/${uavId}`);
+  const handleModifyClick = () => navigate(`/editaircraft/${uavId}`);
 
   const handleLogChange = e => {
     const { name, value, files } = e.target;
@@ -177,16 +204,15 @@ const AircraftSettings = () => {
 
   const confirmDeleteLog = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_URL}/api/maintenance/${deleteLogId}/`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error('Failed to delete maintenance log');
-      await fetchAircraft();
-      setEditingLogId(null);
-      setEditingLog(null);
+      const result = await fetchData(`/api/maintenance/${deleteLogId}/`, {}, 'DELETE');
+      
+      if (!result.error) {
+        await fetchAircraft();
+        setEditingLogId(null);
+        setEditingLog(null);
+      }
     } catch (error) {
+      setError("Failed to delete maintenance log");
     } finally {
       setShowDeleteModal(false);
       setDeleteLogId(null);
@@ -227,24 +253,6 @@ const AircraftSettings = () => {
 
   return (
     <div className="flex h-screen relative">
-      <button
-        onClick={toggleSidebar}
-        className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
-        aria-label="Toggle sidebar for mobile"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      <button
-        onClick={toggleSidebar}
-        className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${sidebarOpen ? 'left-2' : 'left-4'}`}
-        aria-label="Toggle sidebar for desktop"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <div className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${sidebarOpen ? 'lg:ml-64' : ''}`}>
         <div className="flex items-center h-10 mb-4">

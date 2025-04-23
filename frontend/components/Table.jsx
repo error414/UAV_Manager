@@ -2,6 +2,7 @@ import React from 'react';
 import EditableRow from './EditableRow';
 import { Button } from './index';
 import Filters from './Filters';
+import { CountryDropdown } from 'react-country-region-selector';
 
 // Field options constants
 const FIELD_OPTIONS = {
@@ -46,6 +47,43 @@ const renderFormField = (fieldConfig, data, onChange, availableOptions) => {
             {uav.drone_name}
           </option>
         ))}
+      </select>
+    );
+  }
+  
+  // Handle country field as CountryDropdown
+  if (fieldName === 'country') {
+    return (
+      <CountryDropdown
+        name={fieldName}
+        value={value}
+        onChange={(val) => {
+          // Create synthetic event to match onChange interface
+          onChange({ 
+            target: { 
+              name: fieldName, 
+              value: val 
+            } 
+          });
+        }}
+        defaultOptionLabel={isEditing ? `Select country` : fieldConfig.placeholder}
+        className="w-full px-2 py-1 border border-gray-300 rounded"
+      />
+    );
+  }
+  
+  // Handle boolean fields (is_staff, is_active) as dropdowns
+  if (fieldName === 'is_staff' || fieldName === 'is_active') {
+    return (
+      <select
+        name={fieldName}
+        value={value.toString()}
+        onChange={onChange}
+        className="w-full px-2 py-1 border border-gray-300 rounded"
+      >
+        <option value="">Select {fieldConfig.header || fieldConfig.label}</option>
+        <option value="true">Yes</option>
+        <option value="false">No</option>
       </select>
     );
   }

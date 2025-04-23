@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Alert, Sidebar, AircraftForm, Loading, ConfirmModal } from '../components';
+import { useAuth, useApi } from '../utils/authUtils';
 
 const DEFAULT_FORM_DATA = {
   drone_name: '',
@@ -55,45 +56,9 @@ const useAircraftForm = (isEditMode, uavId) => {
   const [success, setSuccess] = useState(null);
   const [canDelete, setCanDelete] = useState(true);
   const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
-
-  const makeApiRequest = async (url, method, body = null) => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      setError('Authentication required. Please log in again.');
-      navigate('/login');
-      return null;
-    }
-    
-    try {
-      const options = {
-        method,
-        headers: { 'Authorization': `Bearer ${token}` }
-      };
-      
-      if (body) {
-        options.headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(body);
-      }
-      
-      const response = await fetch(url, options);
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user_id');
-          navigate('/login');
-          return null;
-        }
-        const errorData = await response.json().catch(() => 'Request failed');
-        throw new Error(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
-      }
-      
-      return method === 'DELETE' ? true : await response.json();
-    } catch (err) {
-      setError(err.message || `An error occurred during the ${method} request.`);
-      return null;
-    }
-  };
+  
+  const { checkAuthAndGetUser } = useAuth();
+  const { fetchData } = useApi(API_URL, setError);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -130,7 +95,8 @@ const useAircraftForm = (isEditMode, uavId) => {
     setSuccess(null);
 
     try {
-      const user_id = localStorage.getItem('user_id');
+      const auth = checkAuthAndGetUser();
+      if (!auth) return;
       
       if (!formData.drone_name || !formData.type || !formData.motors || !formData.motor_type) {
         setError('Please fill in all required fields: Drone Name, Type, Motors, and Type of Motor');
@@ -149,7 +115,7 @@ const useAircraftForm = (isEditMode, uavId) => {
 
       const aircraftPayload = {
         ...filteredFormData,
-        user: user_id,
+        user: auth.user_id,
         motors: parseInt(filteredFormData.motors),
         gps: parseInt(filteredFormData.gps),
         mag: parseInt(filteredFormData.mag),
@@ -158,12 +124,12 @@ const useAircraftForm = (isEditMode, uavId) => {
         acc: parseInt(filteredFormData.acc)
       };
 
-      const url = isEditMode ? `${API_URL}/api/uavs/${uavId}/` : `${API_URL}/api/uavs/`;
+      const endpoint = isEditMode ? `/api/uavs/${uavId}/` : '/api/uavs/';
       const method = isEditMode ? 'PUT' : 'POST';
       
-      const result = await makeApiRequest(url, method, aircraftPayload);
+      const result = await fetchData(endpoint, {}, method, aircraftPayload);
       
-      if (result) {
+      if (!result.error) {
         setSuccess(isEditMode ? 'Aircraft successfully updated!' : 'Aircraft successfully registered!');
         
         if (!isEditMode) {
@@ -180,8 +146,8 @@ const useAircraftForm = (isEditMode, uavId) => {
   const handleDelete = async () => {
     if (!isEditMode) return;
     
-    const result = await makeApiRequest(`${API_URL}/api/uavs/${uavId}/`, 'DELETE');
-    if (result) {
+    const result = await fetchData(`/api/uavs/${uavId}/`, {}, 'DELETE');
+    if (!result.error) {
       setSuccess('Aircraft successfully deleted!');
       setTimeout(() => navigate('/AircraftList'), 1500);
     }
@@ -191,13 +157,14 @@ const useAircraftForm = (isEditMode, uavId) => {
     if (!isEditMode) return;
     
     const newActiveState = !formData.is_active;
-    const result = await makeApiRequest(
-      `${API_URL}/api/uavs/${uavId}/`, 
+    const result = await fetchData(
+      `/api/uavs/${uavId}/`, 
+      {}, 
       'PATCH', 
       { is_active: newActiveState }
     );
     
-    if (result) {
+    if (!result.error) {
       setFormData(prev => ({ ...prev, is_active: newActiveState }));
       setSuccess(`Aircraft successfully ${newActiveState ? 'reactivated' : 'deactivated'}`);
       
@@ -214,42 +181,42 @@ const useAircraftForm = (isEditMode, uavId) => {
     
     const fetchAircraftData = async () => {
       setIsLoading(true);
-      const aircraftData = await makeApiRequest(`${API_URL}/api/uavs/${uavId}/`, 'GET');
+      const result = await fetchData(`/api/uavs/${uavId}/`);
       
-      if (aircraftData) {
+      if (!result.error) {
         setFormData({
-          ...aircraftData,
-          motors: aircraftData.motors?.toString() || '4',
-          gps: aircraftData.gps?.toString() || '1',
-          mag: aircraftData.mag?.toString() || '1',
-          baro: aircraftData.baro?.toString() || '1',
-          gyro: aircraftData.gyro?.toString() || '1',
-          acc: aircraftData.acc?.toString() || '1',
+          ...result.data,
+          motors: result.data.motors?.toString() || '4',
+          gps: result.data.gps?.toString() || '1',
+          mag: result.data.mag?.toString() || '1',
+          baro: result.data.baro?.toString() || '1',
+          gyro: result.data.gyro?.toString() || '1',
+          acc: result.data.acc?.toString() || '1',
         });
       }
       setIsLoading(false);
     };
     
     fetchAircraftData();
-  }, [API_URL, isEditMode, navigate, uavId]);
+  }, [API_URL, isEditMode, navigate, uavId, fetchData]);
 
   useEffect(() => {
     if (!isEditMode) return;
     
     const checkCanDelete = async () => {
-      const flightLogs = await makeApiRequest(`${API_URL}/api/flightlogs/?uav=${uavId}`, 'GET');
+      const result = await fetchData(`/api/flightlogs/?uav=${uavId}`);
       
-      if (flightLogs) {
-        if (Array.isArray(flightLogs.results)) {
-          setCanDelete(flightLogs.results.length === 0);
-        } else if (Array.isArray(flightLogs)) {
-          setCanDelete(flightLogs.length === 0);
+      if (!result.error) {
+        if (Array.isArray(result.data.results)) {
+          setCanDelete(result.data.results.length === 0);
+        } else if (Array.isArray(result.data)) {
+          setCanDelete(result.data.length === 0);
         }
       }
     };
     
     checkCanDelete();
-  }, [API_URL, isEditMode, uavId]);
+  }, [API_URL, isEditMode, uavId, fetchData]);
 
   return {
     formData,
@@ -273,8 +240,8 @@ const NewAircraftPage = () => {
   const navigate = useNavigate();
   const { uavId } = useParams();
   const isEditMode = !!uavId;
+  const { checkAuthAndGetUser } = useAuth();
   
-  // 3. State & Lifecycle
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [confirmModal, setConfirmModal] = useState({
     type: null, 
@@ -346,9 +313,9 @@ const NewAircraftPage = () => {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) navigate('/login');
-  }, [navigate]);
+    const auth = checkAuthAndGetUser();
+    if (!auth) return;
+  }, [navigate, checkAuthAndGetUser]);
   
   useEffect(() => {
     const handleResize = () => {
@@ -359,7 +326,6 @@ const NewAircraftPage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // 6. Render
   if (isLoading) {
     return <Loading message="Loading aircraft data..." />;
   }
@@ -368,28 +334,6 @@ const NewAircraftPage = () => {
 
   return (
     <div className="flex h-screen relative">
-      <button
-        onClick={toggleSidebar}
-        className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
-        aria-label="Toggle sidebar for mobile"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      
-      <button
-        onClick={toggleSidebar}
-        className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
-          sidebarOpen ? 'left-2' : 'left-4'
-        }`}
-        aria-label="Toggle sidebar for desktop"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
       <div 
@@ -406,7 +350,7 @@ const NewAircraftPage = () => {
 
         {isEditMode && (
           <div className="mb-4">
-            <Button onClick={() => navigate(`/aircraft-settings/${uavId}`)} className="bg-gray-500 hover:bg-gray-600">
+            <Button onClick={() => navigate(`/aircraftsettings/${uavId}`)} className="bg-gray-500 hover:bg-gray-600">
               Back to Aircraft Settings
             </Button>
           </div>

@@ -10,3 +10,5 @@ export { default as EditableRow } from './EditableRow';
 export { default as AircraftForm } from './AircraftForm';
 export { default as Loading } from './Loading';
 export { default as ConfirmModal } from './ConfirmModal';
+export { default as Pagination } from './Pagination';
+export { getVisiblePageNumbers } from './Pagination';

@@ -234,7 +234,11 @@ class FlightLogService:
     @staticmethod
     def get_flightlog_queryset(user, query_params=None):
         """Filter FlightLog queryset based on user and query parameters"""
-        queryset = FlightLog.objects.filter(user=user)
+        # Admin-Override: Wenn user.is_staff und 'user' in query_params, dann nach dieser User-ID filtern
+        if query_params and hasattr(user, 'is_staff') and user.is_staff and query_params.get('user'):
+            queryset = FlightLog.objects.filter(user_id=query_params['user'])
+        else:
+            queryset = FlightLog.objects.filter(user=user)
         
         # Add filtering if needed
         if query_params:

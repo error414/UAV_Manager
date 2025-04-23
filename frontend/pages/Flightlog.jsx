@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar, Alert, Button, ResponsiveTable, ConfirmModal } from '../components';
+import { Sidebar, Alert, Button, ResponsiveTable, ConfirmModal, Pagination } from '../components';
 import { getEnhancedFlightLogColumns } from '../utils/tableDefinitions';
+import { getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS } from '../utils/formDefinitions';
+import { useAuth, useApi } from '../utils/authUtils';
 
 const calculateFlightDuration = (deptTime, landTime) => {
   if (!deptTime || !landTime) return '';
@@ -20,140 +22,6 @@ const calculateFlightDuration = (deptTime, landTime) => {
   } catch (error) {
     return '';
   }
-};
-
-const OPTIONS = {
-  light_conditions: [
-    { value: 'Day', label: 'Day' },
-    { value: 'Night', label: 'Night' }
-  ],
-  ops_conditions: [
-    { value: 'VLOS', label: 'VLOS' },
-    { value: 'BLOS', label: 'BLOS' }
-  ],
-  pilot_type: [
-    { value: 'PIC', label: 'PIC' },
-    { value: 'Dual', label: 'Dual' },
-    { value: 'Instruction', label: 'Instruction' }
-  ]
-};
-
-const INITIAL_FLIGHT_STATE = {
-  departure_place: '',
-  departure_date: '',
-  departure_time: '',
-  landing_time: '',
-  landing_place: '',
-  flight_duration: '',
-  takeoffs: '',
-  landings: '',
-  light_conditions: '',
-  ops_conditions: '',
-  pilot_type: '',
-  uav: '',
-  comments: ''
-};
-
-const useAuth = () => {
-  const navigate = useNavigate();
-  
-  const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem('access_token');
-    return { Authorization: `Bearer ${token}` };
-  }, []);
-
-  const handleAuthError = useCallback((res) => {
-    if (res.status === 401) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_id');
-      navigate('/login');
-      return true;
-    }
-    return false;
-  }, [navigate]);
-  
-  const checkAuthAndGetUser = useCallback(() => {
-    const token = localStorage.getItem('access_token');
-    const user_id = localStorage.getItem('user_id');
-    
-    if (!token || !user_id) {
-      navigate('/login');
-      return null;
-    }
-    
-    return { token, user_id };
-  }, [navigate]);
-  
-  return { getAuthHeaders, handleAuthError, checkAuthAndGetUser };
-};
-
-const useApi = (baseUrl, setError) => {
-  const { getAuthHeaders, handleAuthError } = useAuth();
-  
-  const fetchData = useCallback(async (endpoint, queryParams = {}, method = 'GET', body = null) => {
-    const url = new URL(`${baseUrl}${endpoint}`);
-    Object.entries(queryParams).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        url.searchParams.append(key, value);
-      }
-    });
-    
-    try {
-      const options = {
-        method,
-        headers: getAuthHeaders()
-      };
-      
-      if (body && method !== 'GET') {
-        options.headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(body);
-      }
-      
-      const response = await fetch(url, options);
-      
-      if (!response.ok) {
-        if (handleAuthError(response)) return { error: true };
-        
-        let errorData = 'Unknown error';
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const text = await response.text();
-          if (text) {
-            try {
-              errorData = JSON.parse(text);
-            } catch (e) {
-              errorData = text;
-            }
-          }
-        }
-        
-        setError(typeof errorData === 'object' ? JSON.stringify(errorData) : errorData);
-        return { error: true };
-      }
-      
-      if (method === 'DELETE' || response.status === 204 || response.headers.get('content-length') === '0') {
-        return { error: false, data: {} };
-      }
-      
-      try {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const text = await response.text();
-          const data = text ? JSON.parse(text) : {};
-          return { error: false, data };
-        } else {
-          return { error: false, data: {} };
-        }
-      } catch (err) {
-        return { error: false, data: {} };
-      }
-    } catch (err) {
-      setError('An unexpected error occurred.');
-      return { error: true };
-    }
-  }, [baseUrl, getAuthHeaders, handleAuthError, setError]);
-  
-  return { fetchData };
 };
 
 const Flightlog = () => {
@@ -187,32 +55,8 @@ const Flightlog = () => {
     return Array.isArray(availableUAVs) ? availableUAVs : [];
   }, [availableUAVs]);
   
-  const getFormFields = useCallback((isFilter = false) => {
-    return [
-      { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
-      { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },
-      { name: 'departure_time', label: 'Departure Time', type: 'time', placeholder: 'Departure Time', step: '1' },
-      { name: 'landing_time', label: 'LDG Time', type: 'time', placeholder: 'LDG Time', step: '1' },
-      { name: 'landing_place', label: 'LDG Place', type: 'text', placeholder: 'LDG Place' },
-      { name: 'flight_duration', label: 'Duration', type: 'number', placeholder: 'Duration (s)', step: '1', min: '0' },
-      { name: 'takeoffs', label: 'T/O', type: 'number', placeholder: 'T/O', step: '1', min: '0' },
-      { name: 'landings', label: 'LDG', type: 'number', placeholder: 'LDG', step: '1', min: '0' },
-      { name: 'light_conditions', label: 'Light', type: 'select', placeholder: 'Light', options: OPTIONS.light_conditions },
-      { name: 'ops_conditions', label: 'OPS', type: 'select', placeholder: 'OPS', options: OPTIONS.ops_conditions },
-      { name: 'pilot_type', label: 'Pilot Type', type: 'select', placeholder: 'Pilot Type', options: OPTIONS.pilot_type },
-      { 
-        name: 'uav', 
-        label: 'UAV', 
-        type: 'select', 
-        placeholder: 'Select UAV',
-        options: safeAvailableUAVs.map(uav => ({ value: uav.uav_id, label: uav.drone_name }))
-      },
-      { name: 'comments', label: 'Comments', type: 'text', placeholder: 'Comments' }
-    ];
-  }, [safeAvailableUAVs]);
-  
-  const filterFormFields = useMemo(() => getFormFields(true), [getFormFields]);
-  const addFormFields = useMemo(() => getFormFields(false), [getFormFields]);
+  const filterFormFields = useMemo(() => getFlightFormFields(safeAvailableUAVs), [safeAvailableUAVs]);
+  const addFormFields = useMemo(() => getFlightFormFields(safeAvailableUAVs), [safeAvailableUAVs]);
   
   const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
 
@@ -498,28 +342,6 @@ const Flightlog = () => {
 
   return (
     <div className="flex h-screen relative">
-      <button
-        onClick={toggleSidebar}
-        className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
-        aria-label="Toggle sidebar for mobile"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      
-      <button
-        onClick={toggleSidebar}
-        className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
-          sidebarOpen ? 'left-2' : 'left-4'
-        }`}
-        aria-label="Toggle sidebar for desktop"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div 
@@ -565,71 +387,11 @@ const Flightlog = () => {
           />
         )}
         
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center mt-4 gap-2">
-            <button 
-              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-            >
-              &laquo; Prev
-            </button>
-            
-            <div className="flex items-center gap-1">
-              {currentPage > 3 && (
-                <>
-                  <button 
-                    onClick={() => handlePageChange(1)}
-                    className="w-8 h-8 flex items-center justify-center rounded bg-gray-200"
-                  >
-                    1
-                  </button>
-                  {currentPage > 4 && <span className="px-1">...</span>}
-                </>
-              )}
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(page => {
-                  if ((currentPage > 3 && page === 1) || (currentPage < totalPages - 2 && page === totalPages)) {
-                    return false;
-                  }
-                  return page >= currentPage - 1 && page <= currentPage + 1;
-                })
-                .map(page => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`w-8 h-8 flex items-center justify-center rounded ${
-                      currentPage === page ? 'bg-blue-500 text-white' : 'bg-gray-200'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))
-              }
-              
-              {currentPage < totalPages - 2 && (
-                <>
-                  {currentPage < totalPages - 3 && <span className="px-1">...</span>}
-                  <button 
-                    onClick={() => handlePageChange(totalPages)}
-                    className="w-8 h-8 flex items-center justify-center rounded bg-gray-200"
-                  >
-                    {totalPages}
-                  </button>
-                </>
-              )}
-            </div>
-            
-            <button 
-              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-            >
-              Next &raquo;
-            </button>
-          </div>
-        )}
+        <Pagination 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          onPageChange={handlePageChange} 
+        />
         
         <div className="mt-4">
           <button 

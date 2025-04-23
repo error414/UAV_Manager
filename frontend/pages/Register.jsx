@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
+import { useAuth, useApi } from '../utils/authUtils';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -14,6 +15,9 @@ const Register = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { checkAuthAndGetUser } = useAuth();
+  const { fetchData } = useApi(API_URL, setError);
 
   useEffect(() => {
     if (localStorage.getItem('access_token')) {
@@ -23,15 +27,6 @@ const Register = () => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const apiRequest = async (endpoint, method, body) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    return { response, data: await response.json() };
   };
 
   const handleSubmit = async (e) => {
@@ -47,21 +42,32 @@ const Register = () => {
     }
 
     try {
-      const { response, data } = await apiRequest('/auth/users/', 'POST', formData);
+      const registerResponse = await fetch(`${API_URL}/auth/users/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      
+      const registerData = await registerResponse.json();
 
-      if (response.ok) {
-        if (data.user_id) {
-          localStorage.setItem('user_id', data.user_id);
+      if (registerResponse.ok) {
+        if (registerData.user_id) {
+          localStorage.setItem('user_id', registerData.user_id);
         }
 
-        if (data.access) {
-          localStorage.setItem('access_token', data.access);
+        if (registerData.access) {
+          localStorage.setItem('access_token', registerData.access);
         } else {
-          const { response: loginResponse, data: loginData } = await apiRequest(
-            '/auth/jwt/create/', 
-            'POST', 
-            { email: formData.email, password: formData.password }
-          );
+          const loginResponse = await fetch(`${API_URL}/auth/jwt/create/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: formData.email, 
+              password: formData.password 
+            }),
+          });
+          
+          const loginData = await loginResponse.json();
           
           if (!loginResponse.ok || !loginData.access) {
             throw new Error("Login failed after registration");
@@ -73,7 +79,7 @@ const Register = () => {
         setSuccess('Registration successful!');
         navigate('/AdditionalDetails');
       } else {
-        setError(JSON.stringify(data));
+        setError(typeof registerData === 'object' ? JSON.stringify(registerData) : registerData);
       }
     } catch (err) {
       setError(err.message || 'An error occurred. Please try again later.');
