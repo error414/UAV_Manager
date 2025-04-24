@@ -426,9 +426,9 @@ const AircraftSettings = () => {
                             <p className="text-xs text-gray-500 mt-1">Leave empty to keep current file</p>
                           </td>
                           <td className="px-4 py-2 space-x-2 flex">
-                            <Button onClick={handleSaveEdit} className="bg-green-500 hover:bg-green-600 text-white">Save</Button>
-                            <Button onClick={handleCancelEdit} className="bg-gray-500 hover:bg-gray-600 text-white">Cancel</Button>
-                            <Button onClick={() => handleDeleteLog(log.maintenance_id)} className="bg-red-500 hover:bg-red-600 text-white">Delete</Button>
+                            <Button onClick={handleSaveEdit} variant="success">Save</Button>
+                            <Button onClick={handleCancelEdit} variant="secondary">Cancel</Button>
+                            <Button onClick={() => handleDeleteLog(log.maintenance_id)} variant="danger">Delete</Button>
                           </td>
                         </>
                       ) : (
@@ -445,7 +445,7 @@ const AircraftSettings = () => {
                             </td>
                           ))}
                           <td className="px-4 py-2">
-                            <Button onClick={() => handleEditLog(log.maintenance_id)} className="bg-blue-500 hover:bg-blue-600 text-white">Edit</Button>
+                            <Button onClick={() => handleEditLog(log.maintenance_id)} variant="primary">Edit</Button>
                           </td>
                         </>
                       )}
@@ -481,7 +481,7 @@ const AircraftSettings = () => {
                       />
                     </td>
                     <td className="px-4 py-2">
-                      <Button onClick={handleAddLog} className="bg-green-500 hover:bg-green-600 text-white">Add</Button>
+                      <Button onClick={handleAddLog} variant="success">Add</Button>
                     </td>
                   </tr>
                 </tbody>
@@ -491,7 +491,7 @@ const AircraftSettings = () => {
         </div>
         
         <div className="mt-6 flex justify-center space-x-4">
-          <Button onClick={handleModifyClick} className="max-w-md bg-blue-500 hover:bg-blue-600 text-white">Modify Aircraft</Button>
+          <Button onClick={handleModifyClick} variant="primary" className="max-w-md">Modify Aircraft</Button>
         </div>
         
         <ConfirmModal

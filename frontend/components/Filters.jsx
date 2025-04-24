@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = false }) => {
+const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = false, mobileFiltersVisible = true }) => {
   if (asTable) {
     // Desktop view - render as table row
     return (
@@ -48,11 +48,11 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
     );
   }
 
-  // Mobile view - render as block (same as before)
+  // Mobile view - render as block with visibility controlled by mobileFiltersVisible
   return (
-    <div className="p-4 bg-gray-50 space-y-3">
+    <div className={`p-3 bg-gray-50 space-y-2 ${mobileFiltersVisible ? 'block' : 'hidden'}`}>
       {fields.map(field => (
-        <div key={field.name} className="flex flex-col space-y-2">
+        <div key={field.name} className="flex flex-col space-y-1">
           <label className="text-xs font-medium text-gray-700">{field.label}</label>
           {field.type === 'select' ? (
             <select

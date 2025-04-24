@@ -90,7 +90,8 @@ const AircraftForm = ({
   handleDelete,
   handleSetInactive,
   handleToggleActive,
-  handleSetTodayMaintDates
+  handleSetTodayMaintDates,
+  handleBackToSettings // New prop
 }) => {
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -348,6 +349,12 @@ const AircraftForm = ({
       </div>
       
       <div className="col-span-1 md:col-span-2 mt-6 flex justify-center gap-4">
+        {isEditMode && (
+          <Button onClick={handleBackToSettings} className="max-w-md bg-gray-600 hover:bg-gray-700">
+            Back to Aircraft Settings
+          </Button>
+        )}
+        
         {isEditMode && formData.is_active === false && (
           <Button 
             type="button" 

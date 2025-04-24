@@ -12,3 +12,6 @@ export { default as Loading } from './Loading';
 export { default as ConfirmModal } from './ConfirmModal';
 export { default as Pagination } from './Pagination';
 export { getVisiblePageNumbers } from './Pagination';
+export { default as FlightInfoCard } from './FlightInfoCard';
+export { default as AnimatedMarker } from './map/AnimatedMarker';
+export { default as GpsAnimationControls } from './map/GpsAnimationControls';

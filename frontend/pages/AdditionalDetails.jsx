@@ -178,7 +178,7 @@ const AdditionalDetails = () => {
           />
         </div>
 
-        <Button type="submit">Save Details</Button>
+        <Button type="submit" variant="primary" fullWidth>Save Details</Button>
       </form>
     </AuthLayout>
   );

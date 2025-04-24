@@ -1,0 +1,132 @@
+/**
+ * Parse GPS data from a CSV file
+ * @param {File} file - The CSV file containing GPS data
+ * @returns {Promise<Object>} Object containing trackPoints array and gpsData array
+ */
+export const parseGPSFile = async (file) => {
+  // Read the file as text
+  const csvText = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error('Error reading the file.'));
+    reader.readAsText(file);
+  });
+  
+  if (!csvText?.trim()) throw new Error('The file is empty.');
+  
+  // Split into rows
+  const rows = csvText.split('\n').filter(r => r.trim());
+  if (rows.length < 2) throw new Error('The file contains no data rows.');
+  
+  // Validate header
+  const header = rows[0].trim();
+  const expectedHeader = 'time (us), GPS_numSat, GPS_coord[0], GPS_coord[1], GPS_altitude, GPS_speed (m/s), GPS_ground_course';
+  if (header !== expectedHeader) {
+    throw new Error('The file header does not match the expected format:\n' + `"${expectedHeader}"`);
+  }
+  
+  // Create index map for columns
+  const headerColumns = header.split(',').map(col => col.trim().toLowerCase());
+  const idx = name => headerColumns.findIndex(col => col === name);
+  const indexMap = {
+    lat: idx('gps_coord[0]'),
+    lon: idx('gps_coord[1]'),
+    time: idx('time (us)'),
+    alt: idx('gps_altitude'),
+    sat: idx('gps_numsat'),
+    speed: idx('gps_speed (m/s)'),
+    course: idx('gps_ground_course')
+  };
+  
+  if (indexMap.lat === -1 || indexMap.lon === -1) {
+    throw new Error('No valid GPS coordinates found.');
+  }
+  
+  // Process data rows
+  const trackPoints = [], gpsData = [];
+  rows.slice(1).forEach(row => {
+    const columns = row.trim().split(',').map(col => col.trim());
+    if (columns.length <= Math.max(indexMap.lat, indexMap.lon)) return;
+    
+    const lat = parseFloat(columns[indexMap.lat]);
+    const lon = parseFloat(columns[indexMap.lon]);
+    
+    if (!isNaN(lat) && !isNaN(lon)) {
+      trackPoints.push([lat, lon]);
+      
+      const gpsPoint = {
+        latitude: lat,
+        longitude: lon,
+        timestamp: indexMap.time !== -1 && columns[indexMap.time] 
+          ? parseInt(columns[indexMap.time], 10) || 0 
+          : 0
+      };
+      
+      if (indexMap.alt !== -1 && columns[indexMap.alt]) {
+        gpsPoint.altitude = parseFloat(columns[indexMap.alt]);
+      }
+      
+      if (indexMap.sat !== -1 && columns[indexMap.sat]) {
+        gpsPoint.num_sat = parseInt(columns[indexMap.sat], 10);
+      }
+      
+      if (indexMap.speed !== -1 && columns[indexMap.speed]) {
+        gpsPoint.speed = parseFloat(columns[indexMap.speed]);
+      }
+      
+      if (indexMap.course !== -1 && columns[indexMap.course]) {
+        gpsPoint.ground_course = parseFloat(columns[indexMap.course]);
+      }
+      
+      gpsData.push(gpsPoint);
+    }
+  });
+  
+  if (!trackPoints.length) {
+    throw new Error('No valid GPS coordinates found in the file.');
+  }
+  
+  return { trackPoints, gpsData };
+};
+
+/**
+ * Calculate statistics from GPS data points
+ * @param {Array} gpsData - Array of GPS data points
+ * @returns {Object} Object containing min/max values for altitude, speed, satellites
+ */
+export const calculateGpsStatistics = (gpsData) => {
+  if (!gpsData?.length) return {
+    maxAltitude: null,
+    minAltitude: null,
+    maxSpeed: null, 
+    minSpeed: null,
+    maxSatellites: null,
+    minSatellites: null
+  };
+
+  return gpsData.reduce((acc, point) => {
+    if (point.altitude !== undefined) {
+      if (acc.maxAltitude === null || point.altitude > acc.maxAltitude) acc.maxAltitude = point.altitude;
+      if (acc.minAltitude === null || point.altitude < acc.minAltitude) acc.minAltitude = point.altitude;
+    }
+    
+    if (point.speed !== undefined) {
+      if (acc.maxSpeed === null || point.speed > acc.maxSpeed) acc.maxSpeed = point.speed;
+      if (acc.minSpeed === null || point.speed < acc.minSpeed) acc.minSpeed = point.speed;
+    }
+    
+    if (point.num_sat !== undefined) {
+      if (acc.maxSatellites === null || point.num_sat > acc.maxSatellites) acc.maxSatellites = point.num_sat;
+      if (acc.minSatellites === null || point.num_sat < acc.minSatellites) acc.minSatellites = point.num_sat;
+    }
+    
+    return acc;
+  }, {
+    maxAltitude: null,
+    minAltitude: null,
+    maxSpeed: null, 
+    minSpeed: null,
+    maxSatellites: null,
+    minSatellites: null
+  });
+};

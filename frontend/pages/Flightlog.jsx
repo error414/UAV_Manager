@@ -43,6 +43,8 @@ const Flightlog = () => {
   const [sortField, setSortField] = useState('-departure_date,-departure_time');
   const [debouncedFilters, setDebouncedFilters] = useState({});
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [mobileFiltersVisible, setMobileFiltersVisible] = useState(false);
+  const [mobileAddNewVisible, setMobileAddNewVisible] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
   const fileInputRef = useRef(null);
@@ -59,6 +61,12 @@ const Flightlog = () => {
   const addFormFields = useMemo(() => getFlightFormFields(safeAvailableUAVs), [safeAvailableUAVs]);
   
   const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
+  const toggleMobileFilters = useCallback(() => {
+    setMobileFiltersVisible(prev => !prev);
+  }, []);
+  const toggleMobileAddNew = useCallback(() => {
+    setMobileAddNewVisible(prev => !prev);
+  }, []);
 
   const fetchFlightLogs = useCallback(async () => {
     const auth = checkAuthAndGetUser();
@@ -345,7 +353,7 @@ const Flightlog = () => {
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div 
-        className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
+        className={`flex-1 flex flex-col w-full p-4 pt-0 transition-all duration-300 overflow-auto ${
           sidebarOpen ? 'lg:ml-64' : ''
         }`}
       >
@@ -361,45 +369,95 @@ const Flightlog = () => {
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
           </div>
         ) : (
-          <ResponsiveTable 
-            columns={flightLogTableColumns}
-            data={logs}
-            onEdit={handleEdit}
-            onRowClick={handleRowClick}
-            filterFields={filterFormFields}
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            addFields={addFormFields}
-            newItem={newFlight}
-            onNewItemChange={handleNewFlightChange}
-            onAdd={handleNewFlightAdd}
-            editingId={editingLogId}
-            editingData={editingLog}
-            onEditChange={handleEditChange}
-            onSaveEdit={handleSaveEdit}
-            onCancelEdit={handleCancelEdit}
-            onDelete={handleDeleteLog}
-            availableOptions={{ availableUAVs: safeAvailableUAVs }}
-            rowClickable={true}
-            showActionColumn={true}
-            actionColumnText="Actions"
-            titleField="uav"
-          />
+          <>
+            {/* Mobile Filter Toggle Button */}
+            <div className="md:hidden mt-0.5 mb-0.5 w-full">
+              <Button 
+                onClick={toggleMobileFilters}
+                variant="secondary"
+                size="md"
+                fullWidth={true}
+                className="flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
+                </svg>
+                {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
+              </Button>
+            </div>
+
+            <ResponsiveTable 
+              columns={flightLogTableColumns}
+              data={logs}
+              onEdit={handleEdit}
+              onRowClick={handleRowClick}
+              filterFields={filterFormFields}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              addFields={addFormFields}
+              newItem={newFlight}
+              onNewItemChange={handleNewFlightChange}
+              onAdd={handleNewFlightAdd}
+              editingId={editingLogId}
+              editingData={editingLog}
+              onEditChange={handleEditChange}
+              onSaveEdit={handleSaveEdit}
+              onCancelEdit={handleCancelEdit}
+              onDelete={handleDeleteLog}
+              availableOptions={{ availableUAVs: safeAvailableUAVs }}
+              rowClickable={true}
+              showActionColumn={true}
+              actionColumnText="Actions"
+              titleField="uav"
+              mobileFiltersVisible={mobileFiltersVisible}
+              mobileAddNewVisible={mobileAddNewVisible}
+              toggleMobileAddNew={toggleMobileAddNew}
+            />
+            
+            {/* Mobile Add New Toggle Button - increased top margin */}
+            <div className="md:hidden mt-3 mb-0.5 w-full">
+              <Button 
+                onClick={toggleMobileAddNew}
+                variant="success"
+                size="md"
+                fullWidth={true}
+                className="flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                {mobileAddNewVisible ? 'Hide Add New Form' : 'Add New Flight'}
+              </Button>
+            </div>
+          </>
         )}
         
-        <Pagination 
-          currentPage={currentPage} 
-          totalPages={totalPages} 
-          onPageChange={handlePageChange} 
-        />
-        
-        <div className="mt-4">
-          <button 
-            className="px-4 py-2 bg-blue-600 text-white rounded"
-            onClick={handleImportClick}
-          >
-            Import CSV
-          </button>
+        {/* Adjust the mt-2 value below to control spacing */}
+        <div className="flex flex-col md:flex-row items-center">
+          <div className="mt-4 w-full md:w-auto md:flex-1 flex md:justify-start mb-2 md:mb-0">
+            <Button 
+              onClick={handleImportClick}
+              variant="primary"
+              size="md"
+              fullWidth={true}
+              className="md:w-auto"
+            >
+              Import CSV
+            </Button>
+          </div>
+
+          {/* Pagination - centered */}
+          <div className="w-full md:flex-1 flex justify-center">
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={totalPages} 
+              onPageChange={handlePageChange} 
+            />
+          </div>
+          
+          {/* Empty space for balance on desktop */}
+          <div className="hidden md:block md:flex-1"></div>
+          
           <input 
             type="file" 
             accept=".csv" 

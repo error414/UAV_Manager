@@ -1,10 +1,8 @@
 import React from 'react';
-import EditableRow from './EditableRow';
 import { Button } from './index';
 import Filters from './Filters';
 import { CountryDropdown } from 'react-country-region-selector';
 
-// Field options constants
 const FIELD_OPTIONS = {
   light_conditions: [
     { value: 'Day', label: 'Day' },
@@ -21,18 +19,14 @@ const FIELD_OPTIONS = {
   ]
 };
 
-// Unified form field renderer
-const renderFormField = (fieldConfig, data, onChange, availableOptions) => {
+const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   const fieldName = fieldConfig.name || fieldConfig.accessor;
   const value = data ? data[fieldName] || '' : '';
   const isEditing = 'accessor' in fieldConfig;
   
-  // Handle UAV select field
   if (fieldName === 'uav') {
-    // Add Array.isArray check to prevent the error
     const uavOptions = Array.isArray(availableOptions?.availableUAVs) 
-      ? availableOptions.availableUAVs 
-      : [];
+      ? availableOptions.availableUAVs : [];
     
     return (
       <select
@@ -43,36 +37,24 @@ const renderFormField = (fieldConfig, data, onChange, availableOptions) => {
       >
         <option value="">{isEditing ? `Select UAV` : fieldConfig.placeholder}</option>
         {uavOptions.map((uav) => (
-          <option key={uav.uav_id} value={uav.uav_id}>
-            {uav.drone_name}
-          </option>
+          <option key={uav.uav_id} value={uav.uav_id}>{uav.drone_name}</option>
         ))}
       </select>
     );
   }
   
-  // Handle country field as CountryDropdown
   if (fieldName === 'country') {
     return (
       <CountryDropdown
         name={fieldName}
         value={value}
-        onChange={(val) => {
-          // Create synthetic event to match onChange interface
-          onChange({ 
-            target: { 
-              name: fieldName, 
-              value: val 
-            } 
-          });
-        }}
+        onChange={(val) => onChange({ target: { name: fieldName, value: val } })}
         defaultOptionLabel={isEditing ? `Select country` : fieldConfig.placeholder}
         className="w-full px-2 py-1 border border-gray-300 rounded"
       />
     );
   }
   
-  // Handle boolean fields (is_staff, is_active) as dropdowns
   if (fieldName === 'is_staff' || fieldName === 'is_active') {
     return (
       <select
@@ -88,7 +70,6 @@ const renderFormField = (fieldConfig, data, onChange, availableOptions) => {
     );
   }
   
-  // Handle predefined select fields
   if (FIELD_OPTIONS[fieldName]) {
     return (
       <select
@@ -105,7 +86,6 @@ const renderFormField = (fieldConfig, data, onChange, availableOptions) => {
     );
   }
   
-  // Handle custom select options for add field
   if (!isEditing && fieldConfig.type === 'select' && fieldConfig.options) {
     return (
       <select
@@ -122,7 +102,6 @@ const renderFormField = (fieldConfig, data, onChange, availableOptions) => {
     );
   }
   
-  // Default input field
   const inputType = 
     fieldName.includes('time') ? 'time' : 
     fieldName.includes('date') ? 'date' : 
@@ -142,9 +121,17 @@ const renderFormField = (fieldConfig, data, onChange, availableOptions) => {
   );
 };
 
+const EditingActions = ({ onSaveEdit, onCancelEdit, onDelete, itemId }) => (
+  <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+    <Button onClick={onSaveEdit} className="bg-green-500 hover:bg-green-600">Save</Button>
+    <Button onClick={onCancelEdit} className="bg-gray-500 hover:bg-gray-600">Cancel</Button>
+    <Button onClick={() => onDelete(itemId)} className="bg-red-500 hover:bg-red-600">Delete</Button>
+  </div>
+);
+
 const ResponsiveTable = ({
   columns,
-  data,
+  data = [],
   filterFields,
   filters,
   onFilterChange,
@@ -169,49 +156,30 @@ const ResponsiveTable = ({
   actionButtons = null,
   customMobileView = null,
   titleField = null, 
-  onRowClick, // Add onRowClick prop for row navigation
+  onRowClick, 
+  mobileFiltersVisible = true, 
+  mobileAddNewVisible = true,
 }) => {
-  // Default action buttons rendering if not provided
-  const defaultActionButtons = (itemId) => (
-    <Button onClick={(e) => {
-      e.stopPropagation();
-      onEdit(itemId);
-    }} className="bg-blue-500 hover:bg-blue-600">
+  const renderActionButtons = actionButtons || ((itemId) => (
+    <Button 
+      onClick={(e) => { e.stopPropagation(); onEdit(itemId); }} 
+      className="bg-blue-500 hover:bg-blue-600"
+    >
       Edit
     </Button>
-  );
+  ));
 
-  // Use provided action buttons or default to the edit button
-  const renderActionButtons = actionButtons || defaultActionButtons;
-
-  // Editing actions component (reused for mobile and desktop)
-  const EditingActions = ({item}) => (
-    <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-      <Button onClick={onSaveEdit} className="bg-green-500 hover:bg-green-600">Save</Button>
-      <Button onClick={onCancelEdit} className="bg-gray-500 hover:bg-gray-600">Cancel</Button>
-      <Button onClick={() => onDelete(item[idField])} className="bg-red-500 hover:bg-red-600">Delete</Button>
-    </div>
-  );
-
-  // Default mobile card rendering
-  const defaultMobileCard = (item) => {
-    // Get the column to use as the title/header (either specified or default to first column)
-    let titleColumn;
-    
-    if (titleField) {
-      // Find the column with the specified accessor
-      titleColumn = columns.find(col => col.accessor === titleField) || columns[0];
-    } else {
-      // Default to first column
-      titleColumn = columns[0];
-    }
+  const renderMobileCard = (item) => {
+    const titleColumn = titleField 
+      ? columns.find(col => col.accessor === titleField) || columns[0]
+      : columns[0];
     
     const itemTitle = titleColumn.render 
       ? titleColumn.render(item[titleColumn.accessor], item) 
       : (item[titleColumn.accessor] || 'Untitled');
     
-    // Get the content columns (all columns except the title column)
     const contentColumns = columns.filter(col => col.accessor !== titleColumn.accessor);
+    const halfLength = Math.ceil(contentColumns.length / 2);
     
     return (
       <div 
@@ -219,25 +187,26 @@ const ResponsiveTable = ({
         onClick={rowClickable ? () => onRowClick(item[idField]) : undefined}
       >
         {editingId === item[idField] ? (
-          /* Editing form for mobile */
           <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
             {columns.map((col) => (
               <div key={col.accessor} className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700">{col.header}</label>
-                {renderFormField(col, editingData, onEditChange, availableOptions)}
+                <FormField fieldConfig={col} data={editingData} onChange={onEditChange} availableOptions={availableOptions} />
               </div>
             ))}
-            <div className="flex space-x-2 mt-3">
-              <EditingActions item={item} />
-            </div>
+            <EditingActions 
+              onSaveEdit={onSaveEdit} 
+              onCancelEdit={onCancelEdit} 
+              onDelete={onDelete} 
+              itemId={item[idField]} 
+            />
           </div>
         ) : (
-          /* Card display */
           <>
             <h3 className="font-bold text-lg mb-2">{itemTitle}</h3>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                {contentColumns.slice(0, Math.ceil(contentColumns.length / 2)).map((col) => (
+                {contentColumns.slice(0, halfLength).map((col) => (
                   <p key={col.accessor} className="text-sm mb-1">
                     <span className="font-medium">{col.header}:</span>{' '}
                     {col.render ? col.render(item[col.accessor], item) : (item[col.accessor] || 'N/A')}
@@ -245,7 +214,7 @@ const ResponsiveTable = ({
                 ))}
               </div>
               <div>
-                {contentColumns.slice(Math.ceil(contentColumns.length / 2)).map((col) => (
+                {contentColumns.slice(halfLength).map((col) => (
                   <p key={col.accessor} className="text-sm mb-1">
                     <span className="font-medium">{col.header}:</span>{' '}
                     {col.render ? col.render(item[col.accessor], item) : (item[col.accessor] || 'N/A')}
@@ -254,7 +223,6 @@ const ResponsiveTable = ({
               </div>
             </div>
             
-            {/* Show action buttons on mobile if showActionColumn is true */}
             {showActionColumn && (
               <div className="flex justify-end space-x-2 mt-3" onClick={(e) => e.stopPropagation()}>
                 {renderActionButtons(item[idField], item)}
@@ -268,44 +236,43 @@ const ResponsiveTable = ({
 
   return (
     <div>
-      {/* Mobile view */}
-      <div className="sm:hidden overflow-auto pb-20">
-        {/* Mobile filters */}
-        <Filters 
-          fields={filterFields}
-          filters={filters}
-          onFilterChange={onFilterChange}
-          availableOptions={availableOptions}
-          asTable={false}
-        />
+      {/* Mobile View */}
+      <div className="sm:hidden overflow-auto pb-0">
+        {mobileFiltersVisible && (
+          <Filters 
+            fields={filterFields}
+            filters={filters}
+            onFilterChange={onFilterChange}
+            availableOptions={availableOptions}
+            asTable={false}
+          />
+        )}
         
-        {/* Mobile data cards */}
-        <div className="mt-4 space-y-4">
-          {(data || []).map((item) => (
+        <div className="mt-2 space-y-3">
+          {data.map((item) => (
             <React.Fragment key={item[idField]}>
-              {customMobileView ? customMobileView(item, onEdit) : defaultMobileCard(item)}
+              {customMobileView ? customMobileView(item, onEdit) : renderMobileCard(item)}
             </React.Fragment>
           ))}
         </div>
         
-        {/* Mobile Add New form - only if showAddRow is true */}
-        {showAddRow && addFields && (
-          <div className="mt-6 bg-white p-4 rounded-lg shadow border border-gray-200">
-            <h3 className="font-medium text-lg mb-3">Add New</h3>
-            <div className="space-y-3">
+        {showAddRow && addFields && mobileAddNewVisible && (
+          <div className="mt-1 bg-white p-3 rounded-lg shadow border border-gray-200">
+            <h3 className="font-medium text-lg mb-2">Add New</h3>
+            <div className="space-y-2">
               {addFields.map((field) => (
                 <div key={field.name} className="flex flex-col">
                   <label className="text-sm font-medium text-gray-700">{field.label}</label>
-                  {renderFormField(field, newItem, onNewItemChange, availableOptions)}
+                  <FormField fieldConfig={field} data={newItem} onChange={onNewItemChange} availableOptions={availableOptions} />
                 </div>
               ))}
-              <Button onClick={onAdd} className="w-full bg-green-500 hover:bg-green-600 mt-3">Add</Button>
+              <Button onClick={onAdd} className="w-full bg-green-500 hover:bg-green-600 mt-2">Add</Button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Desktop table view */}
+      {/* Desktop View */}
       <div className="hidden sm:block">
         <div className="overflow-x-auto relative shadow-md sm:rounded-lg border border-gray-200">
           <table className="w-full text-sm text-left text-gray-500 table-auto">
@@ -318,7 +285,6 @@ const ResponsiveTable = ({
               </tr>
             </thead>
             <tbody>
-              {/* Desktop filters as table row - only if not hidden */}
               {!hideDesktopFilters && (
                 <Filters 
                   fields={filterFields}
@@ -330,22 +296,26 @@ const ResponsiveTable = ({
                 />
               )}
               
-              {/* Data rows */}
-              {(data || []).map((item) => (
+              {data.map((item) => (
                 <tr 
                   key={item[idField]} 
                   className={`${item.is_active === false ? 'bg-red-100' : 'bg-white'} border-b hover:bg-gray-50 ${rowClickable ? 'cursor-pointer' : ''}`}
-                  onClick={() => onRowClick(item[idField])}  // Navigate to FlightDetails on row click
+                  onClick={rowClickable ? () => onRowClick(item[idField]) : undefined}
                 >
                   {editingId === item[idField] ? (
                     <>
                       {columns.map((col) => (
                         <td key={col.accessor} className="py-3 px-4 pl-3" onClick={(e) => e.stopPropagation()}>
-                          {renderFormField(col, editingData, onEditChange, availableOptions)}
+                          <FormField fieldConfig={col} data={editingData} onChange={onEditChange} availableOptions={availableOptions} />
                         </td>
                       ))}
                       <td className="py-3 px-4 pl-3" onClick={(e) => e.stopPropagation()}>
-                        <EditingActions item={item} />
+                        <EditingActions 
+                          onSaveEdit={onSaveEdit} 
+                          onCancelEdit={onCancelEdit} 
+                          onDelete={onDelete} 
+                          itemId={item[idField]} 
+                        />
                       </td>
                     </>
                   ) : (
@@ -365,12 +335,11 @@ const ResponsiveTable = ({
                 </tr>
               ))}
               
-              {/* Add new row - only if showAddRow is true */}
               {showAddRow && addFields && (
                 <tr className="bg-white border-b">
                   {addFields.map((field) => (
                     <td key={field.name} className="py-3 px-4 pl-3">
-                      {renderFormField(field, newItem, onNewItemChange, availableOptions)}
+                      <FormField fieldConfig={field} data={newItem} onChange={onNewItemChange} availableOptions={availableOptions} />
                     </td>
                   ))}
                   <td className="py-3 px-4 pl-3">

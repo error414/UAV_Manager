@@ -293,19 +293,25 @@ const AircraftList = () => {
         <div className="flex justify-center gap-4 p-4 mt-4">
           <Button 
             onClick={handleNewAircraft} 
+            variant="primary"
+            fullWidth={false}
             className="max-w-xs"
           >
             New Aircraft
           </Button>
           <Button 
             onClick={handleImportCSV} 
-            className="bg-green-500 hover:bg-green-600 max-w-xs"
+            variant="primary"
+            fullWidth={false}
+            className="max-w-xs"
           >
             Import CSV
           </Button>
           <Button 
             onClick={handleExportCSV} 
-            className="bg-blue-500 hover:bg-blue-600 max-w-xs"
+            variant="primary"
+            fullWidth={false}
+            className="max-w-xs"
           >
             Export CSV
           </Button>

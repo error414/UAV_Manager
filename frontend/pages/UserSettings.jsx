@@ -472,7 +472,7 @@ const UserSettings = () => {
           </div>
           
           <div className="col-span-1 md:col-span-2 mt-6 flex justify-center">
-            <Button type="submit" className="max-w-md">
+            <Button type="submit" variant="primary" fullWidth={false} className="max-w-md">
               Save changes
             </Button>
           </div>

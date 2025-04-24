@@ -268,6 +268,7 @@ const NewAircraftPage = () => {
   const handleDelete = () => setConfirmModal({ type: 'delete', isOpen: true });
   const handleSetInactive = () => setConfirmModal({ type: 'inactive', isOpen: true });
   const handleToggleActive = () => setConfirmModal({ type: 'toggle', isOpen: true });
+  const handleBackToSettings = () => navigate(`/aircraftsettings/${uavId}`);
 
   const handleModalConfirm = async () => {
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -348,14 +349,6 @@ const NewAircraftPage = () => {
           </h1>
         </div>
 
-        {isEditMode && (
-          <div className="mb-4">
-            <Button onClick={() => navigate(`/aircraftsettings/${uavId}`)} className="bg-gray-500 hover:bg-gray-600">
-              Back to Aircraft Settings
-            </Button>
-          </div>
-        )}
-        
         {isEditMode && formData.is_active === false && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4">
             <div className="flex items-center">
@@ -382,6 +375,7 @@ const NewAircraftPage = () => {
           isEditMode={isEditMode}
           isLoading={isLoading}
           canDelete={canDelete}
+          handleBackToSettings={handleBackToSettings}
         />
         
         <ConfirmModal

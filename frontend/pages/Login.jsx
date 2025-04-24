@@ -102,7 +102,7 @@ const Login = () => {
           labelClassName="text-white"
         />
 
-        <Button type="submit">Login</Button>
+        <Button type="submit" variant="primary" fullWidth>Login</Button>
         
         <div className="mt-4 text-center">
           <span className="text-gray-300">Don't have an account? </span>

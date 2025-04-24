@@ -114,7 +114,7 @@ const Register = () => {
           />
         ))}
 
-        <Button type="submit">Register</Button>
+        <Button type="submit" variant="primary" fullWidth>Register</Button>
       </form>
     </AuthLayout>
   );
