@@ -18,7 +18,7 @@ L.Icon.Default.mergeOptions({
 });
 
 // Create a reusable FlightMap component to avoid duplication
-const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying, currentPointIndex, resetTrigger }) => {
+const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying, currentPointIndex, resetTrigger, fullGpsData }) => {
   return (
     <MapContainer
       bounds={getMapBounds(flight, gpsTrack)}
@@ -56,6 +56,7 @@ const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying
             isPlaying={isPlaying}
             currentPointIndex={currentPointIndex}
             resetTrigger={resetTrigger}
+            fullGpsData={fullGpsData}
           />
         </>
       )}
@@ -166,9 +167,11 @@ const FlightDetails = () => {
   // Animation controls
   const startAnimation = () => {
     if (!gpsTrack?.length) return;
+    
     if (currentPointIndex >= gpsTrack.length - 1) setCurrentPointIndex(0);
     setIsPlaying(true);
-    if (!animationData.current.loaded) animationData.current = { loaded: true, track: gpsTrack };
+    
+    // Clean up previous animation if it exists
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     
     lastFrameTime.current = null;
@@ -180,9 +183,13 @@ const FlightDetails = () => {
         animationRef.current = requestAnimationFrame(animate);
         return;
       }
+      
       const elapsed = timestamp - lastFrameTime.current;
       lastFrameTime.current = timestamp;
+      
+      // Calculate how many points to move based on speed
       const pointsToMove = Math.max(1, Math.min(Math.floor(elapsed * animationSpeed / 100), 10));
+      
       setCurrentPointIndex(prevIndex => {
         const newIndex = prevIndex + pointsToMove;
         if (newIndex >= gpsTrack.length - 1) {
@@ -192,6 +199,7 @@ const FlightDetails = () => {
         }
         return newIndex;
       });
+      
       if (playing) animationRef.current = requestAnimationFrame(animate);
     };
     
@@ -247,14 +255,17 @@ const FlightDetails = () => {
         if (result.error || !isActive) return;
         
         const data = result.data;
+        
+        // Get UAV data if available
         if (data.uav) {
-          const uavId = data.uav?.uav_id ? data.uav.uav_id : !isNaN(data.uav) ? Number(data.uav) : null;
+          const uavId = data.uav?.uav_id || (!isNaN(data.uav) ? Number(data.uav) : null);
           if (uavId) {
             const uavResult = await memoizedFetchData(`/api/uavs/${uavId}/`, options);
             if (!uavResult.error && isActive) data.uav = uavResult.data;
           }
         }
         
+        // Fetch GPS data if not already loaded
         if (!animationData.current.loaded) {
           const gpsResult = await memoizedFetchData(`/api/flightlogs/${flightId}/gps/`, options);
           if (!gpsResult.error && gpsResult.data?.length && isActive) {
@@ -344,6 +355,7 @@ const FlightDetails = () => {
                   isPlaying={isPlaying}
                   currentPointIndex={currentPointIndex}
                   resetTrigger={resetTrigger}
+                  fullGpsData={fullGpsData}
                 />
               </div>
             </div>
@@ -367,6 +379,7 @@ const FlightDetails = () => {
                     isPlaying={isPlaying}
                     currentPointIndex={currentPointIndex}
                     resetTrigger={resetTrigger}
+                    fullGpsData={fullGpsData}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full bg-gray-100 text-gray-500 rounded-lg">

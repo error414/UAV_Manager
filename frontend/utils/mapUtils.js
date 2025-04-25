@@ -16,10 +16,38 @@ export const landingIcon = createIcon('red');
 
 // Calculate bearing between two coordinates for rotation
 export const calculateBearing = (start, end) => {
-  const startLat = start.lat * Math.PI / 180;
-  const startLng = start.lng * Math.PI / 180;
-  const endLat = end.lat * Math.PI / 180;
-  const endLng = end.lng * Math.PI / 180;
+  // Handle different coordinate input formats (array or object)
+  let startLat, startLng, endLat, endLng;
+  
+  if (Array.isArray(start) && Array.isArray(end)) {
+    // Format: [lat, lng]
+    startLat = start[0];
+    startLng = start[1];
+    endLat = end[0];
+    endLng = end[1];
+  } else if (start?.lat !== undefined && end?.lat !== undefined) {
+    // Format: {lat, lng} or {lat, lon}
+    startLat = start.lat;
+    startLng = start.lng || start.lon;
+    endLat = end.lat;
+    endLng = end.lng || end.lon;
+  } else {
+    // Invalid input format
+    return 0; // Default heading
+  }
+  
+  // Validate coordinates
+  if (typeof startLat !== 'number' || typeof startLng !== 'number' || 
+      typeof endLat !== 'number' || typeof endLng !== 'number' ||
+      isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) {
+    return 0; // Default heading
+  }
+  
+  // Convert to radians
+  startLat = startLat * Math.PI / 180;
+  startLng = startLng * Math.PI / 180;
+  endLat = endLat * Math.PI / 180;
+  endLng = endLng * Math.PI / 180;
 
   const dLng = endLng - startLng;
 
