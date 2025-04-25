@@ -28,6 +28,7 @@ const AircraftList = () => {
   const [importResult, setImportResult] = useState(null);
   const [filters, setFilters] = useState(UAV_INITIAL_FILTERS);
   const filtersRef = useRef(filters);
+  const [mobileFiltersVisible, setMobileFiltersVisible] = useState(false);
   
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
@@ -243,6 +244,10 @@ const AircraftList = () => {
     }, 100);
   };
 
+  const toggleMobileFilters = () => {
+    setMobileFiltersVisible(prev => !prev);
+  };
+
   const modifiedAircrafts = aircrafts.map(aircraft => ({
     ...aircraft,
     flightlog_id: aircraft.uav_id
@@ -268,20 +273,38 @@ const AircraftList = () => {
         {isLoading ? (
           <Loading message="Loading aircraft data..." />
         ) : (
-          <ResponsiveTable
-            columns={uavTableColumns}
-            data={modifiedAircrafts || []}
-            filterFields={filterFieldsForTable}
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            onEdit={handleAircraftClick}
-            onRowClick={handleAircraftClick}
-            hideDesktopFilters={false}
-            rowClickable={true}
-            showActionColumn={false}
-            idField="flightlog_id"
-            titleField="drone_name"
-          />
+          <>
+            <div className="md:hidden mt-0.5 mb-0.5 w-full">
+              <Button 
+                onClick={toggleMobileFilters}
+                variant="secondary"
+                size="md"
+                fullWidth={true}
+                className="flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
+                </svg>
+                {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
+              </Button>
+            </div>
+            
+            <ResponsiveTable
+              columns={uavTableColumns}
+              data={modifiedAircrafts || []}
+              filterFields={filterFieldsForTable}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              onEdit={handleAircraftClick}
+              onRowClick={handleAircraftClick}
+              hideDesktopFilters={false}
+              rowClickable={true}
+              showActionColumn={false}
+              idField="flightlog_id"
+              titleField="drone_name"
+              mobileFiltersVisible={mobileFiltersVisible}
+            />
+          </>
         )}
         
         <Pagination 

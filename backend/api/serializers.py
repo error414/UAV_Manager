@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from djoser.serializers import UserCreateSerializer as BaseUserCreateSerializer, UserSerializer as BaseDjoserUserSerializer
 from django.contrib.auth import get_user_model
-from .models import UserSettings, UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, FlightGPSLog
+from .models import UserSettings, UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, FlightGPSLog, UAVConfig
 from datetime import datetime
 
 User = get_user_model()
@@ -106,3 +106,21 @@ class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
         fields = '__all__'
+
+class UAVConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UAVConfig
+        fields = '__all__'
+        extra_kwargs = {
+            'uav': {'required': True},
+            'name': {'required': True},
+            'upload_date': {'required': True},
+            'user': {'read_only': True},
+        }
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        request = self.context.get('request')
+        if instance.file and request:
+            representation['file'] = request.build_absolute_uri(instance.file.url)
+        return representation

@@ -155,7 +155,7 @@ function DevToolsPage() {
           Flightlog
         </Link>
         <Link 
-          to="/aircraft-list"
+          to="/aircraftlist"
           className="block mx-auto bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-10 rounded mt-4"
         >
           Aircraft List

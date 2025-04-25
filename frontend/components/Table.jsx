@@ -159,6 +159,7 @@ const ResponsiveTable = ({
   onRowClick, 
   mobileFiltersVisible = true, 
   mobileAddNewVisible = true,
+  tableStyles = {},
 }) => {
   const renderActionButtons = actionButtons || ((itemId) => (
     <Button 
@@ -275,13 +276,13 @@ const ResponsiveTable = ({
       {/* Desktop View */}
       <div className="hidden sm:block">
         <div className="overflow-x-auto relative shadow-md sm:rounded-lg border border-gray-200">
-          <table className="w-full text-sm text-left text-gray-500 table-auto">
+          <table className="w-full text-sm text-left text-gray-500 table-auto" style={tableStyles}>
             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
                 {columns.map((col) => (
                   <th key={col.accessor} className="p-2 pl-3">{col.header}</th>
                 ))}
-                {showActionColumn && <th className="p-2 pl-3">{actionColumnText}</th>}
+                {showActionColumn && <th className="p-2 pl-3 text-right">{actionColumnText}</th>}
               </tr>
             </thead>
             <tbody>
@@ -309,7 +310,7 @@ const ResponsiveTable = ({
                           <FormField fieldConfig={col} data={editingData} onChange={onEditChange} availableOptions={availableOptions} />
                         </td>
                       ))}
-                      <td className="py-3 px-4 pl-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-4 pl-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <EditingActions 
                           onSaveEdit={onSaveEdit} 
                           onCancelEdit={onCancelEdit} 
@@ -326,7 +327,7 @@ const ResponsiveTable = ({
                         </td>
                       ))}
                       {showActionColumn && (
-                        <td className="py-3 px-4 pl-3 flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                        <td className="py-3 px-4 pl-3 text-right" onClick={(e) => e.stopPropagation()}>
                           {renderActionButtons(item[idField], item)}
                         </td>
                       )}

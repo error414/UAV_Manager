@@ -1,14 +1,15 @@
-from django.urls import path
+from django.urls import path, include
 from .views import (
     UAVListCreateView, UAVDetailView,
-    FlightLogListCreateView, FlightLogDetailView,
+    FlightLogListCreateView, FlightLogDetailView, FlightGPSDataUploadView,
     MaintenanceLogListCreateView, MaintenanceLogDetailView,
     MaintenanceReminderListCreateView, MaintenanceReminderDetailView,
     FileListCreateView, FileDetailView,
     UserListCreateView, UserDetailView,
     UserSettingsListCreateView, UserSettingsDetailView,
     AdminUserListView, AdminUserDetailView, AdminUAVListView, AdminUAVDetailView,
-    UAVImportView, FlightLogImportView, FlightGPSDataUploadView,
+    UAVImportView, FlightLogImportView, UserDataExportView, UserDataImportView,
+    UAVConfigListCreateView, UAVConfigDetailView
 )
 
 urlpatterns = [
@@ -52,4 +53,12 @@ urlpatterns = [
     # Import endpoints
     path('import/uav/', UAVImportView.as_view(), name='uav-import'),
     path('import/flightlog/', FlightLogImportView.as_view(), name='flightlog-import'),
+
+    # Export and Import endpoints
+    path('export-user-data/', UserDataExportView.as_view(), name='export-user-data'),
+    path('import-user-data/', UserDataImportView.as_view(), name='import-user-data'),
+
+    # Endpoints for UAV Configurations
+    path('uav-configs/', UAVConfigListCreateView.as_view(), name='uav-config-list'),
+    path('uav-configs/<int:pk>/', UAVConfigDetailView.as_view(), name='uav-config-detail'),
 ]

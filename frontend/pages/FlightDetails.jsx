@@ -316,8 +316,8 @@ const FlightDetails = () => {
         {alertMessage && <Alert type={alertMessage.type} message={alertMessage.message} />}
         {isLoading && <Loading message="Processing GPS data..." />}
 
-        {hasGpsTrack && (isPlaying || currentPointIndex > 0) ? (
-          // Three column layout when GPS data is active
+        {hasGpsTrack ? (
+          // Three column layout when GPS data is available
           <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
             {/* Flight Information - 2/6 width */}
             <div className="lg:col-span-2">
@@ -349,7 +349,7 @@ const FlightDetails = () => {
             </div>
           </div>
         ) : (
-          // Original two column layout when no GPS data or animation is not active
+          // Original two column layout when no GPS data
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
               <FlightInfoCard flight={flight} />
@@ -378,25 +378,6 @@ const FlightDetails = () => {
           </div>
         )}
 
-        <div className="mt-6 flex justify-center gap-4">
-          {!gpsTrack ? (
-            <Button
-              onClick={handleImportGPS}
-              variant="success"
-              disabled={isLoading}
-            >
-              Import GPS Track
-            </Button>
-          ) : null}
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept=".csv"
-            onChange={handleFileChange}
-          />
-        </div>
-
         {hasGpsTrack && (
           <div className="mt-4">
             <GpsAnimationControls
@@ -420,7 +401,16 @@ const FlightDetails = () => {
           >
             Back to Flight Log
           </Button>
-          {gpsTrack && (
+          
+          {!gpsTrack ? (
+            <Button
+              onClick={handleImportGPS}
+              variant="primary"
+              disabled={isLoading}
+            >
+              Import GPS Track
+            </Button>
+          ) : (
             <Button
               onClick={handleDeleteGPS}
               variant="danger"
@@ -429,6 +419,13 @@ const FlightDetails = () => {
               Delete GPS Track
             </Button>
           )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept=".csv"
+            onChange={handleFileChange}
+          />
         </div>
       </div>
     </div>

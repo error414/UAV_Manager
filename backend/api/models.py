@@ -102,6 +102,48 @@ class UAV(models.Model):
         return f"{self.drone_name} ({self.serial_number})"
 
 
+# UAV Configuration Files
+def uav_config_path(instance, filename):
+    # Generate path uav_configs/userid/filename
+    user_id = instance.user.user_id  # Use user ID
+    # Django adds media root automatically (yourmediaroot/)
+    return f'uav_configs/user{user_id}/{filename}'
+
+class UAVConfig(models.Model):
+    config_id = models.AutoField(primary_key=True)
+    uav = models.ForeignKey(UAV, on_delete=models.CASCADE, related_name='configurations')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uav_configurations')
+    name = models.CharField(max_length=255)
+    upload_date = models.DateField()
+    file = models.FileField(upload_to=uav_config_path)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        # Check if a new file is being uploaded
+        if self.pk:
+            from .services.file_service import FileService
+            old_instance = UAVConfig.objects.filter(pk=self.pk).first()
+            FileService.handle_config_file_update(self, old_instance)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Handle file deletion
+        from .services.file_service import FileService
+        if self.file:
+            FileService.handle_file_deletion(self.file.path)
+        super().delete(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Configuration '{self.name}' for UAV {self.uav}"
+
+# Optional: Use a signal to ensure file deletion when using bulk delete
+@receiver(post_delete, sender=UAVConfig)
+def delete_file_on_config_delete(sender, instance, **kwargs):
+    from .services.file_service import FileService
+    if instance.file:
+        FileService.handle_file_deletion(instance.file.path)
+
+
 # Fluglogs (FLIGHTLOGS)
 class FlightLog(models.Model):
     # Definiere Choices für die Dropdown-Felder
@@ -163,6 +205,12 @@ class FlightGPSLog(models.Model):
 
 
 # Wartungsprotokolle (MAINTENANCELOGS)
+def maintenance_log_path(instance, filename):
+    # Generate path uploads/maint_logs/userid/filename
+    user_id = instance.user.user_id
+    # Django adds media root automatically
+    return f'maint_logs/user{user_id}/{filename}'
+
 class MaintenanceLog(models.Model):
     maintenance_id = models.AutoField(primary_key=True)
     uav = models.ForeignKey(UAV, on_delete=models.CASCADE, related_name='maintenance_logs')
@@ -170,7 +218,7 @@ class MaintenanceLog(models.Model):
     event_type = models.CharField(max_length=100)
     description = models.TextField()
     event_date = models.DateField()
-    file = models.FileField(upload_to='maint_logs/', null=True, blank=True)  # Removed 'uploads/' prefix
+    file = models.FileField(upload_to=maintenance_log_path, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def save(self, *args, **kwargs):

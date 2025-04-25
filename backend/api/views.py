@@ -8,12 +8,12 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import (
-    UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings, FlightGPSLog
+    UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings, FlightGPSLog, UAVConfig
 )
 from .serializers import (
     UAVSerializer, FlightLogSerializer, MaintenanceLogSerializer, FlightGPSLogSerializer,
     MaintenanceReminderSerializer, FileSerializer, UserSerializer, UserSettingsSerializer,
-    FlightLogWithGPSSerializer
+    FlightLogWithGPSSerializer, UAVConfigSerializer
 )
 
 # Import the services
@@ -23,6 +23,8 @@ from .services.admin_service import AdminService
 from .services.user_service import UserService
 from .services.file_service import FileService
 from .services.gps_service import GPSService
+from .services.export_service import ExportService
+from .services.import_service import ImportService
 
 # Pagination for UAVs
 class UAVPagination(PageNumberPagination):
@@ -450,3 +452,76 @@ class FlightLogImportView(APIView):
             response_data['details']['errors'] = import_results['errors']
             
         return Response(response_data)
+
+# Add this new view for exporting user data
+class UserDataExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            response = ExportService.export_user_data(request.user)
+            return response
+        except Exception as e:
+            return Response(
+                {"detail": f"Error exporting data: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+# Add this new view for importing user data
+class UserDataImportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+    
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {"detail": "No file provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        zip_file = request.FILES['file']
+        
+        # Check if file is ZIP
+        if not zip_file.name.lower().endswith('.zip'):
+            return Response(
+                {"detail": "File must be a ZIP archive"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            # Process the import
+            result = ImportService.import_user_data(request.user, zip_file)
+            
+            # Return appropriate response based on result
+            if result['success']:
+                return Response(result, status=status.HTTP_200_OK)
+            else:
+                return Response(result, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            return Response(
+                {"detail": f"Error importing data: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+# Endpoints for UAV Configurations
+class UAVConfigListCreateView(generics.ListCreateAPIView):
+    serializer_class = UAVConfigSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        uav_id = self.request.query_params.get('uav')
+        queryset = UAVConfig.objects.filter(user=self.request.user)
+        if uav_id:
+            queryset = queryset.filter(uav_id=uav_id)
+        return queryset
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class UAVConfigDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = UAVConfigSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return UAVConfig.objects.filter(user=self.request.user)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { Sidebar, Alert, ResponsiveTable, Loading, ConfirmModal, Pagination } from '../components';
+import { Sidebar, Alert, ResponsiveTable, Loading, ConfirmModal, Pagination, Button } from '../components';
 import { userTableColumns, uavTableColumns, flightLogTableColumns, getEnhancedFlightLogColumns } from '../utils/tableDefinitions';
 import { userFilterFormFields, uavEditFormFields } from '../utils/formDefinitions';
 import { useAuth, useApi } from '../utils/authUtils';
@@ -29,6 +29,8 @@ const AdminPage = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [pageSize] = useState(20);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const [mobileFiltersVisible, setMobileFiltersVisible] = useState(false);
   
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [selectedUserName, setSelectedUserName] = useState('');
@@ -388,12 +390,22 @@ const AdminPage = () => {
   }, [fetchData, fetchUserFlightLogs, selectedUserId]);
 
   const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
+  
+  const toggleMobileFilters = useCallback(() => {
+    setMobileFiltersVisible(prev => !prev);
+  }, []);
+  
   const handlePageChange = useCallback((page) => setCurrentPage(page), []);
   const handleUavPageChange = useCallback((page) => setUavCurrentPage(page), []);
 
   const enhancedFlightLogColumns = useMemo(() => {
     return getEnhancedFlightLogColumns(userUAVs);
   }, [userUAVs]);
+
+  const tableStyles = {
+    tableLayout: "fixed", 
+    width: "100%"
+  };
 
   if (loading) return <Loading />;
   if (!isStaff) return <Navigate to="/flightlog" state={{ from: location }} replace />;
@@ -413,6 +425,21 @@ const AdminPage = () => {
         <Alert type="error" message={error} />
         {isLoading ? <Loading /> : (
           <>
+            <div className="md:hidden mt-0.5 mb-0.5 w-full">
+              <Button 
+                onClick={toggleMobileFilters}
+                variant="secondary"
+                size="md"
+                fullWidth={true}
+                className="flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
+                </svg>
+                {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
+              </Button>
+            </div>
+
             <ResponsiveTable 
               columns={userTableColumns}
               data={users}
@@ -433,6 +460,8 @@ const AdminPage = () => {
               idField="user_id"
               titleField="email"
               onRowClick={handleUserSelect}
+              mobileFiltersVisible={mobileFiltersVisible}
+              tableStyles={tableStyles}
             />
             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
             {selectedUserId && (
@@ -459,6 +488,7 @@ const AdminPage = () => {
                       onCancelEdit={handleUavCancelEdit}
                       onDelete={handleDeleteUav}
                       editFormFields={uavEditFormFields}
+                      tableStyles={tableStyles}
                     />
                     <Pagination currentPage={uavCurrentPage} totalPages={uavTotalPages} onPageChange={handleUavPageChange} />
                   </>
@@ -494,6 +524,7 @@ const AdminPage = () => {
                           type: 'text',
                           placeholder: col.header
                         }))}
+                        tableStyles={tableStyles}
                       />
                       <Pagination currentPage={flightLogCurrentPage} totalPages={flightLogTotalPages} onPageChange={setFlightLogCurrentPage} />
                     </>

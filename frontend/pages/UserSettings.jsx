@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Alert, Sidebar, FormInput, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
@@ -79,8 +79,11 @@ const UserSettings = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const { checkAuthAndGetUser } = useAuth();
+  const { checkAuthAndGetUser, getAuthHeaders, handleAuthError } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
 
   useEffect(() => {
@@ -193,6 +196,132 @@ const UserSettings = () => {
     setFormData(prev => ({ ...prev, country: val }));
   };
 
+  const handleExportData = async () => {
+    try {
+      setIsExporting(true);
+      setError(null);
+      
+      const auth = checkAuthAndGetUser();
+      if (!auth) return;
+      
+      // Using fetch directly with auth headers because we need to handle blob response
+      const response = await fetch(`${API_URL}/api/export-user-data/`, {
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        // Check for auth errors
+        if (handleAuthError(response)) {
+          throw new Error('Authentication failed');
+        }
+        throw new Error(`Failed to export: ${response.status} ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'dronelogbook_export.zip';
+      
+      if (contentDisposition) {
+        const filenameMatch = /filename="(.+)"/.exec(contentDisposition);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setSuccess('Your data has been exported successfully!');
+    } catch (err) {
+      setError('Failed to export data: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportData = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Check if file is a ZIP
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      setError('Please select a ZIP file');
+      return;
+    }
+    
+    try {
+      setIsImporting(true);
+      setError(null);
+      setSuccess(null);
+      
+      const auth = checkAuthAndGetUser();
+      if (!auth) return;
+      
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Make sure we're not setting Content-Type header
+      // Let the browser set it automatically with the correct boundary
+      const response = await fetch(`${API_URL}/api/import-user-data/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${auth.token}`
+          // Don't set Content-Type here, it will be set automatically
+        },
+        body: formData
+      });
+      
+      // Log more details about the error if debugging
+      if (!response.ok) {
+        console.error('Import failed with status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        
+        let result;
+        try {
+          result = JSON.parse(errorText);
+        } catch (e) {
+          result = { detail: errorText || 'Import failed' };
+        }
+        
+        throw new Error(result.detail || result.message || 'Import failed');
+      }
+      
+      const result = await response.json();
+      
+      // Clear the file input
+      fileInputRef.current.value = '';
+      
+      // Show success message with import details
+      const details = result.details;
+      setSuccess(
+        `Import successful! Imported: ${details.uavs_imported} UAVs, ` +
+        `${details.flight_logs_imported} flight logs, ` +
+        `${details.maintenance_logs_imported} maintenance logs, and ` +
+        `${details.maintenance_reminders_imported} maintenance reminders.`
+      );
+      
+    } catch (err) {
+      setError('Failed to import data: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -272,6 +401,74 @@ const UserSettings = () => {
         
         {error && <Alert type="error" message={error} />}
         {success && <Alert type="success" message={success} />}
+        
+        <div className="mb-6">
+          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="mb-4 md:mb-0">
+                <h3 className="text-lg font-medium text-gray-900">Data Management</h3>
+                <p className="text-sm text-gray-500">
+                  Export or import your drone data including UAVs, flight logs, and maintenance records.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  onClick={handleImportData} 
+                  variant="secondary" 
+                  disabled={isImporting}
+                  className="min-w-max"
+                >
+                  {isImporting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"></path>
+                      </svg>
+                      Import Data
+                    </>
+                  )}
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept=".zip"
+                  className="hidden"
+                />
+                <Button 
+                  onClick={handleExportData} 
+                  variant="secondary" 
+                  disabled={isExporting}
+                  className="min-w-max"
+                >
+                  {isExporting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                      </svg>
+                      Export Data
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
         
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">

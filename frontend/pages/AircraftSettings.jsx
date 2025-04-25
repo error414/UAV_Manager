@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sidebar, Button, Loading, ConfirmModal } from '../components';
-import { maintenanceLogTableColumns } from '../utils/tableDefinitions';
+import { maintenanceLogTableColumns, uavConfigTableColumns } from '../utils/tableDefinitions';
 import { useAuth, useApi } from '../utils/authUtils';
 
 const AircraftSettings = () => {
@@ -10,10 +10,20 @@ const AircraftSettings = () => {
   const { uavId } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const configFileInputRef = useRef(null);
   
   const [aircraft, setAircraft] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [newLog, setNewLog] = useState({ event_type: 'LOG', description: '', event_date: '', file: null });
+  const [configFile, setConfigFile] = useState({
+    name: '',
+    file: null,
+    upload_date: new Date().toISOString().split('T')[0] // Today's date in YYYY-MM-DD format
+  });
+  const [configFiles, setConfigFiles] = useState([]);
+  const [configFormErrors, setConfigFormErrors] = useState({});
+  const [deleteConfigId, setDeleteConfigId] = useState(null);
+  const [showDeleteConfigModal, setShowDeleteConfigModal] = useState(false);
   const [editingLogId, setEditingLogId] = useState(null);
   const [editingLog, setEditingLog] = useState(null);
   const [deleteLogId, setDeleteLogId] = useState(null);
@@ -25,7 +35,10 @@ const AircraftSettings = () => {
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
 
-  useEffect(() => { fetchAircraft(); }, [uavId]);
+  useEffect(() => { 
+    fetchAircraft();
+    fetchConfigFiles();
+  }, [uavId]);
   
   useEffect(() => {
     const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
@@ -35,12 +48,12 @@ const AircraftSettings = () => {
 
   const na = v => v || 'N/A';
 
-  const formatFlightHours = hours => {
-    if (!hours) return 'N/A';
-    const totalMinutes = Math.round(hours * 60);
-    const hh = Math.floor(totalMinutes / 60);
-    const mm = totalMinutes % 60;
-    return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+  const formatFlightHours = seconds => {
+    if (!seconds) return 'N/A';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}min ${secs.toString().padStart(2, '0')}s`;
   };
 
   const formatDate = dateString => dateString ? new Date(dateString).toLocaleDateString() : 'N/A';
@@ -84,6 +97,21 @@ const AircraftSettings = () => {
       }
     } catch (error) {
       setError("Failed to load aircraft data");
+    }
+  };
+
+  const fetchConfigFiles = async () => {
+    try {
+      const auth = checkAuthAndGetUser();
+      if (!auth) return;
+      
+      const result = await fetchData(`/api/uav-configs/?uav=${uavId}`);
+      
+      if (!result.error) {
+        setConfigFiles(result.data);
+      }
+    } catch (error) {
+      setError("Failed to load configuration files");
     }
   };
 
@@ -137,6 +165,70 @@ const AircraftSettings = () => {
     } catch (error) {
       setError(`Failed to ${method === 'POST' ? 'add' : 'update'} maintenance log`);
       return false;
+    }
+  };
+
+  const handleConfigChange = e => {
+    const { name, value, files } = e.target;
+    setConfigFile(cf => ({ ...cf, [name]: name === 'file' ? files[0] : value }));
+  };
+  
+  const handleAddConfig = async () => {
+    const errors = {};
+    if (!configFile.name?.trim()) errors.name = 'Name is required';
+    if (!configFile.file) errors.file = 'File is required';
+    
+    setConfigFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('name', configFile.name);
+      formData.append('file', configFile.file);
+      formData.append('upload_date', configFile.upload_date);
+      formData.append('uav', uavId);
+      
+      const response = await fetch(`${API_URL}/api/uav-configs/`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        if (handleAuthError(response)) return;
+        throw new Error('Failed to upload configuration file');
+      }
+      
+      await fetchConfigFiles();
+      setConfigFile({
+        name: '',
+        file: null,
+        upload_date: new Date().toISOString().split('T')[0]
+      });
+      if (configFileInputRef.current) configFileInputRef.current.value = '';
+      
+    } catch (error) {
+      setError("Failed to upload configuration file");
+    }
+  };
+
+  const handleDeleteConfig = configId => {
+    setDeleteConfigId(configId);
+    setShowDeleteConfigModal(true);
+  };
+
+  const confirmDeleteConfig = async () => {
+    try {
+      const result = await fetchData(`/api/uav-configs/${deleteConfigId}/`, {}, 'DELETE');
+      
+      if (!result.error) {
+        await fetchConfigFiles();
+      }
+    } catch (error) {
+      setError("Failed to delete configuration file");
+    } finally {
+      setShowDeleteConfigModal(false);
+      setDeleteConfigId(null);
     }
   };
 
@@ -334,7 +426,7 @@ const AircraftSettings = () => {
               <h3 className="text-lg font-medium text-gray-800 mb-3">Statistics</h3>
               <div className="space-y-2">
                 <InfoRow label="Total Flights:" value={aircraft.total_flights} />
-                <InfoRow label="Total Flight Time:" value={formatFlightHours(aircraft.total_flight_time / 3600)} />
+                <InfoRow label="Total Flight Time:" value={formatFlightHours(aircraft.total_flight_time)} />
                 <InfoRow label="Total Takeoffs (TO):" value={aircraft.total_takeoffs} />
                 <InfoRow label="Total Landings (LDG):" value={aircraft.total_landings} />
               </div>
@@ -373,6 +465,83 @@ const AircraftSettings = () => {
                     <span className="text-gray-900">{formatDate(aircraft.next_frame_maint_date)}</span>
                   </div>
                 </div>
+              </div>
+            </div>
+            
+            <div className="bg-white shadow rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-800 mb-3">Configuration Files</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="mb-4">
+                    <span className="font-semibold text-gray-700 block">Upload Date:</span>
+                    <span className="text-gray-900">{configFile.upload_date}</span>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <span className="font-semibold text-gray-700 block">Configuration Name:</span>
+                    <input
+                      type="text"
+                      name="name"
+                      value={configFile.name}
+                      onChange={handleConfigChange}
+                      placeholder="Enter configuration name"
+                      className={`w-full px-2 py-1 border rounded ${configFormErrors.name ? 'border-red-500' : 'border-gray-300'}`}
+                    />
+                    {configFormErrors.name && <p className="text-red-500 text-xs mt-1">{configFormErrors.name}</p>}
+                  </div>
+                  
+                  <div className="mb-4">
+                    <span className="font-semibold text-gray-700 block">Configuration File:</span>
+                    <input
+                      type="file"
+                      name="file"
+                      onChange={handleConfigChange}
+                      className={`w-full px-2 py-1 border rounded ${configFormErrors.file ? 'border-red-500' : 'border-gray-300'}`}
+                      ref={configFileInputRef}
+                    />
+                    {configFormErrors.file && <p className="text-red-500 text-xs mt-1">{configFormErrors.file}</p>}
+                  </div>
+                  
+                  <div>
+                    <Button onClick={handleAddConfig} variant="success">Upload Configuration</Button>
+                  </div>
+                </div>
+                
+                {configFiles.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-medium text-gray-700 mb-2">Uploaded Configuration Files</h4>
+                    <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
+                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                          {uavConfigTableColumns.map(col => (
+                            <th key={col.accessor} className="px-4 py-2">{col.header}</th>
+                          ))}
+                          <th className="px-4 py-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {configFiles.map((config) => (
+                          <tr key={config.config_id} className="bg-white border-b hover:bg-gray-50">
+                            {uavConfigTableColumns.map(col => (
+                              <td className="px-4 py-2" key={col.accessor}>
+                                {col.render
+                                  ? col.render(config[col.accessor], config)
+                                  : config[col.accessor] || 'N/A'}
+                                {col.accessor === 'file' && config.file
+                                  ? (
+                                    <a href={config.file} download className="text-blue-500 hover:underline ml-2">Download File</a>
+                                  ) : null}
+                              </td>
+                            ))}
+                            <td className="px-4 py-2">
+                              <Button onClick={() => handleDeleteConfig(config.config_id)} variant="danger">Delete</Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -493,6 +662,16 @@ const AircraftSettings = () => {
         <div className="mt-6 flex justify-center space-x-4">
           <Button onClick={handleModifyClick} variant="primary" className="max-w-md">Modify Aircraft</Button>
         </div>
+        
+        <ConfirmModal
+          open={showDeleteConfigModal}
+          title="Confirm Delete Configuration"
+          message="Are you sure you want to delete this configuration file?"
+          onConfirm={confirmDeleteConfig}
+          onCancel={() => setShowDeleteConfigModal(false)}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
         
         <ConfirmModal
           open={showDeleteModal}
