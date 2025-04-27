@@ -199,6 +199,22 @@ class FlightGPSLog(models.Model):
     num_sat = models.IntegerField(null=True, blank=True)
     speed = models.FloatField(null=True, blank=True)  # GPS_speed (m/s)
     ground_course = models.FloatField(null=True, blank=True)
+    # Add new telemetry fields
+    vertical_speed = models.FloatField(null=True, blank=True)  # VSpd
+    pitch = models.FloatField(null=True, blank=True)
+    roll = models.FloatField(null=True, blank=True)
+    yaw = models.FloatField(null=True, blank=True)
+    receiver_battery = models.FloatField(null=True, blank=True)  # RxBt
+    current = models.FloatField(null=True, blank=True)  # Curr
+    capacity = models.FloatField(null=True, blank=True)  # Capa
+    receiver_quality = models.IntegerField(null=True, blank=True)  # RQly
+    transmitter_quality = models.IntegerField(null=True, blank=True)  # TQly
+    transmitter_power = models.IntegerField(null=True, blank=True)  # TPWR
+    # New flight control input fields
+    aileron = models.FloatField(null=True, blank=True)  # Ail
+    elevator = models.FloatField(null=True, blank=True)  # Ele
+    throttle = models.FloatField(null=True, blank=True)  # Thr
+    rudder = models.FloatField(null=True, blank=True)  # Rud
 
     class Meta:
         ordering = ['timestamp']

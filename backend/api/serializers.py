@@ -69,7 +69,12 @@ class FlightLogSerializer(serializers.ModelSerializer):
 class FlightGPSLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = FlightGPSLog
-        fields = ['timestamp', 'latitude', 'longitude', 'altitude', 'num_sat', 'speed', 'ground_course']
+        fields = [
+            'timestamp', 'latitude', 'longitude', 'altitude', 'num_sat', 'speed', 'ground_course',
+            'vertical_speed', 'pitch', 'roll', 'yaw', 'receiver_battery', 'current', 'capacity',
+            'receiver_quality', 'transmitter_quality', 'transmitter_power',
+            'aileron', 'elevator', 'throttle', 'rudder'
+        ]
         
 class FlightLogWithGPSSerializer(serializers.ModelSerializer):
     gps_logs = FlightGPSLogSerializer(many=True, read_only=True)

@@ -3,11 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Loading, ConfirmModal, Button, Alert, Sidebar, FlightInfoCard, AnimatedMarker, GpsAnimationControls } from '../components';
+import { Loading, ConfirmModal, Button, Alert, Sidebar, FlightInfoCard, AnimatedMarker, GpsAnimationControls, TelemetryPanel } from '../components';
 import { useAuth, useApi } from '../utils/authUtils';
 import { takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds } from '../utils/mapUtils';
 import { parseGPSFile, calculateGpsStatistics } from '../utils/gpsUtils';
 import { GpsDataPanel } from '../components/map/GpsAnimationControls';
+import { ArtificialHorizon } from '../components/map/FlightInstruments';
 
 // Ensure Leaflet default icons are properly set
 delete L.Icon.Default.prototype._getIconUrl;
@@ -91,8 +92,7 @@ const FlightDetails = () => {
   const [currentPointIndex, setCurrentPointIndex] = useState(0);
   const [animationSpeed, setAnimationSpeed] = useState(20);
   const [resetTrigger, setResetTrigger] = useState(false);
-  const animationRef = useRef(null);
-  const lastFrameTime = useRef(0);
+  const intervalRef = useRef(null);
   const animationData = useRef({ loaded: false, track: null });
 
   const { getAuthHeaders, checkAuthAndGetUser } = useAuth();
@@ -167,48 +167,28 @@ const FlightDetails = () => {
   // Animation controls
   const startAnimation = () => {
     if (!gpsTrack?.length) return;
-    
+
     if (currentPointIndex >= gpsTrack.length - 1) setCurrentPointIndex(0);
     setIsPlaying(true);
-    
-    // Clean up previous animation if it exists
-    if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    
-    lastFrameTime.current = null;
-    let playing = true;
-    
-    const animate = (timestamp) => {
-      if (!lastFrameTime.current) {
-        lastFrameTime.current = timestamp;
-        animationRef.current = requestAnimationFrame(animate);
-        return;
-      }
-      
-      const elapsed = timestamp - lastFrameTime.current;
-      lastFrameTime.current = timestamp;
-      
-      // Calculate how many points to move based on speed
-      const pointsToMove = Math.max(1, Math.min(Math.floor(elapsed * animationSpeed / 100), 10));
-      
+
+    // Clean up previous interval if it exists
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    intervalRef.current = setInterval(() => {
       setCurrentPointIndex(prevIndex => {
-        const newIndex = prevIndex + pointsToMove;
-        if (newIndex >= gpsTrack.length - 1) {
-          playing = false;
+        if (prevIndex >= gpsTrack.length - 1) {
           setIsPlaying(false);
+          clearInterval(intervalRef.current);
           return gpsTrack.length - 1;
         }
-        return newIndex;
+        return prevIndex + 1;
       });
-      
-      if (playing) animationRef.current = requestAnimationFrame(animate);
-    };
-    
-    animationRef.current = requestAnimationFrame(animate);
+    }, 1000 / animationSpeed); // <-- now truly "entries per second"
   };
 
   const pauseAnimation = () => {
     setIsPlaying(false);
-    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
   const resetAnimation = () => {
@@ -232,11 +212,10 @@ const FlightDetails = () => {
     setCurrentPointIndex(newPosition);
   };
 
-  // Cleanup animation frame on unmount
+  // Cleanup interval on unmount
   useEffect(() => () => {
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      lastFrameTime.current = 0;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
   }, []);
 
@@ -328,15 +307,40 @@ const FlightDetails = () => {
         {isLoading && <Loading message="Processing GPS data..." />}
 
         {hasGpsTrack ? (
-          // Three column layout when GPS data is available
+          // Reorganized layout when GPS data is available
           <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
-            {/* Flight Information - 2/6 width */}
-            <div className="lg:col-span-2">
-              <FlightInfoCard flight={flight} />
+            {/* Top row */}
+            <div className="lg:col-span-2 flex flex-col">
+              {/* Flight Information */}
+              <div className="mb-4">
+                <FlightInfoCard flight={flight} />
+              </div>
+              
+              {/* GPS Track Animation directly below Flight Info - same width and flush with it */}
+              <div>
+                <GpsAnimationControls
+                  isPlaying={isPlaying}
+                  startAnimation={startAnimation}
+                  pauseAnimation={pauseAnimation}
+                  resetAnimation={resetAnimation}
+                  animationSpeed={animationSpeed}
+                  changeSpeed={changeSpeed}
+                  currentPointIndex={currentPointIndex}
+                  trackLength={gpsTrack?.length || 0}
+                  onPositionChange={handlePositionChange}
+                />
+              </div>
             </div>
             
-            {/* Live GPS Data - 1/6 width with matching height */}
-            <div className="lg:col-span-1 flex">
+            {/* Live GPS Data with Artificial Horizon - 1/6 width */}
+            <div className="lg:col-span-1 flex flex-col">
+              <div className="bg-gray-50 p-4 rounded-lg shadow mb-4 flex justify-center">
+                <ArtificialHorizon 
+                  pitch={currentGpsPoint?.pitch || 0}
+                  roll={currentGpsPoint?.roll || 0}
+                  size={200}
+                />
+              </div>
               <GpsDataPanel 
                 gpsPoint={currentGpsPoint} 
                 gpsStats={gpsStats}
@@ -358,6 +362,12 @@ const FlightDetails = () => {
                   fullGpsData={fullGpsData}
                 />
               </div>
+            </div>
+            
+            {/* Bottom row */}
+            {/* Flight Telemetry - full width */}
+            <div className="lg:col-span-6 mt-4">
+              <TelemetryPanel gpsPoint={currentGpsPoint} />
             </div>
           </div>
         ) : (
@@ -391,22 +401,6 @@ const FlightDetails = () => {
           </div>
         )}
 
-        {hasGpsTrack && (
-          <div className="mt-4">
-            <GpsAnimationControls
-              isPlaying={isPlaying}
-              startAnimation={startAnimation}
-              pauseAnimation={pauseAnimation}
-              resetAnimation={resetAnimation}
-              animationSpeed={animationSpeed}
-              changeSpeed={changeSpeed}
-              currentPointIndex={currentPointIndex}
-              trackLength={gpsTrack?.length || 0}
-              onPositionChange={handlePositionChange}
-            />
-          </div>
-        )}
-        
         <div className="mt-6 flex justify-center gap-4">
           <Button 
             onClick={() => navigate('/flightlog')} 

@@ -20,7 +20,7 @@ export const parseGPSFile = async (file) => {
   
   // Validate header
   const header = rows[0].trim();
-  const expectedHeader = 'time (us), GPS_numSat, GPS_coord[0], GPS_coord[1], GPS_altitude, GPS_speed (m/s), GPS_ground_course';
+  const expectedHeader = 'time,GPS_numSat,GPS_coord[0],GPS_coord[1],GPS_altitude,GPS_speed,GPS_ground_course,VSpd,Pitch,Roll,Yaw,RxBt,Curr,Capa,RQly,TQly,TPWR,Ail,Ele,Thr,Rud';
   if (header !== expectedHeader) {
     throw new Error('The file header does not match the expected format:\n' + `"${expectedHeader}"`);
   }
@@ -31,11 +31,26 @@ export const parseGPSFile = async (file) => {
   const indexMap = {
     lat: idx('gps_coord[0]'),
     lon: idx('gps_coord[1]'),
-    time: idx('time (us)'),
+    time: idx('time'),
     alt: idx('gps_altitude'),
     sat: idx('gps_numsat'),
-    speed: idx('gps_speed (m/s)'),
-    course: idx('gps_ground_course')
+    speed: idx('gps_speed'),
+    course: idx('gps_ground_course'),
+    vspd: idx('vspd'),
+    pitch: idx('pitch'),
+    roll: idx('roll'),
+    yaw: idx('yaw'),
+    rxbt: idx('rxbt'),
+    curr: idx('curr'),
+    capa: idx('capa'),
+    rqly: idx('rqly'),
+    tqly: idx('tqly'),
+    tpwr: idx('tpwr'),
+    // Add new control input indices
+    ail: idx('ail'),
+    ele: idx('ele'),
+    thr: idx('thr'),
+    rud: idx('rud')
   };
   
   if (indexMap.lat === -1 || indexMap.lon === -1) {
@@ -76,6 +91,63 @@ export const parseGPSFile = async (file) => {
       
       if (indexMap.course !== -1 && columns[indexMap.course]) {
         gpsPoint.ground_course = parseFloat(columns[indexMap.course]);
+      }
+
+      if (indexMap.vspd !== -1 && columns[indexMap.vspd]) {
+        gpsPoint.vertical_speed = parseFloat(columns[indexMap.vspd]);
+      }
+      
+      if (indexMap.pitch !== -1 && columns[indexMap.pitch]) {
+        gpsPoint.pitch = parseFloat(columns[indexMap.pitch]);
+      }
+      
+      if (indexMap.roll !== -1 && columns[indexMap.roll]) {
+        gpsPoint.roll = parseFloat(columns[indexMap.roll]);
+      }
+      
+      if (indexMap.yaw !== -1 && columns[indexMap.yaw]) {
+        gpsPoint.yaw = parseFloat(columns[indexMap.yaw]);
+      }
+      
+      if (indexMap.rxbt !== -1 && columns[indexMap.rxbt]) {
+        gpsPoint.receiver_battery = parseFloat(columns[indexMap.rxbt]);
+      }
+      
+      if (indexMap.curr !== -1 && columns[indexMap.curr]) {
+        gpsPoint.current = parseFloat(columns[indexMap.curr]);
+      }
+      
+      if (indexMap.capa !== -1 && columns[indexMap.capa]) {
+        gpsPoint.capacity = parseFloat(columns[indexMap.capa]);
+      }
+      
+      if (indexMap.rqly !== -1 && columns[indexMap.rqly]) {
+        gpsPoint.receiver_quality = parseInt(columns[indexMap.rqly], 10);
+      }
+      
+      if (indexMap.tqly !== -1 && columns[indexMap.tqly]) {
+        gpsPoint.transmitter_quality = parseInt(columns[indexMap.tqly], 10);
+      }
+      
+      if (indexMap.tpwr !== -1 && columns[indexMap.tpwr]) {
+        gpsPoint.transmitter_power = parseInt(columns[indexMap.tpwr], 10);
+      }
+      
+      // Add new control input fields
+      if (indexMap.ail !== -1 && columns[indexMap.ail]) {
+        gpsPoint.aileron = parseFloat(columns[indexMap.ail]);
+      }
+      
+      if (indexMap.ele !== -1 && columns[indexMap.ele]) {
+        gpsPoint.elevator = parseFloat(columns[indexMap.ele]);
+      }
+      
+      if (indexMap.thr !== -1 && columns[indexMap.thr]) {
+        gpsPoint.throttle = parseFloat(columns[indexMap.thr]);
+      }
+      
+      if (indexMap.rud !== -1 && columns[indexMap.rud]) {
+        gpsPoint.rudder = parseFloat(columns[indexMap.rud]);
       }
       
       gpsData.push(gpsPoint);

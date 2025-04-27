@@ -14,13 +14,19 @@ export const GpsDataPanel = ({ gpsPoint, gpsStats }) => {
           <div className="text-gray-800">Lat: {gpsPoint.latitude?.toFixed(6) || 'N/A'}</div>
           <div className="text-gray-800">Lng: {gpsPoint.longitude?.toFixed(6) || 'N/A'}</div>
         </div>
-        <div className="mb-3">
-          <div className="text-gray-600 font-medium mb-1">Altitude (MSL)</div>
-          <div className="text-gray-800">{gpsPoint.altitude ? `${(gpsPoint.altitude / 10).toFixed(1)} m` : 'N/A'}</div>
+        <div className="flex mb-3 space-x-6">
+          <div className="flex-1">
+            <div className="text-gray-600 font-medium mb-1">Altitude</div>
+            <div className="text-gray-800">{gpsPoint.altitude !== null && gpsPoint.altitude !== undefined ? `${gpsPoint.altitude.toFixed(1)} m` : '0.0 m'}</div>
+          </div>
+          <div className="flex-1">
+            <div className="text-gray-600 font-medium mb-1">Vertical Speed</div>
+            <div className="text-gray-800">{gpsPoint.vertical_speed ? `${gpsPoint.vertical_speed.toFixed(1)} m/s` : 'N/A'}</div>
+          </div>
         </div>
         <div className="mb-3">
           <div className="text-gray-600 font-medium mb-1">Speed</div>
-          <div className="text-gray-800">{gpsPoint.speed ? `${(gpsPoint.speed * 3.6).toFixed(1)} km/h` : 'N/A'}</div>
+          <div className="text-gray-800">{gpsPoint.speed ? `${gpsPoint.speed.toFixed(1)} km/h` : 'N/A'}</div>
         </div>
         <div className="mb-3">
           <div className="text-gray-600 font-medium mb-1">Satellites</div>
@@ -38,16 +44,16 @@ export const GpsDataPanel = ({ gpsPoint, gpsStats }) => {
             <div className="bg-gray-50 p-2 rounded-lg">
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-gray-500">
                 <div>
-                  <span className="font-medium">Min Altitude:</span> {gpsStats.minAltitude ? `${(gpsStats.minAltitude / 10).toFixed(1)} m` : 'N/A'}
+                  <span className="font-medium">Min Altitude:</span> {gpsStats.minAltitude !== null && gpsStats.minAltitude !== undefined ? `${gpsStats.minAltitude.toFixed(1)} m` : '0.0 m'}
                 </div>
                 <div>
-                  <span className="font-medium">Max Altitude:</span> {gpsStats.maxAltitude ? `${(gpsStats.maxAltitude / 10).toFixed(1)} m` : 'N/A'}
+                  <span className="font-medium">Max Altitude:</span> {gpsStats.maxAltitude !== null && gpsStats.maxAltitude !== undefined ? `${gpsStats.maxAltitude.toFixed(1)} m` : '0.0 m'}
                 </div>
                 <div>
-                  <span className="font-medium">Min Speed:</span> {gpsStats.minSpeed ? `${(gpsStats.minSpeed * 3.6).toFixed(1)} km/h` : 'N/A'}
+                  <span className="font-medium">Min Speed:</span> {gpsStats.minSpeed ? `${gpsStats.minSpeed.toFixed(1)} km/h` : 'N/A'}
                 </div>
                 <div>
-                  <span className="font-medium">Max Speed:</span> {gpsStats.maxSpeed ? `${(gpsStats.maxSpeed * 3.6).toFixed(1)} km/h` : 'N/A'}
+                  <span className="font-medium">Max Speed:</span> {gpsStats.maxSpeed ? `${gpsStats.maxSpeed.toFixed(1)} km/h` : 'N/A'}
                 </div>
                 <div>
                   <span className="font-medium">Min Satellites:</span> {gpsStats.minSatellites || 'N/A'}
@@ -116,13 +122,12 @@ const GpsAnimationControls = ({
             onChange={e => changeSpeed(Number(e.target.value))}
             className="border rounded px-3 py-2"
           >
-            <option value={1}>Slow (1x)</option>
-            <option value={2}>Normal (2x)</option>
-            <option value={5}>Fast (5x)</option>
-            <option value={10}>Very Fast (10x)</option>
-            <option value={20}>Super Fast (20x)</option>
-            <option value={50}>Ultra Fast (50x)</option>
-            <option value={75}>Max Speed (75x)</option>
+            <option value={0.5}>0.5 Einträge pro Sekunde</option>
+            <option value={1}>1 Eintrag pro Sekunde</option>
+            <option value={2}>2 Einträge pro Sekunde</option>
+            <option value={5}>5 Einträge pro Sekunde</option>
+            <option value={10}>10 Einträge pro Sekunde</option>
+            <option value={20}>20 Einträge pro Sekunde</option>
           </select>
         </div>
       </div>
@@ -151,5 +156,12 @@ const GpsAnimationControls = ({
     </div>
   );
 };
+
+/*
+  WICHTIG:
+  Die Animationslogik muss so implementiert sein, dass pro Sekunde maximal `animationSpeed` Einträge abgespielt werden.
+  Beispiel: setInterval(() => { ...nächster Punkt... }, 1000 / animationSpeed)
+  Aktuell wird vermutlich einfach zu schnell iteriert!
+*/
 
 export default GpsAnimationControls;

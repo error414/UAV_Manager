@@ -15,3 +15,4 @@ export { getVisiblePageNumbers } from './Pagination';
 export { default as FlightInfoCard } from './FlightInfoCard';
 export { default as AnimatedMarker } from './map/AnimatedMarker';
 export { default as GpsAnimationControls } from './map/GpsAnimationControls';
+export { default as TelemetryPanel } from './map/TelemetryPanel';

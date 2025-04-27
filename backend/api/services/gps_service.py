@@ -28,7 +28,22 @@ class GPSService:
                 altitude=point.get('altitude'),
                 num_sat=point.get('num_sat'),
                 speed=point.get('speed'),
-                ground_course=point.get('ground_course')
+                ground_course=point.get('ground_course'),
+                vertical_speed=point.get('vertical_speed'),
+                pitch=point.get('pitch'),
+                roll=point.get('roll'),
+                yaw=point.get('yaw'),
+                receiver_battery=point.get('receiver_battery'),
+                current=point.get('current'),
+                capacity=point.get('capacity'),
+                receiver_quality=point.get('receiver_quality'),
+                transmitter_quality=point.get('transmitter_quality'),
+                transmitter_power=point.get('transmitter_power'),
+                # Add new flight control fields
+                aileron=point.get('aileron'),
+                elevator=point.get('elevator'),
+                throttle=point.get('throttle'),
+                rudder=point.get('rudder')
             )
             gps_logs.append(gps_log)
         
