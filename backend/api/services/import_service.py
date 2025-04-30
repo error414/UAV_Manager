@@ -218,59 +218,29 @@ class ImportService:
         for uav_data in uavs_data:
             old_id = uav_data.get('uav_id')
             
-            # Check if UAV already exists
-            drone_name = uav_data.get('drone_name')
-            manufacturer = uav_data.get('manufacturer')
-            drone_type = uav_data.get('type')
-            
-            # Check if a UAV with similar attributes already exists
-            existing_uavs = UAV.objects.filter(
-                user=user, 
-                drone_name=drone_name
-            )
-            
-            if manufacturer:
-                existing_uavs = existing_uavs.filter(manufacturer=manufacturer)
-                
-            if drone_type:
-                existing_uavs = existing_uavs.filter(type=drone_type)
-            
-            if existing_uavs.exists():
-                # Add to mapping so flight logs can still reference it
-                if old_id:
-                    uav_mapping[old_id] = existing_uavs.first().uav_id
-                    
-                skipped_count += 1
-                continue
-            
-            # Remove fields that would cause conflicts
+            # Entferne Felder, die Konflikte verursachen könnten
             ImportService._remove_conflict_fields(uav_data, [
                 'uav_id', 'props_maint_date', 'motor_maint_date', 'frame_maint_date',
                 'props_reminder_date', 'motor_reminder_date', 'frame_reminder_date'
             ])
             uav_data['user'] = user
             
-            # Handle any other unexpected fields by getting only valid fields
+            # Erstelle immer ein neues UAV
             try:
-                # Create new UAV
                 new_uav = UAV.objects.create(**uav_data)
-                
-                # Add to mapping
+                # Mapping immer auf das neue UAV setzen
                 if old_id:
                     uav_mapping[old_id] = new_uav.uav_id
-                
                 imported_count += 1
             except TypeError as e:
-                # If there are other unexpected fields, log them and try again
+                # Falls weitere unerwartete Felder vorhanden sind, entferne sie und versuche es erneut
                 error_msg = str(e)
                 if "got unexpected keyword" in error_msg:
-                    # Extract the unexpected field name
                     import re
                     match = re.search(r"unexpected keyword '(\w+)'", error_msg)
                     if match:
                         field_name = match.group(1)
                         uav_data.pop(field_name, None)
-                        # Try again with the field removed
                         new_uav = UAV.objects.create(**uav_data)
                         if old_id:
                             uav_mapping[old_id] = new_uav.uav_id

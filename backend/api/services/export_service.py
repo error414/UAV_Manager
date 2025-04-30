@@ -165,7 +165,15 @@ class ExportService:
             return
         
         # Export as JSON
-        logs_data = FlightLogSerializer(flight_logs, many=True).data
+        logs_data = []
+        for log in flight_logs:
+            log_dict = FlightLogSerializer(log).data
+            # UAV-Details ergänzen
+            log_dict['uav_id'] = log.uav.uav_id if log.uav else None
+            log_dict['uav_drone_name'] = log.uav.drone_name if log.uav else None
+            log_dict['uav_manufacturer'] = log.uav.manufacturer if log.uav else None
+            log_dict['uav_type'] = log.uav.type if log.uav else None
+            logs_data.append(log_dict)
         json_content = json.dumps(logs_data, indent=2)
         zip_file.writestr('flight_logs/flight_logs.json', json_content)
         
@@ -176,20 +184,23 @@ class ExportService:
             
             # Write header row
             header = [
-                'flightlog_id', 'uav_id', 'drone_name', 'departure_place', 'departure_date', 
-                'departure_time', 'landing_place', 'landing_time', 'flight_duration',
-                'takeoffs', 'landings', 'light_conditions', 'ops_conditions', 'pilot_type',
-                'comments'
+                'flightlog_id', 'uav_id', 'uav_drone_name', 'uav_manufacturer', 'uav_type',
+                'departure_place', 'departure_date', 'departure_time', 'landing_place', 'landing_time', 'flight_duration',
+                'takeoffs', 'landings', 'light_conditions', 'ops_conditions', 'pilot_type', 'comments'
             ]
             writer.writerow(header)
             
             # Write data rows
             for log in flight_logs:
                 row = [
-                    log.flightlog_id, log.uav_id, log.uav.drone_name, log.departure_place, 
-                    log.departure_date, log.departure_time, log.landing_place, 
-                    log.landing_time, log.flight_duration, log.takeoffs, log.landings,
-                    log.light_conditions, log.ops_conditions, log.pilot_type, log.comments
+                    log.flightlog_id,
+                    log.uav.uav_id if log.uav else None,
+                    log.uav.drone_name if log.uav else None,
+                    log.uav.manufacturer if log.uav else None,
+                    log.uav.type if log.uav else None,
+                    log.departure_place, log.departure_date, log.departure_time, log.landing_place, log.landing_time,
+                    log.flight_duration, log.takeoffs, log.landings, log.light_conditions, log.ops_conditions,
+                    log.pilot_type, log.comments
                 ]
                 writer.writerow(row)
             
