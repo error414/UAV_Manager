@@ -4,6 +4,7 @@ import { Sidebar, Alert, Button, ResponsiveTable, ConfirmModal, Pagination } fro
 import { getEnhancedFlightLogColumns } from '../utils/tableDefinitions';
 import { getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS } from '../utils/formDefinitions';
 import { useAuth, useApi } from '../utils/authUtils';
+import { exportFlightLogToPDF } from '../utils/pdfUtils';
 
 const calculateFlightDuration = (deptTime, landTime) => {
   if (!deptTime || !landTime) return '';
@@ -94,6 +95,29 @@ const Flightlog = () => {
     
     setIsLoading(false);
   }, [checkAuthAndGetUser, fetchData, debouncedFilters, currentPage, pageSize, sortField]);
+
+  const fetchAllFlightLogs = useCallback(async () => {
+    let allLogs = [];
+    let page = 1;
+    let hasMore = true;
+    const pageSize = 100;
+
+    while (hasMore) {
+      const queryParams = {
+        ...debouncedFilters,
+        page,
+        page_size: pageSize,
+        ordering: sortField
+      };
+      const result = await fetchData('/api/flightlogs/', queryParams);
+      if (result.error) break;
+      const pageLogs = result.data.results || [];
+      allLogs = allLogs.concat(pageLogs);
+      hasMore = pageLogs.length === pageSize;
+      page += 1;
+    }
+    return allLogs;
+  }, [debouncedFilters, sortField, fetchData]);
 
   const fetchUAVs = useCallback(async () => {
     const auth = checkAuthAndGetUser();
@@ -304,6 +328,24 @@ const Flightlog = () => {
     }
   }, []);
 
+  const [userData, setUserData] = useState(null);
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const headers = getAuthHeaders();
+        const res = await fetch(`${API_URL}/api/users/`, { headers });
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) setUserData(data[0]);
+      } catch (e) { /* ignore */ }
+    };
+    fetchUser();
+  }, [API_URL, getAuthHeaders]);
+
+  const handleExportPDF = useCallback(async () => {
+    const allLogs = await fetchAllFlightLogs();
+    await exportFlightLogToPDF(allLogs, userData);
+  }, [fetchAllFlightLogs, userData]);
+
   const handlePageChange = useCallback((page) => {
     setCurrentPage(page);
   }, []);
@@ -370,7 +412,6 @@ const Flightlog = () => {
           </div>
         ) : (
           <>
-            {/* Mobile Filter Toggle Button */}
             <div className="md:hidden mt-0.5 mb-0.5 w-full">
               <Button 
                 onClick={toggleMobileFilters}
@@ -414,7 +455,6 @@ const Flightlog = () => {
               toggleMobileAddNew={toggleMobileAddNew}
             />
             
-            {/* Mobile Add New Toggle Button - increased top margin */}
             <div className="md:hidden mt-3 mb-0.5 w-full">
               <Button 
                 onClick={toggleMobileAddNew}
@@ -432,7 +472,6 @@ const Flightlog = () => {
           </>
         )}
         
-        {/* Adjust the mt-2 value below to control spacing */}
         <div className="flex flex-col md:flex-row items-center">
           <div className="mt-4 w-full md:w-auto md:flex-1 flex md:justify-start mb-2 md:mb-0">
             <Button 
@@ -444,9 +483,17 @@ const Flightlog = () => {
             >
               Import CSV
             </Button>
+            <Button
+              onClick={handleExportPDF}
+              variant="secondary"
+              size="md"
+              fullWidth={true}
+              className="md:w-auto ml-2"
+            >
+              Export PDF
+            </Button>
           </div>
 
-          {/* Pagination - centered */}
           <div className="w-full md:flex-1 flex justify-center">
             <Pagination 
               currentPage={currentPage} 
@@ -455,7 +502,6 @@ const Flightlog = () => {
             />
           </div>
           
-          {/* Empty space for balance on desktop */}
           <div className="hidden md:block md:flex-1"></div>
           
           <input 

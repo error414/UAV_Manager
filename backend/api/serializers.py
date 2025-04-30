@@ -62,6 +62,9 @@ class UAVSerializer(serializers.ModelSerializer):
         return representation
 
 class FlightLogSerializer(serializers.ModelSerializer):
+    # Use full UAV serializer for frontend compatibility
+    uav = UAVSerializer(read_only=True)
+
     class Meta:
         model = FlightLog
         fields = '__all__'
@@ -77,6 +80,8 @@ class FlightGPSLogSerializer(serializers.ModelSerializer):
         ]
         
 class FlightLogWithGPSSerializer(serializers.ModelSerializer):
+    # Use full UAV serializer for frontend compatibility
+    uav = UAVSerializer(read_only=True)
     gps_logs = FlightGPSLogSerializer(many=True, read_only=True)
     
     class Meta:
