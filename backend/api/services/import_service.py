@@ -293,7 +293,7 @@ class ImportService:
         for log_data in logs_data:
             try:
                 old_id = log_data.get('flightlog_id')
-                old_uav_id = log_data.get('uav_id') or log_data.get('uav')
+                old_uav_id = log_data.get('uav_id') or (log_data['uav'].get('uav_id') if isinstance(log_data.get('uav'), dict) else log_data.get('uav'))
                 new_uav_id = ImportService._get_new_uav_id(user, old_uav_id, uav_mapping, log_data)
                 
                 if new_uav_id is None:

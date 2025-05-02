@@ -4,14 +4,23 @@
 
 ## Features
 
-- Manage any number of UAVs with technical details
-- Record and analyze flight logs
-- Maintenance records and automatic maintenance reminders
-- CSV import/export for UAVs and flight logs
-- User management (including admin panel)
-- Modern, responsive user interface (React)
-- Secure authentication (JWT, Djoser)
-- REST API (Django REST Framework)
+- **Drone (UAV) Management**: Maintain any number of UAVs with full technical specifications and custom attributes.
+- **Flight Logbook**: Record detailed flight entries, filter and search by date, UAV, conditions, and pilot type.
+- **Maintenance Tracking**: Log maintenance events, attach files, and set up automated reminders.
+- **GPS Telemetry**: Upload GPS track data for a visual flight path on interactive maps.
+- **Import/Export**: CSV import/export for UAVs and flight logs; full user data backup and restore via ZIP.
+- **User & Admin Panels**: Secure JWT-based authentication, user self-service settings, and admin oversight of all data.
+- **Responsive UI**: Built with React, Tailwind CSS, and Leaflet for map integration.
+- **REST API**: Django REST Framework with JWT via SimpleJWT and Djoser.
+
+---
+
+## Prerequisites
+
+- Docker & Docker Compose (for containerized deployment)
+- Node.js & npm (for local frontend)
+- Python 3.13.1 & pip (for local backend)
+- PostgreSQL
 
 ---
 
@@ -62,26 +71,36 @@ npm run dev
 
 ---
 
-## System Architecture
+## Tech Stack
 
-- **Backend:** Django, Django REST Framework, PostgreSQL, Djoser, SimpleJWT
-- **Frontend:** React, Tailwind CSS, Vite, leaflet
-- **API:** RESTful, JWT authentication
-
----
-
-## Authentication
-
-- Registration and password change via Djoser endpoints
-- Login via JWT (SimpleJWT)
-- User profiles and UAV data via REST API
+| Layer            | Technology                                               |
+| ---------------- | -------------------------------------------------------- |
+| Frontend         | React, Vite, Tailwind CSS, react-leaflet                 |
+| Backend          | Python, Django, Django REST Framework, Djoser, SimpleJWT |
+| Database         | PostgreSQL                                               |
+| Queue/Cron       | django-crontab                                           |
+| Authentication   | JWT (SimpleJWT)                                          |
+| Containerization | Docker, Docker Compose                                   |
+| Testing          | Jest (React), Pytest (Django)                            |
 
 ---
 
-## Import/Export
+## API Documentation
 
-- UAVs and flight logs can be imported/exported as CSV
-- Admins can centrally manage users and UAVs
+The REST API is versioned under `/api/`. Key endpoints:
+
+| Resource                  | Endpoint                      | Methods                 |
+| ------------------------- | ----------------------------- | ----------------------- |
+| **UAVs**                  | `/api/uavs/`                  | `GET`, `POST`           |
+| **UAV Detail**            | `/api/uavs/{id}/`             | `GET`, `PUT`, `DELETE`  |
+| **Flight Logs**           | `/api/flightlogs/`            | `GET`, `POST`           |
+| **Flight Log GPS**        | `/api/flightlogs/{id}/gps/`   | `GET`, `POST`, `DELETE` |
+| **Maintenance Logs**      | `/api/maintenance/`           | `GET`, `POST`           |
+| **Maintenance Reminders** | `/api/maintenance-reminders/` | `GET`, `POST`           |
+| **File Uploads**          | `/api/files/`                 | `GET`, `POST`           |
+| **User Profile**          | `/api/users/`                 | `GET`, `PUT`, `DELETE`  |
+| **Admin Users**           | `/api/admin/users/`           | `GET`                   |
+| **Admin UAVs**            | `/api/admin/uavs/`            | `GET`                   |
 
 ---
 
