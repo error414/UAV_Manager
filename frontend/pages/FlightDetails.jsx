@@ -161,26 +161,27 @@ const FlightDetails = () => {
     const updateSize = () => {
       if (instrumentsContainerRef.current) {
         const width = instrumentsContainerRef.current.offsetWidth;
-        // 3 Instrumente nebeneinander, etwas Abstand, max 220px
         const newSize = Math.min(Math.floor((width - 48) / 3), 220);
         setInstrumentSize(newSize > 120 ? newSize : 120); // min 120px
       }
     };
-    updateSize();
+    // Initial nach dem ersten Layout
+    requestAnimationFrame(updateSize);
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 
   useEffect(() => {
     const updateControlSize = () => {
-      if (controlsContainerRef.current) {
-        const width = controlsContainerRef.current.offsetWidth;
+      if (sticksContainerRef.current) {
+        const width = sticksContainerRef.current.offsetWidth;
         // 2 Sticks nebeneinander, etwas Abstand, max 220px
         const newSize = Math.min(Math.floor((width - 32) / 2), 220);
         setControlSize(newSize > 120 ? newSize : 120);
       }
     };
-    updateControlSize();
+    // Initial nach dem ersten Layout
+    requestAnimationFrame(updateControlSize);
     window.addEventListener('resize', updateControlSize);
     return () => window.removeEventListener('resize', updateControlSize);
   }, []);
