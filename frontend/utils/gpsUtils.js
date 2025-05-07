@@ -172,6 +172,8 @@ export const calculateGpsStatistics = (gpsData) => {
     minAltitude: null,
     maxSpeed: null, 
     minSpeed: null,
+    maxVerticalSpeed: null,
+    minVerticalSpeed: null,
     maxSatellites: null,
     minSatellites: null
   };
@@ -187,6 +189,11 @@ export const calculateGpsStatistics = (gpsData) => {
       if (acc.minSpeed === null || point.speed < acc.minSpeed) acc.minSpeed = point.speed;
     }
     
+    if (point.vertical_speed !== undefined) {
+      if (acc.maxVerticalSpeed === null || point.vertical_speed > acc.maxVerticalSpeed) acc.maxVerticalSpeed = point.vertical_speed;
+      if (acc.minVerticalSpeed === null || point.vertical_speed < acc.minVerticalSpeed) acc.minVerticalSpeed = point.vertical_speed;
+    }
+    
     if (point.num_sat !== undefined) {
       if (acc.maxSatellites === null || point.num_sat > acc.maxSatellites) acc.maxSatellites = point.num_sat;
       if (acc.minSatellites === null || point.num_sat < acc.minSatellites) acc.minSatellites = point.num_sat;
@@ -198,6 +205,8 @@ export const calculateGpsStatistics = (gpsData) => {
     minAltitude: null,
     maxSpeed: null, 
     minSpeed: null,
+    maxVerticalSpeed: null,
+    minVerticalSpeed: null,
     maxSatellites: null,
     minSatellites: null
   });

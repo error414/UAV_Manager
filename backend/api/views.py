@@ -91,6 +91,16 @@ class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
         
         return response
 
+# Add a new view for UAV metadata
+class UAVMetaView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        qs = UAV.objects.filter(user=request.user)
+        min_id = qs.order_by('uav_id').values_list('uav_id', flat=True).first()
+        max_id = qs.order_by('-uav_id').values_list('uav_id', flat=True).first()
+        return Response({'minId': min_id, 'maxId': max_id})
+
 # Paginierung für FlightLogs
 class FlightLogPagination(PageNumberPagination):
     page_size = 20
@@ -165,6 +175,16 @@ class FlightGPSDataUploadView(APIView):
             "detail": f"Successfully deleted {deleted_count} GPS points",
             "deleted_count": deleted_count
         }, status=status.HTTP_200_OK)
+
+# Add a new view for retrieving flight log metadata
+class FlightLogMetaView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        qs = FlightLog.objects.filter(user=request.user)
+        min_id = qs.order_by('flightlog_id').values_list('flightlog_id', flat=True).first()
+        max_id = qs.order_by('-flightlog_id').values_list('flightlog_id', flat=True).first()
+        return Response({'minId': min_id, 'maxId': max_id})
 
 # Endpunkte für Wartungsprotokolle
 class MaintenanceLogListCreateView(generics.ListCreateAPIView):

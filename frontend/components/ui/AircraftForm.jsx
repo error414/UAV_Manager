@@ -1,5 +1,5 @@
 import React from 'react';
-import { FormInput, Button } from './index';
+import { FormInput, Button } from '../index';
 
 const DROPDOWN_OPTIONS = {
   aircraftTypes: [

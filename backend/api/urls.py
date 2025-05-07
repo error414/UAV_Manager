@@ -9,7 +9,8 @@ from .views import (
     UserSettingsListCreateView, UserSettingsDetailView,
     AdminUserListView, AdminUserDetailView, AdminUAVListView, AdminUAVDetailView,
     UAVImportView, FlightLogImportView, UserDataExportView, UserDataImportView,
-    UAVConfigListCreateView, UAVConfigDetailView
+    UAVConfigListCreateView, UAVConfigDetailView,
+    FlightLogMetaView, UAVMetaView
 )
 
 urlpatterns = [
@@ -17,12 +18,18 @@ urlpatterns = [
     path('uavs/', UAVListCreateView.as_view(), name='uav-list'),
     path('uavs/<int:pk>/', UAVDetailView.as_view(), name='uav-detail'),
 
+    # New endpoint for UAV meta
+    path('uavs/meta/', UAVMetaView.as_view(), name='uav-meta'),
+
     # Endpunkte für Flightlogs
     path('flightlogs/', FlightLogListCreateView.as_view(), name='flightlog-list'),
     path('flightlogs/<int:pk>/', FlightLogDetailView.as_view(), name='flightlog-detail'),
     
     # New endpoint for GPS data
     path('flightlogs/<int:flightlog_id>/gps/', FlightGPSDataUploadView.as_view(), name='flightlog-gps'),
+
+    # New endpoint for FlightLog meta
+    path('flightlogs/meta/', FlightLogMetaView.as_view(), name='flightlog-meta'),
 
     # Endpunkte für Wartungsprotokolle
     path('maintenance/', MaintenanceLogListCreateView.as_view(), name='maintenance-list'),

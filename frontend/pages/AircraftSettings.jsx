@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sidebar, Button, Loading, ConfirmModal } from '../components';
+import { Sidebar, Button, Loading, ConfirmModal, CompareModal } from '../components';
 import { maintenanceLogTableColumns, uavConfigTableColumns } from '../utils/tableDefinitions';
 import { useAuth, useApi } from '../utils/authUtils';
+import { generateDiff, prepareComparisonData, compareConfigFiles } from '../utils/compareUtils';
+import { na, formatFlightHours, formatDate } from '../utils/flightTimesUtils';
+import ArrowButton from '../components/ui/ArrowButton';
 
 const AircraftSettings = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -17,8 +20,7 @@ const AircraftSettings = () => {
   const [newLog, setNewLog] = useState({ event_type: 'LOG', description: '', event_date: '', file: null });
   const [configFile, setConfigFile] = useState({
     name: '',
-    file: null,
-    upload_date: new Date().toISOString().split('T')[0] // Today's date in YYYY-MM-DD format
+    file: null
   });
   const [configFiles, setConfigFiles] = useState([]);
   const [configFormErrors, setConfigFormErrors] = useState({});
@@ -32,12 +34,25 @@ const AircraftSettings = () => {
   const [editFormErrors, setEditFormErrors] = useState({});
   const [error, setError] = useState(null);
 
+  const [selectedConfigs, setSelectedConfigs] = useState([]);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [comparisonData, setComparisonData] = useState(null);
+
+  const [minUavId, setMinUavId] = useState(null);
+  const [maxUavId, setMaxUavId] = useState(null);
+
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
+
+  const getFilenameFromUrl = (url) => {
+    if (!url) return '';
+    return url.split('/').pop();
+  };
 
   useEffect(() => { 
     fetchAircraft();
     fetchConfigFiles();
+    fetchUavMeta();
   }, [uavId]);
   
   useEffect(() => {
@@ -46,17 +61,9 @@ const AircraftSettings = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const na = v => v || 'N/A';
-
-  const formatFlightHours = seconds => {
-    if (!seconds) return 'N/A';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}min ${secs.toString().padStart(2, '0')}s`;
-  };
-
-  const formatDate = dateString => dateString ? new Date(dateString).toLocaleDateString() : 'N/A';
+  useEffect(() => {
+    setSelectedConfigs([]);
+  }, [configFiles]);
 
   const validateForm = (log, setErrors) => {
     const errors = {};
@@ -113,6 +120,16 @@ const AircraftSettings = () => {
     } catch (error) {
       setError("Failed to load configuration files");
     }
+  };
+
+  const fetchUavMeta = async () => {
+    try {
+      const result = await fetchData(`/api/uavs/meta/`);
+      if (!result.error) {
+        setMinUavId(result.data?.minId);
+        setMaxUavId(result.data?.maxId);
+      }
+    } catch (e) { /* ignore */ }
   };
 
   const submitMaintenanceLog = async (logData, file, method, logId = null, keepExistingFile = false) => {
@@ -185,7 +202,8 @@ const AircraftSettings = () => {
       const formData = new FormData();
       formData.append('name', configFile.name);
       formData.append('file', configFile.file);
-      formData.append('upload_date', configFile.upload_date);
+      // Always use current date when uploading
+      formData.append('upload_date', new Date().toISOString().split('T')[0]);
       formData.append('uav', uavId);
       
       const response = await fetch(`${API_URL}/api/uav-configs/`, {
@@ -202,8 +220,7 @@ const AircraftSettings = () => {
       await fetchConfigFiles();
       setConfigFile({
         name: '',
-        file: null,
-        upload_date: new Date().toISOString().split('T')[0]
+        file: null
       });
       if (configFileInputRef.current) configFileInputRef.current.value = '';
       
@@ -311,6 +328,38 @@ const AircraftSettings = () => {
     }
   };
 
+  const handleConfigSelection = (configId) => {
+    setSelectedConfigs(prev => {
+      if (prev.includes(configId)) {
+        return prev.filter(id => id !== configId);
+      } else {
+        return [...prev, configId];
+      }
+    });
+  };
+
+  const compareFiles = async () => {
+    const comparisonResult = await compareConfigFiles(selectedConfigs, configFiles, setError);
+    if (comparisonResult) {
+      setComparisonData(comparisonResult);
+      setShowCompareModal(true);
+    }
+  };
+
+  const navigateToUav = (id) => {
+    navigate(`/aircraftsettings/${id}`);
+  };
+  const navigateToPreviousUav = () => {
+    if (minUavId !== null && Number(uavId) > minUavId) {
+      navigateToUav(Number(uavId) - 1);
+    }
+  };
+  const navigateToNextUav = () => {
+    if (maxUavId !== null && Number(uavId) < maxUavId) {
+      navigateToUav(Number(uavId) + 1);
+    }
+  };
+
   const renderInput = ({ type, name, value, onChange, placeholder, error, ...rest }) => (
     <>
       <input
@@ -347,9 +396,22 @@ const AircraftSettings = () => {
     <div className="flex h-screen relative">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <div className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${sidebarOpen ? 'lg:ml-64' : ''}`}>
-        <div className="flex items-center h-10 mb-4">
-          <div className="w-10 lg:hidden"></div>
-          <h1 className="text-2xl font-semibold text-center flex-1">Aircraft Settings</h1>
+        <div className="flex items-center justify-center gap-4 h-10 mb-4">
+          <ArrowButton
+            direction="left"
+            onClick={navigateToPreviousUav}
+            title="Previous Aircraft"
+            disabled={minUavId === null || Number(uavId) <= minUavId}
+          />
+          <h1 className="text-2xl font-semibold">
+            Aircraft Settings
+          </h1>
+          <ArrowButton
+            direction="right"
+            onClick={navigateToNextUav}
+            title="Next Aircraft"
+            disabled={maxUavId === null || Number(uavId) >= maxUavId}
+          />
         </div>
         {aircraft.is_active === false && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4">
@@ -400,6 +462,14 @@ const AircraftSettings = () => {
                 <InfoRow label="Flight Controller:" value={aircraft.flight_controller} />
               </div>
             </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg shadow">
+              <h3 className="text-lg font-medium text-gray-800 mb-3">Registration and Serial</h3>
+              <div className="space-y-2">
+                <InfoRow label="Registration Number:" value={aircraft.registration_number} />
+                <InfoRow label="Serial Number:" value={aircraft.serial_number} />
+              </div>
+            </div>
             
             <div className="bg-gray-50 p-4 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Sensors</h3>
@@ -414,14 +484,6 @@ const AircraftSettings = () => {
           </div>
           
           <div className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Registration and Serial</h3>
-              <div className="space-y-2">
-                <InfoRow label="Registration Number:" value={aircraft.registration_number} />
-                <InfoRow label="Serial Number:" value={aircraft.serial_number} />
-              </div>
-            </div>
-            
             <div className="bg-white shadow rounded-lg p-6">
               <h3 className="text-lg font-medium text-gray-800 mb-3">Statistics</h3>
               <div className="space-y-2">
@@ -469,80 +531,78 @@ const AircraftSettings = () => {
             </div>
             
             <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Configuration Files</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="mb-4">
-                    <span className="font-semibold text-gray-700 block">Upload Date:</span>
-                    <span className="text-gray-900">{configFile.upload_date}</span>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <span className="font-semibold text-gray-700 block">Configuration Name:</span>
-                    <input
-                      type="text"
-                      name="name"
-                      value={configFile.name}
-                      onChange={handleConfigChange}
-                      placeholder="Enter configuration name"
-                      className={`w-full px-2 py-1 border rounded ${configFormErrors.name ? 'border-red-500' : 'border-gray-300'}`}
-                    />
-                    {configFormErrors.name && <p className="text-red-500 text-xs mt-1">{configFormErrors.name}</p>}
-                  </div>
-                  
-                  <div className="mb-4">
-                    <span className="font-semibold text-gray-700 block">Configuration File:</span>
-                    <input
-                      type="file"
-                      name="file"
-                      onChange={handleConfigChange}
-                      className={`w-full px-2 py-1 border rounded ${configFormErrors.file ? 'border-red-500' : 'border-gray-300'}`}
-                      ref={configFileInputRef}
-                    />
-                    {configFormErrors.file && <p className="text-red-500 text-xs mt-1">{configFormErrors.file}</p>}
-                  </div>
-                  
-                  <div>
-                    <Button onClick={handleAddConfig} variant="success">Upload Configuration</Button>
-                  </div>
-                </div>
-                
-                {configFiles.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="font-medium text-gray-700 mb-2">Uploaded Configuration Files</h4>
-                    <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
-                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr>
-                          {uavConfigTableColumns.map(col => (
-                            <th key={col.accessor} className="px-4 py-2">{col.header}</th>
-                          ))}
-                          <th className="px-4 py-2">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {configFiles.map((config) => (
-                          <tr key={config.config_id} className="bg-white border-b hover:bg-gray-50">
-                            {uavConfigTableColumns.map(col => (
-                              <td className="px-4 py-2" key={col.accessor}>
-                                {col.render
-                                  ? col.render(config[col.accessor], config)
-                                  : config[col.accessor] || 'N/A'}
-                                {col.accessor === 'file' && config.file
-                                  ? (
-                                    <a href={config.file} download className="text-blue-500 hover:underline ml-2">Download File</a>
-                                  ) : null}
-                              </td>
-                            ))}
-                            <td className="px-4 py-2">
-                              <Button onClick={() => handleDeleteConfig(config.config_id)} variant="danger">Delete</Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-medium text-gray-800">Configuration Files</h3>
+                {selectedConfigs.length === 2 && (
+                  <Button onClick={compareFiles} variant="primary">
+                    Compare Selected Files
+                  </Button>
                 )}
               </div>
+              <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2">Select</th>
+                    <th className="px-4 py-2">Config Name</th>
+                    <th className="px-4 py-2">File</th>
+                    <th className="px-4 py-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {configFiles.map((config) => (
+                    <tr key={config.config_id} className="bg-white border-b hover:bg-gray-50">
+                      <td className="px-4 py-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedConfigs.includes(config.config_id)}
+                          onChange={() => handleConfigSelection(config.config_id)}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        {config.name || 'N/A'}
+                      </td>
+                      <td className="px-4 py-2">
+                        {config.file ? (
+                          <a href={config.file} download className="text-blue-500 hover:underline">
+                            {getFilenameFromUrl(config.file)}
+                          </a>
+                        ) : 'N/A'}
+                      </td>
+                      <td className="px-4 py-2">
+                        <Button onClick={() => handleDeleteConfig(config.config_id)} variant="danger">Delete</Button>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-gray-50">
+                    <td className="px-4 py-2"></td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="text"
+                        name="name"
+                        value={configFile.name}
+                        onChange={handleConfigChange}
+                        placeholder="Enter configuration name"
+                        className={`w-full px-2 py-1 border rounded ${configFormErrors.name ? 'border-red-500' : 'border-gray-300'}`}
+                      />
+                      {configFormErrors.name && <p className="text-red-500 text-xs mt-1">{configFormErrors.name}</p>}
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="file"
+                        name="file"
+                        onChange={handleConfigChange}
+                        className={`w-full px-2 py-1 border rounded ${configFormErrors.file ? 'border-red-500' : 'border-gray-300'}`}
+                        ref={configFileInputRef}
+                      />
+                      {configFormErrors.file && <p className="text-red-500 text-xs mt-1">{configFormErrors.file}</p>}
+                    </td>
+                    <td className="px-4 py-2">
+                      <Button onClick={handleAddConfig} variant="success">Add</Button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
             
             <div className="bg-white shadow rounded-lg p-6">
@@ -583,7 +643,9 @@ const AircraftSettings = () => {
                             {editingLog.originalFile && (
                               <div className="mb-2 text-sm">
                                 <span>Current file: </span>
-                                <a href={editingLog.originalFile} download className="text-blue-500 hover:underline">Download</a>
+                                <a href={editingLog.originalFile} download className="text-blue-500 hover:underline">
+                                  {getFilenameFromUrl(editingLog.originalFile)}
+                                </a>
                               </div>
                             )}
                             <input
@@ -604,13 +666,15 @@ const AircraftSettings = () => {
                         <>
                           {maintenanceLogTableColumns.map(col => (
                             <td className="px-4 py-2" key={col.accessor}>
-                              {col.render
-                                ? col.render(log[col.accessor], log)
-                                : log[col.accessor] || 'N/A'}
                               {col.accessor === 'file' && log.file
                                 ? (
-                                  <a href={log.file} download className="text-blue-500 hover:underline ml-2">Download File</a>
-                                ) : null}
+                                    <a href={log.file} download className="text-blue-500 hover:underline">
+                                      {getFilenameFromUrl(log.file)}
+                                    </a>
+                                  )
+                                : col.render
+                                  ? col.render(log[col.accessor], log)
+                                  : log[col.accessor] || 'N/A'}
                             </td>
                           ))}
                           <td className="px-4 py-2">
@@ -663,6 +727,12 @@ const AircraftSettings = () => {
           <Button onClick={handleModifyClick} variant="primary" className="max-w-md">Modify Aircraft</Button>
         </div>
         
+        <CompareModal 
+          show={showCompareModal} 
+          onClose={() => setShowCompareModal(false)} 
+          data={comparisonData} 
+        />
+
         <ConfirmModal
           open={showDeleteConfigModal}
           title="Confirm Delete Configuration"

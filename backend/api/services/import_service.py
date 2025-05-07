@@ -429,17 +429,32 @@ class ImportService:
                 
                 # Handle file if present
                 if file_path and files_dir:
+                    # Extract just the filename from the path, handling both formats
                     file_name = os.path.basename(file_path)
-                    full_path = os.path.join(files_dir, file_name)
                     
-                    if os.path.exists(full_path):
-                        with open(full_path, 'rb') as f:
-                            file_content = f.read()
-                        
-                        from ..models import maintenance_log_path
-                        saved_path = ImportService._save_file_to_storage(new_log, file_name, file_content, maintenance_log_path)
-                        new_log.file = saved_path
-                        new_log.save()
+                    # Try multiple possible locations for the file
+                    possible_paths = [
+                        os.path.join(files_dir, file_name),  # Direct filename
+                        os.path.join(temp_dir, file_path.lstrip('/')),  # Full path without leading slash
+                        os.path.join(temp_dir, file_path.replace('/media/', '')),  # Path without media prefix
+                    ]
+                    
+                    file_found = False
+                    for full_path in possible_paths:
+                        if os.path.exists(full_path):
+                            with open(full_path, 'rb') as f:
+                                file_content = f.read()
+                            
+                            from ..models import maintenance_log_path
+                            saved_path = ImportService._save_file_to_storage(new_log, file_name, file_content, maintenance_log_path)
+                            new_log.file = saved_path
+                            new_log.save()
+                            file_found = True
+                            break
+                    
+                    if not file_found and ImportService.DEBUG:
+                        print(f"Could not find file for maintenance log: {file_name}")
+                        print(f"Tried paths: {possible_paths}")
                 
                 imported_count += 1
             except Exception as e:

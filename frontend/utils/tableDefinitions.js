@@ -102,11 +102,11 @@ export const getEnhancedFlightLogColumns = (availableUAVs) => {
 export const maintenanceLogTableColumns = [
   { header: 'Date', accessor: 'event_date' },
   { header: 'Log', accessor: 'description' },
-  { header: 'File', accessor: 'file', render: (file) => file ? 'Download' : 'N/A' }
+  { header: 'File', accessor: 'file', render: (file) => file ? '' : 'N/A' }
 ];
 
 export const uavConfigTableColumns = [
   { header: 'Date', accessor: 'upload_date' },
   { header: 'Name', accessor: 'name' },
-  { header: 'File', accessor: 'file', render: (file) => file ? 'Download' : 'N/A' }
+  { header: 'File', accessor: 'file', render: (file) => file ? '' : 'N/A' }
 ];

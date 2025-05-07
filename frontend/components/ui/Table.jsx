@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from './index';
+import { Button } from '../index';
 import Filters from './Filters';
 import { CountryDropdown } from 'react-country-region-selector';
 
