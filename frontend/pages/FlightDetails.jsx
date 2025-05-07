@@ -685,7 +685,7 @@ const FlightDetails = () => {
                   <div className="flex-1" />
                 </div>
                 {telemetryOpen && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     {/* Statistics Block */}
                     <div className="bg-white p-3 rounded-md shadow-sm">
                       <h4 className="text-md font-medium text-gray-700 mb-2">Statistics</h4>
