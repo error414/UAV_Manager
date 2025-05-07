@@ -167,8 +167,13 @@ const FlightDetails = () => {
     };
     // Initial nach dem ersten Layout
     requestAnimationFrame(updateSize);
+    // Nach Sidebar-Transition nochmal prüfen (z.B. nach 250ms)
+    const timeout = setTimeout(updateSize, 250);
     window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      clearTimeout(timeout);
+    };
   }, [flight, gpsTrack, sidebarOpen]);
 
   useEffect(() => {
@@ -181,8 +186,13 @@ const FlightDetails = () => {
     };
     // Initial nach dem ersten Layout
     requestAnimationFrame(updateControlSize);
+    // Nach Sidebar-Transition nochmal prüfen (z.B. nach 250ms)
+    const timeout = setTimeout(updateControlSize, 250);
     window.addEventListener('resize', updateControlSize);
-    return () => window.removeEventListener('resize', updateControlSize);
+    return () => {
+      window.removeEventListener('resize', updateControlSize);
+      clearTimeout(timeout);
+    };
   }, [flight, gpsTrack, sidebarOpen]);
 
   useEffect(() => {
@@ -476,9 +486,9 @@ const FlightDetails = () => {
           // Layout: Instruments + Map (top), Live GPS Data, GPS Animation, Telemetry, Flight Info
           <div className="grid grid-cols-1 gap-4">
             {/* Top row: Instruments + Map (top), responsive */}
-            <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               {/* Linke Spalte */}
-              <div className="lg:col-span-3 xl:col-span-2 flex flex-col">
+              <div className="md:col-span-3 xl:col-span-2 flex flex-col">
                 {/* MOBILE: Instrumente untereinander, jeder Kasten einzeln auf-/zuklappbar */}
                 <div className="lg:hidden flex flex-col gap-4">
                   {/* Instruments */}
@@ -621,7 +631,7 @@ const FlightDetails = () => {
                 </div>
               </div>
               {/* Map View */}
-              <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col lg:col-span-3 xl:col-span-4" style={{ minHeight: '400px' }}>
+              <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col md:col-span-3 xl:col-span-4" style={{ minHeight: '400px' }}>
                 <h3 className="text-lg font-medium text-gray-800 mb-3">Map View</h3>
                 <div className="flex-1" style={{ minHeight: '350px' }}>
                   <FlightMap
