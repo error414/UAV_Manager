@@ -488,10 +488,10 @@ const FlightDetails = () => {
             {/* Top row: Instruments + Map (top), responsive */}
             <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               {/* Linke Spalte */}
-              <div className="md:col-span-3 xl:col-span-2 flex flex-col">
+              <div className="md:col-span-3 2xl:col-span-2 flex flex-col">
                 {/* MOBILE: Instrumente untereinander, jeder Kasten einzeln auf-/zuklappbar */}
                 <div className="lg:hidden flex flex-col gap-4">
-                  {/* Instruments */}
+                  {/* Mobile layout content - visible when width < 1024px */}
                   <div className="bg-gray-50 p-2 rounded-lg shadow mb-2">
                     <button
                       className="w-full flex items-center justify-between font-semibold text-gray-700"
@@ -517,7 +517,6 @@ const FlightDetails = () => {
                       </div>
                     )}
                   </div>
-                  {/* Signal */}
                   <div className="bg-gray-50 p-2 rounded-lg shadow mb-2">
                     <button
                       className="w-full flex items-center justify-between font-semibold text-gray-700"
@@ -538,7 +537,6 @@ const FlightDetails = () => {
                       </div>
                     )}
                   </div>
-                  {/* Sticks */}
                   <div className="bg-gray-50 p-2 rounded-lg shadow mb-2">
                     <button
                       className="w-full flex items-center justify-between font-semibold text-gray-700"
@@ -556,7 +554,6 @@ const FlightDetails = () => {
                       </div>
                     )}
                   </div>
-                  {/* Telemetry */}
                   <div className="bg-gray-50 p-2 rounded-lg shadow mb-2">
                     <button
                       className="w-full flex items-center justify-between font-semibold text-gray-700"
@@ -576,7 +573,7 @@ const FlightDetails = () => {
                 </div>
                 {/* DESKTOP: Instrumente nebeneinander wie gehabt */}
                 <div className="hidden lg:block">
-                  {/* Flight Instruments */}
+                  {/* Desktop layout content - visible when width >= 1024px */}
                   <div
                     className="bg-gray-50 p-4 rounded-lg shadow mb-4 flex justify-center gap-4"
                     ref={instrumentsContainerRef}
@@ -594,9 +591,7 @@ const FlightDetails = () => {
                       <VerticalSpeedIndicator verticalSpeed={currentGpsPoint?.vertical_speed || 0} size={instrumentSize} minSpeed={-15} maxSpeed={15} />
                     </div>
                   </div>
-                  {/* Signal, Sticks, Telemetry nebeneinander */}
                   <div className="flex flex-row gap-4 mb-4">
-                    {/* Signal */}
                     <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col items-center flex-[0.5] min-w-0" ref={signalContainerRef}>
                       <div className="flex flex-col items-center justify-center w-full mt-2">
                         <SignalStrengthIndicator
@@ -608,7 +603,6 @@ const FlightDetails = () => {
                         />
                       </div>
                     </div>
-                    {/* Sticks */}
                     <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-row justify-center gap-4 flex-[2] min-w-0 items-center" ref={sticksContainerRef}>
                       <div className="flex flex-col items-center gap-2 min-w-0">
                         <ThrottleYawStick throttle={currentGpsPoint?.throttle ?? 0} yaw={currentGpsPoint?.rudder ?? 0} size={controlSize} />
@@ -623,7 +617,6 @@ const FlightDetails = () => {
                         </div>
                       </div>
                     </div>
-                    {/* Telemetry */}
                     <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col items-center flex-[0.5] min-w-0" ref={telemetryBoxRef}>
                       <div className="flex flex-col items-center justify-center w-full mt-10">
                         <ReceiverBatteryIndicator value={currentGpsPoint?.receiver_battery ?? 0} size={telemetrySize} />
@@ -634,8 +627,7 @@ const FlightDetails = () => {
                   </div>
                 </div>
               </div>
-              {/* Map View */}
-              <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col md:col-span-3 xl:col-span-4" style={{ minHeight: '400px' }}>
+              <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col md:col-span-3 2xl:col-span-4" style={{ minHeight: '400px' }}>
                 <h3 className="text-lg font-medium text-gray-800 mb-3">Map View</h3>
                 <div className="flex-1" style={{ minHeight: '350px' }}>
                   <FlightMap
@@ -651,7 +643,6 @@ const FlightDetails = () => {
                 </div>
               </div>
             </div>
-            {/* GPS Track Animation - full width, now above Telemetry */}
             <div>
               <GpsAnimationControls
                 isPlaying={isPlaying}
@@ -665,7 +656,6 @@ const FlightDetails = () => {
                 onPositionChange={handlePositionChange}
               />
             </div>
-            {/* Flight Telemetry - full width with 3 equal blocks */}
             <div>
               <div className="bg-gray-50 p-4 rounded-lg shadow">
                 <div className="flex items-center mb-3">
@@ -681,12 +671,10 @@ const FlightDetails = () => {
                     )}
                   </button>
                   <h3 className="text-lg font-medium text-gray-800">Flight Telemetry</h3>
-                  {/* Platzhalter für rechtsbündige Elemente, falls nötig */}
                   <div className="flex-1" />
                 </div>
                 {telemetryOpen && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {/* Statistics Block */}
                     <div className="bg-white p-3 rounded-md shadow-sm">
                       <h4 className="text-md font-medium text-gray-700 mb-2">Statistics</h4>
                       <div className="text-sm space-y-1">
@@ -696,8 +684,6 @@ const FlightDetails = () => {
                         <p><span className="font-medium">Satellites:</span> {gpsStats.minSatellites || 'N/A'} - {gpsStats.maxSatellites || 'N/A'}</p>
                       </div>
                     </div>
-                    
-                    {/* Telemetry Block 1 */}
                     <div className="bg-white p-3 rounded-md shadow-sm">
                       <h4 className="text-md font-medium text-gray-700 mb-2">Position Data</h4>
                       <div className="text-sm space-y-1">
@@ -707,8 +693,6 @@ const FlightDetails = () => {
                         <p><span className="font-medium">Timestamp:</span> {currentGpsPoint?.timestamp || 'N/A'}</p>
                       </div>
                     </div>
-                    
-                    {/* Telemetry Block 2 */}
                     <div className="bg-white p-3 rounded-md shadow-sm">
                       <h4 className="text-md font-medium text-gray-700 mb-2">Movement Data</h4>
                       <div className="text-sm space-y-1">
@@ -718,8 +702,6 @@ const FlightDetails = () => {
                         <p><span className="font-medium">Ground Course:</span> {currentGpsPoint?.ground_course?.toFixed(1) || 'N/A'}°</p>
                       </div>
                     </div>
-                    
-                    {/* Telemetry Block 3 */}
                     <div className="bg-white p-3 rounded-md shadow-sm">
                       <h4 className="text-md font-medium text-gray-700 mb-2">Attitude Data</h4>
                       <div className="text-sm space-y-1">
@@ -733,13 +715,11 @@ const FlightDetails = () => {
                 )}
               </div>
             </div>
-            {/* Flight Information - single card with sections */}
             <div>
               <FlightInfoCard flight={flight} hasGpsTrack={true} />
             </div>
           </div>
         ) : (
-          // Modified layout when no GPS track is available - only show FlightInfoCard
           <div className="grid grid-cols-1 gap-6">
             <FlightInfoCard flight={flight} hasGpsTrack={false} />
           </div>
