@@ -169,13 +169,12 @@ const FlightDetails = () => {
     requestAnimationFrame(updateSize);
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
-  }, []);
+  }, [flight, gpsTrack, sidebarOpen]);
 
   useEffect(() => {
     const updateControlSize = () => {
       if (sticksContainerRef.current) {
         const width = sticksContainerRef.current.offsetWidth;
-        // 2 Sticks nebeneinander, etwas Abstand, max 220px
         const newSize = Math.min(Math.floor((width - 32) / 2), 220);
         setControlSize(newSize > 120 ? newSize : 120);
       }
@@ -184,7 +183,7 @@ const FlightDetails = () => {
     requestAnimationFrame(updateControlSize);
     window.addEventListener('resize', updateControlSize);
     return () => window.removeEventListener('resize', updateControlSize);
-  }, []);
+  }, [flight, gpsTrack, sidebarOpen]);
 
   useEffect(() => {
     const updateTelemetrySize = () => {
