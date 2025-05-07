@@ -40,11 +40,6 @@ const ElevatorAileronStick = ({
   
   return (
     <div className="stick-container flex flex-col items-center">
-      <h3 className="text-lg font-medium text-gray-800 mb-2">Elevator & Aileron</h3>
-      {/* Debug display */}
-      <div className="text-xs mb-1">
-        E: {normalizedElevator.toFixed(0)} A: {normalizedAileron.toFixed(0)}
-      </div>
       <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, maxHeight: size }}>
         {/* Outer casing */}
         <circle cx={center} cy={center} r={size / 2} fill="#333" />

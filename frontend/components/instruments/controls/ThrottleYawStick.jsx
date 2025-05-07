@@ -40,11 +40,6 @@ const ThrottleYawStick = ({
   
   return (
     <div className="stick-container flex flex-col items-center">
-      <h3 className="text-lg font-medium text-gray-800 mb-2">Throttle & Yaw</h3>
-      {/* Debug display */}
-      <div className="text-xs mb-1">
-        T: {normalizedThrottle.toFixed(0)} Y: {normalizedYaw.toFixed(0)}
-      </div>
       <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, maxHeight: size }}>
         {/* Outer casing */}
         <circle cx={center} cy={center} r={size / 2} fill="#333" />

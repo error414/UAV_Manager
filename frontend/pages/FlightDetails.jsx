@@ -548,7 +548,7 @@ const FlightDetails = () => {
                       <span>{showSticksMobile ? '▲' : '▼'}</span>
                     </button>
                     {showSticksMobile && (
-                      <div className="flex flex-row justify-center gap-4 mt-2">
+                      <div className="flex flex-row justify-center items-center gap-4 mt-2 min-h-[220px]">
                         <div className="flex flex-col items-center gap-4">
                           <ThrottleYawStick throttle={currentGpsPoint?.throttle ?? 0} yaw={currentGpsPoint?.rudder ?? 0} size={200} />
                         </div>
@@ -598,7 +598,6 @@ const FlightDetails = () => {
                   <div className="flex flex-row gap-4 mb-4">
                     {/* Signal */}
                     <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col items-center flex-[0.5] min-w-0" ref={signalContainerRef}>
-                      <span className="font-semibold text-gray-700 mb-2 self-start">Signal</span>
                       <div className="flex flex-col items-center justify-center w-full mt-2">
                         <SignalStrengthIndicator
                           receiver_quality={currentGpsPoint?.receiver_quality ?? 0}
@@ -610,17 +609,22 @@ const FlightDetails = () => {
                       </div>
                     </div>
                     {/* Sticks */}
-                    <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-row justify-center gap-4 flex-[2] min-w-0" ref={sticksContainerRef}>
-                      <div className="flex flex-col items-center gap-4 min-w-0">
+                    <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-row justify-center gap-4 flex-[2] min-w-0 items-center" ref={sticksContainerRef}>
+                      <div className="flex flex-col items-center gap-2 min-w-0">
                         <ThrottleYawStick throttle={currentGpsPoint?.throttle ?? 0} yaw={currentGpsPoint?.rudder ?? 0} size={controlSize} />
+                        <div className="text-xs text-gray-600 mt-1">
+                          T: {currentGpsPoint?.throttle ?? 0} Y: {currentGpsPoint?.rudder ?? 0}
+                        </div>
                       </div>
-                      <div className="flex flex-col items-center gap-4 min-w-0">
+                      <div className="flex flex-col items-center gap-2 min-w-0">
                         <ElevatorAileronStick elevator={currentGpsPoint?.elevator ?? 0} aileron={currentGpsPoint?.aileron ?? 0} size={controlSize} />
+                        <div className="text-xs text-gray-600 mt-1">
+                          E: {currentGpsPoint?.elevator ?? 0} A: {currentGpsPoint?.aileron ?? 0}
+                        </div>
                       </div>
                     </div>
                     {/* Telemetry */}
                     <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col items-center flex-[0.5] min-w-0" ref={telemetryBoxRef}>
-                      <span className="font-semibold text-gray-700 mb-2 self-start">Telemetry</span>
                       <div className="flex flex-col items-center justify-center w-full mt-10">
                         <ReceiverBatteryIndicator value={currentGpsPoint?.receiver_battery ?? 0} size={telemetrySize} />
                         <CapacityIndicator value={currentGpsPoint?.capacity ?? 0} size={telemetrySize} />
