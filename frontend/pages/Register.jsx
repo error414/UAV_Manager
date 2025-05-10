@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
-import { useAuth, useApi } from '../utils/authUtils';
+import { useAuth, useApi } from '../hooks';
 
 const Register = () => {
   const navigate = useNavigate();

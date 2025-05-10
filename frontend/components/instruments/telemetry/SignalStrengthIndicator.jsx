@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 
 /**
@@ -14,8 +14,47 @@ const SignalStrengthIndicator = ({
   transmitter_power = 0,
   size = 48,
   bars = 5,
-  direction = 'horizontal'
+  direction = 'horizontal',
+  maxSize = 120
 }) => {
+  const containerRef = useRef(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  
+  // Berechne die optimale Größe basierend auf Container-Dimensionen
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerSize({ width: rect.width, height: rect.height });
+      }
+    };
+    
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+  
+  // Bestimme die optimale Größe basierend auf Containerabmessungen und Richtung
+  const calcEffectiveSize = () => {
+    if (!containerSize.width || !containerSize.height) return Math.min(size, maxSize);
+    
+    if (direction === 'vertical') {
+      // Bei vertikaler Ausrichtung ist die Breite begrenzt
+      const availableHeight = containerSize.height - 20; // Platz für Labels
+      const availableWidth = containerSize.width - 10;
+      const heightPerItem = availableHeight / 2; // Zwei Elemente (RX, TX)
+      const minDim = Math.min(availableWidth, heightPerItem);
+      return Math.min(minDim, maxSize);
+    } else {
+      // Bei horizontaler Ausrichtung ist die Höhe begrenzt
+      const availableWidth = containerSize.width - 10;
+      const widthPerItem = availableWidth / 2; // Zwei Elemente (RX, TX) 
+      return Math.min(widthPerItem, maxSize);
+    }
+  };
+  
+  const effectiveSize = calcEffectiveSize();
+  
   // Hilfsfunktion: Wert auf Balkenanzahl mappen
   const getBars = (value) => {
     if (typeof value !== 'number' || isNaN(value)) return 0;
@@ -26,23 +65,21 @@ const SignalStrengthIndicator = ({
   const rxBars = getBars(receiver_quality);
   const txBars = getBars(transmitter_quality);
 
-  // Balken-Layout
-  const barWidth = size / (bars * 2);
-  const barSpacing = barWidth;
-  const barMaxHeight = size * 0.8;
-  const barMinHeight = size * 0.2;
+  // Optimiertes Balken-Layout
+  const barWidth = effectiveSize / (bars * 2.2);
+  const barSpacing = barWidth * 0.8;
+  const barMaxHeight = effectiveSize * 0.75;
+  const barMinHeight = effectiveSize * 0.15;
 
   // Hilfsfunktion: Farbe basierend auf Balkenindex und aktivierten Balken bestimmen
   const getBarColor = (barIndex, activeBars) => {
-    // Wenn der Balken nicht aktiv ist, graue Farbe anzeigen
     if (barIndex >= activeBars) return '#d1d5db';
     
-    // Für aktive Balken, Farbe basierend auf Signalstärke wählen
     const signalStrength = activeBars / bars;
     
-    if (signalStrength <= 0.33) return '#ef4444'; // Rot für schwaches Signal (0-33%)
-    if (signalStrength <= 0.66) return '#eab308'; // Gelb für mittleres Signal (34-66%)
-    return '#22c55e'; // Grün für starkes Signal (67-100%)
+    if (signalStrength <= 0.33) return '#ef4444';
+    if (signalStrength <= 0.66) return '#eab308';
+    return '#22c55e';
   };
 
   // Balken für ein Signal (Array von SVG-Rect)
@@ -53,7 +90,7 @@ const SignalStrengthIndicator = ({
         <rect
           key={i}
           x={i * (barWidth + barSpacing)}
-          y={size - height}
+          y={effectiveSize - height}
           width={barWidth}
           height={height}
           rx={barWidth * 0.3}
@@ -62,26 +99,60 @@ const SignalStrengthIndicator = ({
       );
     });
 
-  // Layout je nach Richtung
-  const containerClass =
-    direction === 'vertical'
-      ? 'flex flex-col items-center gap-2 -ml-2'
-      : 'flex flex-row items-end gap-4 -ml-2';
+  // Festlegen der Container-Stile basierend auf Ausrichtung
+  const containerClass = 
+    direction === 'vertical' ? 'flex flex-col' : 'flex flex-row';
+  
+  const containerStyle = {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: direction === 'vertical' ? '2px' : '4px'
+  };
+
+  // Stil für die einzelnen Anzeigeboxen
+  const boxStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    border: '1px solid #e5e7eb',
+    borderRadius: '4px',
+    padding: '2px',
+    backgroundColor: 'white'
+  };
+
+  const textStyle = {
+    fontSize: Math.max(8, effectiveSize / 8),
+    marginTop: '1px',
+    lineHeight: '1'
+  };
 
   return (
-    <div className={containerClass} style={{ marginLeft: 0, paddingLeft: 0 }}>
-      <div className="flex flex-col items-center p-2 border border-gray-300 rounded">
-        <svg width={size} height={size} style={{ display: 'block' }}>
+    <div ref={containerRef} className={containerClass} style={containerStyle}>
+      <div style={boxStyle}>
+        <svg 
+          width={effectiveSize} 
+          height={effectiveSize} 
+          viewBox={`0 0 ${effectiveSize} ${effectiveSize}`}
+          style={{ display: 'block' }}
+        >
           {renderBars(rxBars)}
         </svg>
-        <span className="text-xs text-gray-700 mt-1">RX</span>
+        <span style={textStyle}>RX</span>
       </div>
-      <div className="flex flex-col items-center p-2 border border-gray-300 rounded">
-        <svg width={size} height={size} style={{ display: 'block' }}>
+      <div style={boxStyle}>
+        <svg 
+          width={effectiveSize} 
+          height={effectiveSize} 
+          viewBox={`0 0 ${effectiveSize} ${effectiveSize}`}
+          style={{ display: 'block' }}
+        >
           {renderBars(txBars)}
         </svg>
-        <span className="text-xs text-gray-700 mt-1">TX</span>
-        <span className="text-xs text-gray-700">{transmitter_power} mW</span>
+        <span style={textStyle}>TX</span>
+        <span style={textStyle}>{transmitter_power} mW</span>
       </div>
     </div>
   );
@@ -93,7 +164,8 @@ SignalStrengthIndicator.propTypes = {
   transmitter_power: PropTypes.number,
   size: PropTypes.number,
   bars: PropTypes.number,
-  direction: PropTypes.oneOf(['horizontal', 'vertical'])
+  direction: PropTypes.oneOf(['horizontal', 'vertical']),
+  maxSize: PropTypes.number
 };
 
 export default SignalStrengthIndicator;

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar, Alert, Button, ResponsiveTable, ConfirmModal, Pagination } from '../components';
+import { Layout, Alert, Button, ResponsiveTable, ConfirmModal, Pagination } from '../components';
 import { getEnhancedFlightLogColumns } from '../utils/tableDefinitions';
 import { getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS } from '../utils/formDefinitions';
-import { useAuth, useApi } from '../utils/authUtils';
+import { useAuth, useApi } from '../hooks';
 import { exportFlightLogToPDF } from '../utils/pdfUtils';
 
 const calculateFlightDuration = (deptTime, landTime) => {
@@ -32,7 +32,6 @@ const Flightlog = () => {
   const [logs, setLogs] = useState([]);
   const [availableUAVs, setAvailableUAVs] = useState([]);
   const [error, setError] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [editingLogId, setEditingLogId] = useState(null);
   const [editingLog, setEditingLog] = useState(null);
   const [filters, setFilters] = useState({...INITIAL_FLIGHT_STATE});
@@ -61,7 +60,6 @@ const Flightlog = () => {
   const filterFormFields = useMemo(() => getFlightFormFields(safeAvailableUAVs), [safeAvailableUAVs]);
   const addFormFields = useMemo(() => getFlightFormFields(safeAvailableUAVs), [safeAvailableUAVs]);
   
-  const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
   const toggleMobileFilters = useCallback(() => {
     setMobileFiltersVisible(prev => !prev);
   }, []);
@@ -370,15 +368,6 @@ const Flightlog = () => {
   }, [fetchFlightLogs, fetchUAVs]);
 
   useEffect(() => {
-    const handleResize = () => {
-      setSidebarOpen(window.innerWidth >= 1024);
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
     fetchFlightLogs();
   }, [fetchFlightLogs, debouncedFilters, currentPage, sortField]);
 
@@ -391,152 +380,139 @@ const Flightlog = () => {
   }, []);
 
   return (
-    <div className="flex h-screen relative">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      
-      <div 
-        className={`flex-1 flex flex-col w-full p-4 pt-0 transition-all duration-300 overflow-auto ${
-          sidebarOpen ? 'lg:ml-64' : ''
-        }`}
-      >
-        <div className="flex items-center h-10 mb-4">
-          <div className="w-10 lg:hidden"></div>
-          <h1 className="text-2xl font-semibold text-center flex-1">Flight Log</h1>
-        </div>
-        
-        <Alert type="error" message={error} />
-        
-        {isLoading ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
-          <>
-            <div className="md:hidden mt-0.5 mb-0.5 w-full">
-              <Button 
-                onClick={toggleMobileFilters}
-                variant="secondary"
-                size="md"
-                fullWidth={true}
-                className="flex items-center justify-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
-                </svg>
-                {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
-              </Button>
-            </div>
+    <Layout title="Flight Log">
+      <Alert type="error" message={error} />
 
-            <ResponsiveTable 
-              columns={flightLogTableColumns}
-              data={logs}
-              onEdit={handleEdit}
-              onRowClick={handleRowClick}
-              filterFields={filterFormFields}
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              addFields={addFormFields}
-              newItem={newFlight}
-              onNewItemChange={handleNewFlightChange}
-              onAdd={handleNewFlightAdd}
-              editingId={editingLogId}
-              editingData={editingLog}
-              onEditChange={handleEditChange}
-              onSaveEdit={handleSaveEdit}
-              onCancelEdit={handleCancelEdit}
-              onDelete={handleDeleteLog}
-              availableOptions={{ availableUAVs: safeAvailableUAVs }}
-              rowClickable={true}
-              showActionColumn={true}
-              actionColumnText="Actions"
-              titleField="uav"
-              mobileFiltersVisible={mobileFiltersVisible}
-              mobileAddNewVisible={mobileAddNewVisible}
-              toggleMobileAddNew={toggleMobileAddNew}
-            />
-            
-            <div className="md:hidden mt-3 mb-0.5 w-full">
-              <Button 
-                onClick={toggleMobileAddNew}
-                variant="success"
-                size="md"
-                fullWidth={true}
-                className="flex items-center justify-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                {mobileAddNewVisible ? 'Hide Add New Form' : 'Add New Flight'}
-              </Button>
-            </div>
-          </>
-        )}
-        
-        <div className="flex flex-col md:flex-row items-center">
-          <div className="mt-4 w-full md:w-auto md:flex-1 flex md:justify-start mb-2 md:mb-0">
+      {isLoading ? (
+        <div className="flex justify-center py-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+        </div>
+      ) : (
+        <>
+          <div className="md:hidden mt-0.5 mb-0.5 w-full">
             <Button 
-              onClick={handleImportClick}
-              variant="primary"
-              size="md"
-              fullWidth={true}
-              className="md:w-auto"
-            >
-              Import CSV
-            </Button>
-            <Button
-              onClick={handleExportPDF}
+              onClick={toggleMobileFilters}
               variant="secondary"
               size="md"
               fullWidth={true}
-              className="md:w-auto ml-2"
+              className="flex items-center justify-center"
             >
-              Export PDF
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
+              </svg>
+              {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
             </Button>
           </div>
 
-          <div className="w-full md:flex-1 flex justify-center">
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages} 
-              onPageChange={handlePageChange} 
-            />
-          </div>
-          
-          <div className="hidden md:block md:flex-1"></div>
-          
-          <input 
-            type="file" 
-            accept=".csv" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            style={{ display: 'none' }} 
+          <ResponsiveTable 
+            columns={flightLogTableColumns}
+            data={logs}
+            onEdit={handleEdit}
+            onRowClick={handleRowClick}
+            filterFields={filterFormFields}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            addFields={addFormFields}
+            newItem={newFlight}
+            onNewItemChange={handleNewFlightChange}
+            onAdd={handleNewFlightAdd}
+            editingId={editingLogId}
+            editingData={editingLog}
+            onEditChange={handleEditChange}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={handleCancelEdit}
+            onDelete={handleDeleteLog}
+            availableOptions={{ availableUAVs: safeAvailableUAVs }}
+            rowClickable={true}
+            showActionColumn={true}
+            actionColumnText="Actions"
+            titleField="uav"
+            mobileFiltersVisible={mobileFiltersVisible}
+            mobileAddNewVisible={mobileAddNewVisible}
+            toggleMobileAddNew={toggleMobileAddNew}
           />
+          
+          <div className="md:hidden mt-3 mb-0.5 w-full">
+            <Button 
+              onClick={toggleMobileAddNew}
+              variant="success"
+              size="md"
+              fullWidth={true}
+              className="flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              {mobileAddNewVisible ? 'Hide Add New Form' : 'Add New Flight'}
+            </Button>
+          </div>
+        </>
+      )}
+
+      <div className="flex flex-col md:flex-row items-center">
+        <div className="mt-4 w-full md:w-auto md:flex-1 flex md:justify-start mb-2 md:mb-0">
+          <Button 
+            onClick={handleImportClick}
+            variant="primary"
+            size="md"
+            fullWidth={true}
+            className="md:w-auto"
+          >
+            Import CSV
+          </Button>
+          <Button
+            onClick={handleExportPDF}
+            variant="secondary"
+            size="md"
+            fullWidth={true}
+            className="md:w-auto ml-2"
+          >
+            Export PDF
+          </Button>
         </div>
 
-        <ConfirmModal
-          open={!!confirmDeleteId}
-          title="Confirm Deletion"
-          message="Do you really want to delete this flight log?"
-          onConfirm={() => {
-            performDeleteLog(confirmDeleteId);
-            setConfirmDeleteId(null);
-          }}
-          onCancel={() => setConfirmDeleteId(null)}
-          confirmText="Delete"
-          cancelText="Cancel"
-        />
+        <div className="w-full md:flex-1 flex justify-center">
+          <Pagination 
+            currentPage={currentPage} 
+            totalPages={totalPages} 
+            onPageChange={handlePageChange} 
+          />
+        </div>
         
-        <ConfirmModal
-          open={!!importResult}
-          title="Import completed"
-          message={importResult?.message || ''}
-          onConfirm={() => setImportResult(null)}
-          onCancel={() => setImportResult(null)}
-          confirmText="OK"
-          cancelText={null}
+        <div className="hidden md:block md:flex-1"></div>
+        
+        <input 
+          type="file" 
+          accept=".csv" 
+          ref={fileInputRef} 
+          onChange={handleFileUpload} 
+          style={{ display: 'none' }} 
         />
       </div>
-    </div>
+
+      <ConfirmModal
+        open={!!confirmDeleteId}
+        title="Confirm Deletion"
+        message="Do you really want to delete this flight log?"
+        onConfirm={() => {
+          performDeleteLog(confirmDeleteId);
+          setConfirmDeleteId(null);
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+      
+      <ConfirmModal
+        open={!!importResult}
+        title="Import completed"
+        message={importResult?.message || ''}
+        onConfirm={() => setImportResult(null)}
+        onCancel={() => setImportResult(null)}
+        confirmText="OK"
+        cancelText={null}
+      />
+    </Layout>
   );
 };
 

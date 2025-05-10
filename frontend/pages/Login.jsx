@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
-import { useApi } from '../utils/authUtils';
+import { useApi } from '../hooks';
 
 const Login = () => {
   const API_URL = import.meta.env.VITE_API_URL;

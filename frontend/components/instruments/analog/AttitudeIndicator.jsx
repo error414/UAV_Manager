@@ -7,6 +7,15 @@ export const AttitudeIndicator = ({ pitch = 0, roll = 0, size = 300 }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
+    // Get parent container width if available
+    const container = canvas.parentElement;
+    const containerWidth = container ? container.clientWidth : size;
+    const canvasSize = Math.min(containerWidth, size);
+    
+    // Set canvas dimensions for proper rendering
+    canvas.width = size;
+    canvas.height = size;
+    
     const ctx = canvas.getContext('2d');
     const centerX = size / 2;
     const centerY = size / 2;
@@ -195,8 +204,10 @@ export const AttitudeIndicator = ({ pitch = 0, roll = 0, size = 300 }) => {
         width={size}
         height={size}
         style={{
-          width: `${size}px`,
-          height: `${size}px`,
+          width: '100%',
+          height: 'auto',
+          maxWidth: `${size}px`,
+          maxHeight: `${size}px`,
         }}
       />
     </div>

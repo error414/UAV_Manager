@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
+import { BaseInstrument } from '../../../components';
 
 const AirspeedIndicator = ({ 
   airspeed = 0, 
@@ -12,19 +13,12 @@ const AirspeedIndicator = ({
     // console.log("Current airspeed:", airspeed);
   }, [airspeed]);
 
-  // Keep this calculation for the needle - it's correct now
   const calculateNeedleAngle = (speed) => {
-    // Clamp speed to valid range
     const clampedSpeed = Math.max(0, Math.min(speed, maxSpeed));
-    // When speed is 0, angle should be 0 (top)
-    // As speed increases, angle increases clockwise
     return ((clampedSpeed / maxSpeed) * 300) + 30;
   };
   
-  // Separate function for scale markings
   const calculateDialAngle = (speed) => {
-    // 0 km/h = -135 Grad (oben), maxSpeed = +135 Grad (270 Grad weiter im Uhrzeigersinn)
-    // SVG 0 Grad ist rechts, daher -135 Grad als Start
     return ((speed / maxSpeed) * 300) - 60;
   };
 
@@ -44,12 +38,9 @@ const AirspeedIndicator = ({
     const majorTickInterval = 20;
     const minorTickInterval = 10;
 
-    // Generate tick marks from 0 to maxSpeed
     for (let displaySpeed = 0; displaySpeed <= maxSpeed; displaySpeed += minorTickInterval) {
-      // Use the dial-specific calculation for tick positions
       const angle = calculateDialAngle(displaySpeed);
       const angleRad = angle * (Math.PI / 180);
-      // Calculate position using standard trig - note that sin/cos work in the correct direction for SVG
       const cosAngle = Math.cos(angleRad);
       const sinAngle = Math.sin(angleRad);
       
@@ -97,62 +88,69 @@ const AirspeedIndicator = ({
   };
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={center} cy={center} r={size / 2} fill="Black" /> 
-      <circle cx={center} cy={center} r={radius + 5} fill="#232323" /> 
-
-      {generateTicks()}
-      
-      <text
-        x={center}
-        y={center - radius * 0.55}
-        fill="white"
-        fontSize={size / 18}
-        fontWeight="bold"
-        textAnchor="middle"
+    <div className="instrument-container flex flex-col items-center">
+      <svg 
+        width="100%" 
+        height="auto" 
+        viewBox={`0 0 ${size} ${size}`} 
+        style={{ maxWidth: size, maxHeight: size }}
       >
-        GPS
-      </text>
-      <text
-        x={center}
-        y={center - radius * 0.35}
-        fill="white"
-        fontSize={size / 18}
-        fontWeight="bold"
-        textAnchor="middle"
-      >
-        SPEED
-      </text>
-      
-      <text
-        x={center}
-        y={center + radius * 0.32}
-        fill="white"
-        fontSize={size / 22}
-        textAnchor="middle"
-      >
-        KM/H
-      </text>
-      
-      <g transform={`rotate(${needleAngle}, ${center}, ${center})`}>
-         <polygon 
-           points={`${center},${center - radius * 0.95} ${center - size * 0.015},${center} ${center + size * 0.015},${center}`}
-           fill="white" 
-           stroke="black" 
-           strokeWidth="0.5"
-         />
-         <line 
-            x1={center} 
-            y1={center} 
-            x2={center} 
-            y2={center + radius * 0.15}
-            stroke="#333" 
-            strokeWidth={size * 0.03}
-            strokeLinecap="butt"
-         />
-         <circle cx={center} cy={center} r={size / 25} fill="#333" stroke="darkgrey" strokeWidth={1} /> 
-      </g>
-    </svg>
+        <g>
+          <circle cx={center} cy={center} r={size / 2} fill="#333" />
+          {generateTicks()}
+          
+          <text
+            x={center}
+            y={center - radius * 0.55}
+            fill="white"
+            fontSize={size / 18}
+            fontWeight="bold"
+            textAnchor="middle"
+          >
+            GPS
+          </text>
+          <text
+            x={center}
+            y={center - radius * 0.35}
+            fill="white"
+            fontSize={size / 18}
+            fontWeight="bold"
+            textAnchor="middle"
+          >
+            SPEED
+          </text>
+          
+          <text
+            x={center}
+            y={center + radius * 0.32}
+            fill="white"
+            fontSize={size / 22}
+            textAnchor="middle"
+          >
+            KM/H
+          </text>
+          
+          <g transform={`rotate(${needleAngle}, ${center}, ${center})`}>
+            <polygon 
+              points={`${center},${center - radius * 0.95} ${center - size * 0.015},${center} ${center + size * 0.015},${center}`}
+              fill="white" 
+              stroke="black" 
+              strokeWidth="0.5"
+            />
+            <line 
+              x1={center} 
+              y1={center} 
+              x2={center} 
+              y2={center + radius * 0.15}
+              stroke="#333" 
+              strokeWidth={size * 0.03}
+              strokeLinecap="butt"
+            />
+            <circle cx={center} cy={center} r={size / 25} fill="#333" stroke="darkgrey" strokeWidth={1} /> 
+          </g>
+        </g>
+      </svg>
+    </div>
   );
 };
 

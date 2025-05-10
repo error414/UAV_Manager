@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
-import { useAuth, useApi } from '../utils/authUtils';
+import { useAuth, useApi } from '../hooks';
 
 const AdditionalDetails = () => {
   const API_URL = import.meta.env.VITE_API_URL;

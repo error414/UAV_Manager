@@ -1,11 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sidebar, Button, Loading, ConfirmModal, CompareModal } from '../components';
-import { maintenanceLogTableColumns, uavConfigTableColumns } from '../utils/tableDefinitions';
-import { useAuth, useApi } from '../utils/authUtils';
-import { generateDiff, prepareComparisonData, compareConfigFiles } from '../utils/compareUtils';
-import { na, formatFlightHours, formatDate } from '../utils/flightTimesUtils';
-import ArrowButton from '../components/ui/ArrowButton';
+import { Layout, Alert, Button, Loading, ConfirmModal, CompareModal, ArrowButton } from '../components';
+import { maintenanceLogTableColumns, compareConfigFiles, na, formatFlightHours, formatDate } from '../utils';
+import { useAuth, useApi } from '../hooks';
 
 const AircraftSettings = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -16,7 +13,6 @@ const AircraftSettings = () => {
   const configFileInputRef = useRef(null);
   
   const [aircraft, setAircraft] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [newLog, setNewLog] = useState({ event_type: 'LOG', description: '', event_date: '', file: null });
   const [configFile, setConfigFile] = useState({
     name: '',
@@ -55,12 +51,6 @@ const AircraftSettings = () => {
     fetchUavMeta();
   }, [uavId]);
   
-  useEffect(() => {
-    const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   useEffect(() => {
     setSelectedConfigs([]);
   }, [configFiles]);
@@ -249,9 +239,6 @@ const AircraftSettings = () => {
     }
   };
 
-  const toggleSidebar = () => setSidebarOpen(v => !v);
-  const handleModifyClick = () => navigate(`/editaircraft/${uavId}`);
-
   const handleLogChange = e => {
     const { name, value, files } = e.target;
     setNewLog(l => ({ ...l, [name]: name === 'file' ? files[0] : value }));
@@ -360,6 +347,10 @@ const AircraftSettings = () => {
     }
   };
 
+  const handleModifyClick = () => {
+    navigate(`/editaircraft/${uavId}`);
+  };
+
   const renderInput = ({ type, name, value, onChange, placeholder, error, ...rest }) => (
     <>
       <input
@@ -393,367 +384,354 @@ const AircraftSettings = () => {
   if (!aircraft) return <Loading message="Loading..." />;
 
   return (
-    <div className="flex h-screen relative">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      <div className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${sidebarOpen ? 'lg:ml-64' : ''}`}>
-        <div className="flex items-center justify-center gap-4 h-10 mb-4">
-          <ArrowButton
-            direction="left"
-            onClick={navigateToPreviousUav}
-            title="Previous Aircraft"
-            disabled={minUavId === null || Number(uavId) <= minUavId}
-          />
-          <h1 className="text-2xl font-semibold">
-            Aircraft Settings
-          </h1>
-          <ArrowButton
-            direction="right"
-            onClick={navigateToNextUav}
-            title="Next Aircraft"
-            disabled={maxUavId === null || Number(uavId) >= maxUavId}
-          />
-        </div>
-        {aircraft.is_active === false && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4">
-            <div className="flex items-center">
-              <svg className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <p><strong>This aircraft is inactive.</strong> You must reactivate it to make changes.</p>
+    <Layout>
+      <div className="flex items-center justify-center gap-4 h-10">
+        <ArrowButton
+          direction="left"
+          onClick={navigateToPreviousUav}
+          title="Previous Aircraft"
+          disabled={minUavId === null || Number(uavId) <= minUavId}
+        />
+        <h1 className="text-2xl font-semibold">
+          Aircraft Settings
+        </h1>
+        <ArrowButton
+          direction="right"
+          onClick={navigateToNextUav}
+          title="Next Aircraft"
+          disabled={maxUavId === null || Number(uavId) >= maxUavId}
+        />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-800 mb-3">General Information</h3>
+            <div className="space-y-2">
+              <InfoRow label="Drone Name:" value={aircraft.drone_name} />
+              <InfoRow label="Manufacturer:" value={aircraft.manufacturer} />
+              <InfoRow label="Type:" value={aircraft.type} />
             </div>
           </div>
-        )}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">General Information</h3>
-              <div className="space-y-2">
-                <InfoRow label="Drone Name:" value={aircraft.drone_name} />
-                <InfoRow label="Manufacturer:" value={aircraft.manufacturer} />
-                <InfoRow label="Type:" value={aircraft.type} />
-              </div>
+          
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-800 mb-3">Motors</h3>
+            <div className="space-y-2">
+              <InfoRow label="Motors:" value={aircraft.motors} />
+              <InfoRow label="Type of Motor:" value={aircraft.motor_type} />
             </div>
-            
-            <div className="bg-gray-50 p-4 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Motors</h3>
-              <div className="space-y-2">
-                <InfoRow label="Motors:" value={aircraft.motors} />
-                <InfoRow label="Type of Motor:" value={aircraft.motor_type} />
-              </div>
+          </div>
+          
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-800 mb-3">Video Information</h3>
+            <div className="space-y-2">
+              <InfoRow label="Video:" value={aircraft.video} />
+              <InfoRow label="Video System:" value={aircraft.video_system} />
             </div>
-            
-            <div className="bg-gray-50 p-4 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Video Information</h3>
-              <div className="space-y-2">
-                <InfoRow label="Video:" value={aircraft.video} />
-                <InfoRow label="Video System:" value={aircraft.video_system} />
-              </div>
+          </div>
+          
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-800 mb-3">Firmware and Components</h3>
+            <div className="space-y-2">
+              <InfoRow label="Firmware:" value={aircraft.firmware} />
+              <InfoRow label="Firmware Version:" value={aircraft.firmware_version} />
+              <InfoRow label="ESC:" value={aircraft.esc} />
+              <InfoRow label="ESC Firmware:" value={aircraft.esc_firmware} />
+              <InfoRow label="Receiver:" value={aircraft.receiver} />
+              <InfoRow label="Receiver Firmware:" value={aircraft.receiver_firmware} />
+              <InfoRow label="Flight Controller:" value={aircraft.flight_controller} />
             </div>
-            
-            <div className="bg-gray-50 p-4 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Firmware and Components</h3>
-              <div className="space-y-2">
-                <InfoRow label="Firmware:" value={aircraft.firmware} />
-                <InfoRow label="Firmware Version:" value={aircraft.firmware_version} />
-                <InfoRow label="ESC:" value={aircraft.esc} />
-                <InfoRow label="ESC Firmware:" value={aircraft.esc_firmware} />
-                <InfoRow label="Receiver:" value={aircraft.receiver} />
-                <InfoRow label="Receiver Firmware:" value={aircraft.receiver_firmware} />
-                <InfoRow label="Flight Controller:" value={aircraft.flight_controller} />
-              </div>
-            </div>
+          </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Registration and Serial</h3>
-              <div className="space-y-2">
-                <InfoRow label="Registration Number:" value={aircraft.registration_number} />
-                <InfoRow label="Serial Number:" value={aircraft.serial_number} />
-              </div>
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-800 mb-3">Registration and Serial</h3>
+            <div className="space-y-2">
+              <InfoRow label="Registration Number:" value={aircraft.registration_number} />
+              <InfoRow label="Serial Number:" value={aircraft.serial_number} />
             </div>
-            
-            <div className="bg-gray-50 p-4 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Sensors</h3>
-              <div className="grid grid-cols-5 gap-4">
-                <GridInfo label="GPS" value={aircraft.gps} />
-                <GridInfo label="MAG" value={aircraft.mag} />
-                <GridInfo label="BARO" value={aircraft.baro} />
-                <GridInfo label="GYRO" value={aircraft.gyro} />
-                <GridInfo label="ACC" value={aircraft.acc} />
+          </div>
+          
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-800 mb-3">Sensors</h3>
+            <div className="grid grid-cols-5 gap-4">
+              <GridInfo label="GPS" value={aircraft.gps} />
+              <GridInfo label="MAG" value={aircraft.mag} />
+              <GridInfo label="BARO" value={aircraft.baro} />
+              <GridInfo label="GYRO" value={aircraft.gyro} />
+              <GridInfo label="ACC" value={aircraft.acc} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-6">
+          <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-800 mb-3">Statistics</h3>
+            <div className="space-y-2">
+              <InfoRow label="Total Flights:" value={aircraft.total_flights} />
+              <InfoRow label="Total Flight Time:" value={formatFlightHours(aircraft.total_flight_time)} />
+              <InfoRow label="Total Takeoffs (TO):" value={aircraft.total_takeoffs} />
+              <InfoRow label="Total Landings (LDG):" value={aircraft.total_landings} />
+            </div>
+          </div>
+          
+          <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-800 mb-3">Maintenance Information</h3>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="font-semibold text-gray-700 block">Last Props Maintenance:</span>
+                  <span className="text-gray-900">{formatDate(aircraft.props_maint_date)}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-700 block">Next Props Maintenance:</span>
+                  <span className="text-gray-900">{formatDate(aircraft.next_props_maint_date)}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="font-semibold text-gray-700 block">Last Motor Maintenance:</span>
+                  <span className="text-gray-900">{formatDate(aircraft.motor_maint_date)}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-700 block">Next Motor Maintenance:</span>
+                  <span className="text-gray-900">{formatDate(aircraft.next_motor_maint_date)}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="font-semibold text-gray-700 block">Last Frame Maintenance:</span>
+                  <span className="text-gray-900">{formatDate(aircraft.frame_maint_date)}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-700 block">Next Frame Maintenance:</span>
+                  <span className="text-gray-900">{formatDate(aircraft.next_frame_maint_date)}</span>
+                </div>
               </div>
             </div>
           </div>
           
-          <div className="space-y-6">
-            <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Statistics</h3>
-              <div className="space-y-2">
-                <InfoRow label="Total Flights:" value={aircraft.total_flights} />
-                <InfoRow label="Total Flight Time:" value={formatFlightHours(aircraft.total_flight_time)} />
-                <InfoRow label="Total Takeoffs (TO):" value={aircraft.total_takeoffs} />
-                <InfoRow label="Total Landings (LDG):" value={aircraft.total_landings} />
-              </div>
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-medium text-gray-800">Configuration Files</h3>
+              {selectedConfigs.length === 2 && (
+                <Button onClick={compareFiles} variant="primary">
+                  Compare Selected Files
+                </Button>
+              )}
             </div>
-            
-            <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Maintenance Information</h3>
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="font-semibold text-gray-700 block">Last Props Maintenance:</span>
-                    <span className="text-gray-900">{formatDate(aircraft.props_maint_date)}</span>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-gray-700 block">Next Props Maintenance:</span>
-                    <span className="text-gray-900">{formatDate(aircraft.next_props_maint_date)}</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="font-semibold text-gray-700 block">Last Motor Maintenance:</span>
-                    <span className="text-gray-900">{formatDate(aircraft.motor_maint_date)}</span>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-gray-700 block">Next Motor Maintenance:</span>
-                    <span className="text-gray-900">{formatDate(aircraft.next_motor_maint_date)}</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="font-semibold text-gray-700 block">Last Frame Maintenance:</span>
-                    <span className="text-gray-900">{formatDate(aircraft.frame_maint_date)}</span>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-gray-700 block">Next Frame Maintenance:</span>
-                    <span className="text-gray-900">{formatDate(aircraft.next_frame_maint_date)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white shadow rounded-lg p-6">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-medium text-gray-800">Configuration Files</h3>
-                {selectedConfigs.length === 2 && (
-                  <Button onClick={compareFiles} variant="primary">
-                    Compare Selected Files
-                  </Button>
-                )}
-              </div>
-              <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
-                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2">Select</th>
-                    <th className="px-4 py-2">Config Name</th>
-                    <th className="px-4 py-2">File</th>
-                    <th className="px-4 py-2">Actions</th>
+            <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2">Select</th>
+                  <th className="px-4 py-2">Config Name</th>
+                  <th className="px-4 py-2">File</th>
+                  <th className="px-4 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {configFiles.map((config) => (
+                  <tr key={config.config_id} className="bg-white border-b hover:bg-gray-50">
+                    <td className="px-4 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedConfigs.includes(config.config_id)}
+                        onChange={() => handleConfigSelection(config.config_id)}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      {config.name || 'N/A'}
+                    </td>
+                    <td className="px-4 py-2">
+                      {config.file ? (
+                        <a href={config.file} download className="text-blue-500 hover:underline">
+                          {getFilenameFromUrl(config.file)}
+                        </a>
+                      ) : 'N/A'}
+                    </td>
+                    <td className="px-4 py-2">
+                      <Button onClick={() => handleDeleteConfig(config.config_id)} variant="danger">Delete</Button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {configFiles.map((config) => (
-                    <tr key={config.config_id} className="bg-white border-b hover:bg-gray-50">
-                      <td className="px-4 py-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedConfigs.includes(config.config_id)}
-                          onChange={() => handleConfigSelection(config.config_id)}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        {config.name || 'N/A'}
-                      </td>
-                      <td className="px-4 py-2">
-                        {config.file ? (
-                          <a href={config.file} download className="text-blue-500 hover:underline">
-                            {getFilenameFromUrl(config.file)}
-                          </a>
-                        ) : 'N/A'}
-                      </td>
-                      <td className="px-4 py-2">
-                        <Button onClick={() => handleDeleteConfig(config.config_id)} variant="danger">Delete</Button>
-                      </td>
-                    </tr>
+                ))}
+                <tr className="bg-gray-50">
+                  <td className="px-4 py-2"></td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      name="name"
+                      value={configFile.name}
+                      onChange={handleConfigChange}
+                      placeholder="Enter configuration name"
+                      className={`w-full px-2 py-1 border rounded ${configFormErrors.name ? 'border-red-500' : 'border-gray-300'}`}
+                    />
+                    {configFormErrors.name && <p className="text-red-500 text-xs mt-1">{configFormErrors.name}</p>}
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="file"
+                      name="file"
+                      onChange={handleConfigChange}
+                      className={`w-full px-2 py-1 border rounded ${configFormErrors.file ? 'border-red-500' : 'border-gray-300'}`}
+                      ref={configFileInputRef}
+                    />
+                    {configFormErrors.file && <p className="text-red-500 text-xs mt-1">{configFormErrors.file}</p>}
+                  </td>
+                  <td className="px-4 py-2">
+                    <Button onClick={handleAddConfig} variant="success">Add</Button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-800 mb-3">Maintenance Logs</h3>
+            <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  {maintenanceLogTableColumns.map(col => (
+                    <th key={col.accessor} className="px-4 py-2">{col.header}</th>
                   ))}
-                  <tr className="bg-gray-50">
-                    <td className="px-4 py-2"></td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        name="name"
-                        value={configFile.name}
-                        onChange={handleConfigChange}
-                        placeholder="Enter configuration name"
-                        className={`w-full px-2 py-1 border rounded ${configFormErrors.name ? 'border-red-500' : 'border-gray-300'}`}
-                      />
-                      {configFormErrors.name && <p className="text-red-500 text-xs mt-1">{configFormErrors.name}</p>}
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="file"
-                        name="file"
-                        onChange={handleConfigChange}
-                        className={`w-full px-2 py-1 border rounded ${configFormErrors.file ? 'border-red-500' : 'border-gray-300'}`}
-                        ref={configFileInputRef}
-                      />
-                      {configFormErrors.file && <p className="text-red-500 text-xs mt-1">{configFormErrors.file}</p>}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Button onClick={handleAddConfig} variant="success">Add</Button>
-                    </td>
+                  <th className="px-4 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aircraft.maintenance_logs?.map((log, index) => (
+                  <tr key={index} className="bg-white border-b hover:bg-gray-50">
+                    {editingLogId === log.maintenance_id ? (
+                      <>
+                        <td className="px-4 py-2">
+                          {renderInput({
+                            type: "date",
+                            name: "event_date",
+                            value: editingLog.event_date,
+                            onChange: handleEditLogChange,
+                            error: editFormErrors.event_date
+                          })}
+                        </td>
+                        <td className="px-4 py-2">
+                          {renderInput({
+                            type: "text",
+                            name: "description",
+                            value: editingLog.description,
+                            onChange: handleEditLogChange,
+                            error: editFormErrors.description
+                          })}
+                        </td>
+                        <td className="px-4 py-2">
+                          {editingLog.originalFile && (
+                            <div className="mb-2 text-sm">
+                              <span>Current file: </span>
+                              <a href={editingLog.originalFile} download className="text-blue-500 hover:underline">
+                                {getFilenameFromUrl(editingLog.originalFile)}
+                              </a>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            name="file"
+                            onChange={handleEditLogChange}
+                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Leave empty to keep current file</p>
+                        </td>
+                        <td className="px-4 py-2 space-x-2 flex">
+                          <Button onClick={handleSaveEdit} variant="success">Save</Button>
+                          <Button onClick={handleCancelEdit} variant="secondary">Cancel</Button>
+                          <Button onClick={() => handleDeleteLog(log.maintenance_id)} variant="danger">Delete</Button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        {maintenanceLogTableColumns.map(col => (
+                          <td className="px-4 py-2" key={col.accessor}>
+                            {col.accessor === 'file' && log.file
+                              ? (
+                                  <a href={log.file} download className="text-blue-500 hover:underline">
+                                    {getFilenameFromUrl(log.file)}
+                                  </a>
+                                )
+                              : col.render
+                                ? col.render(log[col.accessor], log)
+                                : log[col.accessor] || 'N/A'}
+                          </td>
+                        ))}
+                        <td className="px-4 py-2">
+                          <Button onClick={() => handleEditLog(log.maintenance_id)} variant="primary">Edit</Button>
+                        </td>
+                      </>
+                    )}
                   </tr>
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Maintenance Logs</h3>
-              <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
-                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                  <tr>
-                    {maintenanceLogTableColumns.map(col => (
-                      <th key={col.accessor} className="px-4 py-2">{col.header}</th>
-                    ))}
-                    <th className="px-4 py-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {aircraft.maintenance_logs?.map((log, index) => (
-                    <tr key={index} className="bg-white border-b hover:bg-gray-50">
-                      {editingLogId === log.maintenance_id ? (
-                        <>
-                          <td className="px-4 py-2">
-                            {renderInput({
-                              type: "date",
-                              name: "event_date",
-                              value: editingLog.event_date,
-                              onChange: handleEditLogChange,
-                              error: editFormErrors.event_date
-                            })}
-                          </td>
-                          <td className="px-4 py-2">
-                            {renderInput({
-                              type: "text",
-                              name: "description",
-                              value: editingLog.description,
-                              onChange: handleEditLogChange,
-                              error: editFormErrors.description
-                            })}
-                          </td>
-                          <td className="px-4 py-2">
-                            {editingLog.originalFile && (
-                              <div className="mb-2 text-sm">
-                                <span>Current file: </span>
-                                <a href={editingLog.originalFile} download className="text-blue-500 hover:underline">
-                                  {getFilenameFromUrl(editingLog.originalFile)}
-                                </a>
-                              </div>
-                            )}
-                            <input
-                              type="file"
-                              name="file"
-                              onChange={handleEditLogChange}
-                              className="w-full px-2 py-1 border border-gray-300 rounded"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Leave empty to keep current file</p>
-                          </td>
-                          <td className="px-4 py-2 space-x-2 flex">
-                            <Button onClick={handleSaveEdit} variant="success">Save</Button>
-                            <Button onClick={handleCancelEdit} variant="secondary">Cancel</Button>
-                            <Button onClick={() => handleDeleteLog(log.maintenance_id)} variant="danger">Delete</Button>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          {maintenanceLogTableColumns.map(col => (
-                            <td className="px-4 py-2" key={col.accessor}>
-                              {col.accessor === 'file' && log.file
-                                ? (
-                                    <a href={log.file} download className="text-blue-500 hover:underline">
-                                      {getFilenameFromUrl(log.file)}
-                                    </a>
-                                  )
-                                : col.render
-                                  ? col.render(log[col.accessor], log)
-                                  : log[col.accessor] || 'N/A'}
-                            </td>
-                          ))}
-                          <td className="px-4 py-2">
-                            <Button onClick={() => handleEditLog(log.maintenance_id)} variant="primary">Edit</Button>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                  <tr className="bg-gray-50">
-                    <td className="px-4 py-2">
-                      {renderInput({
-                        type: "date",
-                        name: "event_date",
-                        value: newLog.event_date,
-                        onChange: handleLogChange,
-                        error: formErrors.event_date
-                      })}
-                    </td>
-                    <td className="px-4 py-2">
-                      {renderInput({
-                        type: "text",
-                        name: "description",
-                        value: newLog.description,
-                        onChange: handleLogChange,
-                        placeholder: "Description",
-                        error: formErrors.description
-                      })}
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="file"
-                        name="file"
-                        onChange={handleLogChange}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                        ref={fileInputRef}
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <Button onClick={handleAddLog} variant="success">Add</Button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                ))}
+                <tr className="bg-gray-50">
+                  <td className="px-4 py-2">
+                    {renderInput({
+                      type: "date",
+                      name: "event_date",
+                      value: newLog.event_date,
+                      onChange: handleLogChange,
+                      error: formErrors.event_date
+                    })}
+                  </td>
+                  <td className="px-4 py-2">
+                    {renderInput({
+                      type: "text",
+                      name: "description",
+                      value: newLog.description,
+                      onChange: handleLogChange,
+                      placeholder: "Description",
+                      error: formErrors.description
+                    })}
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="file"
+                      name="file"
+                      onChange={handleLogChange}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                      ref={fileInputRef}
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <Button onClick={handleAddLog} variant="success">Add</Button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-        
-        <div className="mt-6 flex justify-center space-x-4">
-          <Button onClick={handleModifyClick} variant="primary" className="max-w-md">Modify Aircraft</Button>
-        </div>
-        
-        <CompareModal 
-          show={showCompareModal} 
-          onClose={() => setShowCompareModal(false)} 
-          data={comparisonData} 
-        />
-
-        <ConfirmModal
-          open={showDeleteConfigModal}
-          title="Confirm Delete Configuration"
-          message="Are you sure you want to delete this configuration file?"
-          onConfirm={confirmDeleteConfig}
-          onCancel={() => setShowDeleteConfigModal(false)}
-          confirmText="Delete"
-          cancelText="Cancel"
-        />
-        
-        <ConfirmModal
-          open={showDeleteModal}
-          title="Confirm Delete Log"
-          message="Are you sure you want to delete this maintenance log?"
-          onConfirm={confirmDeleteLog}
-          onCancel={() => setShowDeleteModal(false)}
-          confirmText="Delete"
-          cancelText="Cancel"
-        />
       </div>
-    </div>
+      
+      <div className="mt-6 flex justify-center space-x-4">
+        <Button onClick={handleModifyClick} variant="primary" className="max-w-md">Modify Aircraft</Button>
+      </div>
+      
+      <CompareModal 
+        show={showCompareModal} 
+        onClose={() => setShowCompareModal(false)} 
+        data={comparisonData} 
+      />
+
+      <ConfirmModal
+        open={showDeleteConfigModal}
+        title="Confirm Delete Configuration"
+        message="Are you sure you want to delete this configuration file?"
+        onConfirm={confirmDeleteConfig}
+        onCancel={() => setShowDeleteConfigModal(false)}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+      
+      <ConfirmModal
+        open={showDeleteModal}
+        title="Confirm Delete Log"
+        message="Are you sure you want to delete this maintenance log?"
+        onConfirm={confirmDeleteLog}
+        onCancel={() => setShowDeleteModal(false)}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+    </Layout>
   );
 };
 

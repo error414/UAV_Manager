@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 
 const ThrottleYawStick = ({ 
@@ -34,12 +34,13 @@ const ThrottleYawStick = ({
     adjustedY = center + Math.sin(angle) * stickBaseRadius;
   }
   
-  useEffect(() => {
-    // Optional: logging
-  }, [throttle, yaw]);
+  // Format values to consistent width
+  const formatValue = (value) => {
+    return value.toString().padStart(5, ' ');
+  };
   
   return (
-    <div className="stick-container flex flex-col items-center">
+    <div className="flex flex-col items-center" style={{ width: size, maxWidth: size }}>
       <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, maxHeight: size }}>
         {/* Outer casing */}
         <circle cx={center} cy={center} r={size / 2} fill="#333" />
@@ -59,6 +60,9 @@ const ThrottleYawStick = ({
         {/* Joystick handle */}
         <circle cx={adjustedX} cy={adjustedY} r={stickSize} fill="#555" stroke="#888" strokeWidth="2" />
       </svg>
+      <div className="text-xs text-gray-600 mt-1 font-mono w-full text-center whitespace-pre" style={{ height: '1.5rem' }}>
+        T: {formatValue(throttleValue)} Y: {formatValue(yawValue)}
+      </div>
     </div>
   );
 };

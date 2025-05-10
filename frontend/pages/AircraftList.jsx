@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar, Alert, Button, ResponsiveTable, Loading, ConfirmModal, Pagination } from '../components';
-import { uavTableColumns } from '../utils/tableDefinitions';
-import { UAV_INITIAL_FILTERS } from '../utils/filterDefinitions';
-import { useAuth, useApi } from '../utils/authUtils';
+import { Layout,Alert, Button, ResponsiveTable, Loading, ConfirmModal, Pagination } from '../components';
+import { uavTableColumns, UAV_INITIAL_FILTERS } from '../utils';
+import { useAuth, useApi } from '../hooks';
 
 const AircraftList = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -15,7 +14,6 @@ const AircraftList = () => {
 
   const navigate = useNavigate();
   const [aircrafts, setAircrafts] = useState([]);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,19 +53,6 @@ const AircraftList = () => {
     
     setIsLoading(false);
   }, [fetchData, checkAuthAndGetUser, debouncedFilters, currentPage, pageSize, sortField]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(true);
-      } else {
-        setSidebarOpen(false);
-      }
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     filtersRef.current = filters;
@@ -159,18 +144,8 @@ const AircraftList = () => {
     navigate(`/aircraftsettings/${uavId}`);
   };
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
   const handlePageChange = useCallback((page) => {
     setCurrentPage(page);
-  }, []);
-
-  const handleSortChange = useCallback((field) => {
-    setSortField(prevSort => {
-      if (prevSort === field) return `-${field}`;
-      if (prevSort === `-${field}`) return field;
-      return field;
-    });
   }, []);
 
   const handleExportCSV = () => {
@@ -254,110 +229,96 @@ const AircraftList = () => {
   }));
 
   return (
-    <div className="flex h-screen relative">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+    <Layout title="Aircraft List">
+      <Alert type="error" message={error} />
       
-      <div 
-        className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
-          sidebarOpen ? 'lg:ml-64' : ''
-        }`}
-      >
-        <div className="flex items-center h-10 mb-4">
-          <div className="w-10 lg:hidden"></div>
+      {isLoading ? (
+        <Loading message="Loading aircraft data..." />
+      ) : (
+        <>
+          <div className="md:hidden mt-0.5 mb-0.5 w-full">
+            <Button 
+              onClick={toggleMobileFilters}
+              variant="secondary"
+              size="md"
+              fullWidth={true}
+              className="flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
+              </svg>
+              {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
+            </Button>
+          </div>
           
-          <h1 className="text-2xl font-semibold text-center flex-1">Aircraft List</h1>
-        </div>
-        
-        <Alert type="error" message={error} />
-        
-        {isLoading ? (
-          <Loading message="Loading aircraft data..." />
-        ) : (
-          <>
-            <div className="md:hidden mt-0.5 mb-0.5 w-full">
-              <Button 
-                onClick={toggleMobileFilters}
-                variant="secondary"
-                size="md"
-                fullWidth={true}
-                className="flex items-center justify-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
-                </svg>
-                {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
-              </Button>
-            </div>
-            
-            <ResponsiveTable
-              columns={uavTableColumns}
-              data={modifiedAircrafts || []}
-              filterFields={filterFieldsForTable}
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              onEdit={handleAircraftClick}
-              onRowClick={handleAircraftClick}
-              hideDesktopFilters={false}
-              rowClickable={true}
-              showActionColumn={false}
-              idField="flightlog_id"
-              titleField="drone_name"
-              mobileFiltersVisible={mobileFiltersVisible}
-            />
-          </>
-        )}
-        
-        <Pagination 
-          currentPage={currentPage} 
-          totalPages={totalPages} 
-          onPageChange={handlePageChange} 
-        />
-
-        <div className="flex justify-center gap-4 p-4 mt-4">
-          <Button 
-            onClick={handleNewAircraft} 
-            variant="primary"
-            fullWidth={false}
-            className="max-w-xs"
-          >
-            New Aircraft
-          </Button>
-          <Button 
-            onClick={handleImportCSV} 
-            variant="primary"
-            fullWidth={false}
-            className="max-w-xs"
-          >
-            Import CSV
-          </Button>
-          <Button 
-            onClick={handleExportCSV} 
-            variant="primary"
-            fullWidth={false}
-            className="max-w-xs"
-          >
-            Export CSV
-          </Button>
-          
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept=".csv"
-            onChange={handleFileUpload}
+          <ResponsiveTable
+            columns={uavTableColumns}
+            data={modifiedAircrafts || []}
+            filterFields={filterFieldsForTable}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onEdit={handleAircraftClick}
+            onRowClick={handleAircraftClick}
+            hideDesktopFilters={false}
+            rowClickable={true}
+            showActionColumn={false}
+            idField="flightlog_id"
+            titleField="drone_name"
+            mobileFiltersVisible={mobileFiltersVisible}
           />
-        </div>
-        <ConfirmModal
-          open={!!importResult}
-          title="Import abgeschlossen"
-          message={importResult?.message || ''}
-          onConfirm={() => setImportResult(null)}
-          onCancel={() => setImportResult(null)}
-          confirmText="OK"
-          cancelText={null}
+        </>
+      )}
+      
+      <Pagination 
+        currentPage={currentPage} 
+        totalPages={totalPages} 
+        onPageChange={handlePageChange} 
+      />
+
+      <div className="flex justify-center gap-4 p-4 mt-4">
+        <Button 
+          onClick={handleNewAircraft} 
+          variant="primary"
+          fullWidth={false}
+          className="max-w-xs"
+        >
+          New Aircraft
+        </Button>
+        <Button 
+          onClick={handleImportCSV} 
+          variant="primary"
+          fullWidth={false}
+          className="max-w-xs"
+        >
+          Import CSV
+        </Button>
+        <Button 
+          onClick={handleExportCSV} 
+          variant="primary"
+          fullWidth={false}
+          className="max-w-xs"
+        >
+          Export CSV
+        </Button>
+        
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept=".csv"
+          onChange={handleFileUpload}
         />
       </div>
-    </div>
+      <ConfirmModal
+        open={!!importResult}
+        title="Import abgeschlossen"
+        message={importResult?.message || ''}
+        onConfirm={() => setImportResult(null)}
+        onCancel={() => setImportResult(null)}
+        confirmText="OK"
+        cancelText={null}
+      />
+    </Layout>
   );
 };
 

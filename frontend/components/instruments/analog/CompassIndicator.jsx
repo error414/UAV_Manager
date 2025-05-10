@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { BaseInstrument } from '../../../components';
 
 const CompassIndicator = ({ 
   heading = 0, 
@@ -131,59 +132,56 @@ const CompassIndicator = ({
   };
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={center} cy={center} r={size / 2} fill="Black" /> 
-      <circle cx={center} cy={center} r={radius + 5} fill="#232323" /> 
+    <div className="compass-indicator flex flex-col items-center">
+      <BaseInstrument size={size}>
+        <g transform={`rotate(${dialAngle}, ${center}, ${center})`}>
+          {generateTicks()}
+        </g>
 
-      <g transform={`rotate(${dialAngle}, ${center}, ${center})`}>
-        {generateTicks()}
-      </g>
+        <path
+          d={`
+            M ${center} ${center - size * 0.24}
+            L ${center - size * 0.015} ${center - size * 0.11}
+            L ${center - size * 0.24} ${center - size * 0.015}
+            L ${center - size * 0.24} ${center + size * 0.015}
+            L ${center - size * 0.015} ${center + size * 0.015}
+            L ${center - size * 0.015} ${center + size * 0.15}
+            L ${center - size * 0.05} ${center + size * 0.18}
+            L ${center - size * 0.05} ${center + size * 0.20}
+            L ${center + size * 0.05} ${center + size * 0.20}
+            L ${center + size * 0.05} ${center + size * 0.18}
+            L ${center + size * 0.015} ${center + size * 0.15}
+            L ${center + size * 0.015} ${center + size * 0.015}
+            L ${center + size * 0.24} ${center + size * 0.015}
+            L ${center + size * 0.24} ${center - size * 0.015}
+            L ${center + size * 0.015} ${center - size * 0.11}
+            L ${center} ${center - size * 0.24}
+            Z
+          `}
+          fill="none"
+          stroke="#FFD600"
+          strokeWidth={size * 0.01}
+          strokeLinejoin="miter"
+        />
 
-      <path
-        d={`
-          M ${center} ${center - size * 0.24}
-          L ${center - size * 0.015} ${center - size * 0.11}
-          L ${center - size * 0.24} ${center - size * 0.015}
-          L ${center - size * 0.24} ${center + size * 0.015}
-          L ${center - size * 0.015} ${center + size * 0.015}
-          L ${center - size * 0.015} ${center + size * 0.15}
-          L ${center - size * 0.05} ${center + size * 0.18}
-          L ${center - size * 0.05} ${center + size * 0.20}
-          L ${center + size * 0.05} ${center + size * 0.20}
-          L ${center + size * 0.05} ${center + size * 0.18}
-          L ${center + size * 0.015} ${center + size * 0.15}
-          L ${center + size * 0.015} ${center + size * 0.015}
-          L ${center + size * 0.24} ${center + size * 0.015}
-          L ${center + size * 0.24} ${center - size * 0.015}
-          L ${center + size * 0.015} ${center - size * 0.11}
-          L ${center} ${center - size * 0.24}
-          Z
-        `}
-        fill="none"
-        stroke="#FFD600"
-        strokeWidth={size * 0.01}
-        strokeLinejoin="miter"
-      />
+        <text
+          x={center}
+          y={center - size * 0.025}
+          fill="white"
+          fontSize={size / 14}
+          fontWeight="bold"
+          textAnchor="middle"
+          alignmentBaseline="middle"
+        >
+          {Math.round(((heading % 360) + 360) % 360)}°
+        </text>
 
-      {/* Nur die HDG-Zahl in der Mitte */}
-      <text
-        x={center}
-        y={center - size * 0.025}
-        fill="white"
-        fontSize={size / 14}
-        fontWeight="bold"
-        textAnchor="middle"
-        alignmentBaseline="middle"
-      >
-        {Math.round(((heading % 360) + 360) % 360)}°
-      </text>
-
-      {/* Fixed triangle at the top */}
-      <path 
-        d={`M${center},${center - radius - 2} L${center - size * 0.025},${center - radius * 0.8} L${center + size * 0.025},${center - radius * 0.8} Z`}
-        fill="red" 
-      />
-    </svg>
+        <path 
+          d={`M${center},${center - radius - 2} L${center - size * 0.025},${center - radius * 0.8} L${center + size * 0.025},${center - radius * 0.8} Z`}
+          fill="red" 
+        />
+      </BaseInstrument>
+    </div>
   );
 };
 

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { Sidebar, Alert, ResponsiveTable, Loading, ConfirmModal, Pagination, Button } from '../components';
-import { userTableColumns, uavTableColumns, flightLogTableColumns, getEnhancedFlightLogColumns } from '../utils/tableDefinitions';
-import { userFilterFormFields, uavEditFormFields } from '../utils/formDefinitions';
-import { useAuth, useApi } from '../utils/authUtils';
+import { Layout, Alert, ResponsiveTable, Loading, ConfirmModal, Pagination, Button } from '../components';
+import { userTableColumns, uavTableColumns, flightLogTableColumns, getEnhancedFlightLogColumns, userFilterFormFields, uavEditFormFields } from '../utils';
+import { useAuth, useApi } from '../hooks';
 
 const Spinner = ({ message = "Loading..." }) => <Loading message={message} />;
 
@@ -16,7 +15,6 @@ const AdminPage = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
@@ -188,12 +186,6 @@ const AdminPage = () => {
       setFlightLogTotalPages(0);
     }
   }, [fetchUserUAVs, fetchUserFlightLogs, selectedUserId, uavCurrentPage, flightLogCurrentPage]);
-
-  useEffect(() => {
-    const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const handleFilterChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -389,8 +381,6 @@ const AdminPage = () => {
     }
   }, [fetchData, fetchUserFlightLogs, selectedUserId]);
 
-  const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
-  
   const toggleMobileFilters = useCallback(() => {
     setMobileFiltersVisible(prev => !prev);
   }, []);
@@ -411,169 +401,158 @@ const AdminPage = () => {
   if (!isStaff) return <Navigate to="/flightlog" state={{ from: location }} replace />;
 
   return (
-    <div className="flex h-screen relative">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      <div 
-        className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
-          sidebarOpen ? 'lg:ml-64' : ''
-        }`}
-      >
-        <div className="flex items-center h-10 mb-4">
-          <div className="w-10 lg:hidden"></div>
-          <h1 className="text-2xl font-semibold text-center flex-1">Admin Panel - User Management</h1>
-        </div>
-        <Alert type="error" message={error} />
-        {isLoading ? <Loading /> : (
-          <>
-            <div className="md:hidden mt-0.5 mb-0.5 w-full">
-              <Button 
-                onClick={toggleMobileFilters}
-                variant="secondary"
-                size="md"
-                fullWidth={true}
-                className="flex items-center justify-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
-                </svg>
-                {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
-              </Button>
-            </div>
+    <Layout title="Admin Panel - User Management">
+      <Alert type="error" message={error} />
+      {isLoading ? <Loading /> : (
+        <>
+          <div className="md:hidden mt-0.5 mb-0.5 w-full">
+            <Button 
+              onClick={toggleMobileFilters}
+              variant="secondary"
+              size="md"
+              fullWidth={true}
+              className="flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
+              </svg>
+              {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
+            </Button>
+          </div>
 
-            <ResponsiveTable 
-              columns={userTableColumns}
-              data={users}
-              onEdit={handleEdit}
-              filterFields={userFilterFormFields}
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              editingId={editingUserId}
-              editingData={editingUser}
-              onEditChange={handleEditChange}
-              onSaveEdit={handleSaveEdit}
-              onCancelEdit={handleCancelEdit}
-              onDelete={handleDeleteUser}
-              showAddRow={false}
-              rowClickable={true}
-              showActionColumn={true}
-              actionColumnText="Actions"
-              idField="user_id"
-              titleField="email"
-              onRowClick={handleUserSelect}
-              mobileFiltersVisible={mobileFiltersVisible}
-              tableStyles={tableStyles}
-            />
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
-            {selectedUserId && (
+          <ResponsiveTable 
+            columns={userTableColumns}
+            data={users}
+            onEdit={handleEdit}
+            filterFields={userFilterFormFields}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            editingId={editingUserId}
+            editingData={editingUser}
+            onEditChange={handleEditChange}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={handleCancelEdit}
+            onDelete={handleDeleteUser}
+            showAddRow={false}
+            rowClickable={true}
+            showActionColumn={true}
+            actionColumnText="Actions"
+            idField="user_id"
+            titleField="email"
+            onRowClick={handleUserSelect}
+            mobileFiltersVisible={mobileFiltersVisible}
+            tableStyles={tableStyles}
+          />
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+          {selectedUserId && (
+            <div className="mt-10">
+              <h2 className="text-xl font-semibold mb-4 text-center">Aircraft for {selectedUserName}</h2>
+              {loadingUAVs ? <Loading /> : userUAVs.length > 0 ? (
+                <>
+                  <Alert type="error" message={uavError} />
+                  <ResponsiveTable 
+                    columns={uavTableColumns}
+                    data={userUAVs}
+                    onEdit={handleUavEdit}
+                    filterFields={[]}
+                    filters={{}}
+                    rowClickable={false}
+                    showActionColumn={true}
+                    actionColumnText="Actions"
+                    idField="uav_id"
+                    titleField="drone_name"
+                    editingId={editingUavId}
+                    editingData={editingUav}
+                    onEditChange={handleUavEditChange}
+                    onSaveEdit={handleUavSaveEdit}
+                    onCancelEdit={handleUavCancelEdit}
+                    onDelete={handleDeleteUav}
+                    editFormFields={uavEditFormFields}
+                    tableStyles={tableStyles}
+                  />
+                  <Pagination currentPage={uavCurrentPage} totalPages={uavTotalPages} onPageChange={handleUavPageChange} />
+                </>
+              ) : (
+                <div className="text-center py-4 bg-gray-100 rounded-md">This user has no registered aircraft.</div>
+              )}
               <div className="mt-10">
-                <h2 className="text-xl font-semibold mb-4 text-center">Aircraft for {selectedUserName}</h2>
-                {loadingUAVs ? <Loading /> : userUAVs.length > 0 ? (
+                <h2 className="text-xl font-semibold mb-4 text-center">Flight Logs for {selectedUserName}</h2>
+                {loadingFlightLogs ? <Loading /> : flightLogsError ? (
+                  <Alert type="error" message={flightLogsError} />
+                ) : userFlightLogs.length > 0 ? (
                   <>
-                    <Alert type="error" message={uavError} />
-                    <ResponsiveTable 
-                      columns={uavTableColumns}
-                      data={userUAVs}
-                      onEdit={handleUavEdit}
+                    <ResponsiveTable
+                      columns={enhancedFlightLogColumns}
+                      data={userFlightLogs}
                       filterFields={[]}
                       filters={{}}
                       rowClickable={false}
                       showActionColumn={true}
                       actionColumnText="Actions"
-                      idField="uav_id"
-                      titleField="drone_name"
-                      editingId={editingUavId}
-                      editingData={editingUav}
-                      onEditChange={handleUavEditChange}
-                      onSaveEdit={handleUavSaveEdit}
-                      onCancelEdit={handleUavCancelEdit}
-                      onDelete={handleDeleteUav}
-                      editFormFields={uavEditFormFields}
+                      idField="flightlog_id"
+                      titleField="departure_date"
+                      onEdit={handleFlightLogEdit}
+                      editingId={editingFlightLogId}
+                      editingData={editingFlightLog}
+                      onEditChange={handleFlightLogEditChange}
+                      onSaveEdit={handleFlightLogSaveEdit}
+                      onCancelEdit={handleFlightLogCancelEdit}
+                      onDelete={handleFlightLogDelete}
+                      editFormFields={flightLogTableColumns.map(col => ({
+                        name: col.accessor,
+                        label: col.header,
+                        type: 'text',
+                        placeholder: col.header
+                      }))}
                       tableStyles={tableStyles}
                     />
-                    <Pagination currentPage={uavCurrentPage} totalPages={uavTotalPages} onPageChange={handleUavPageChange} />
+                    <Pagination currentPage={flightLogCurrentPage} totalPages={flightLogTotalPages} onPageChange={setFlightLogCurrentPage} />
                   </>
                 ) : (
-                  <div className="text-center py-4 bg-gray-100 rounded-md">This user has no registered aircraft.</div>
+                  <div className="text-center py-4 bg-gray-100 rounded-md">This user has no flight logs.</div>
                 )}
-                <div className="mt-10">
-                  <h2 className="text-xl font-semibold mb-4 text-center">Flight Logs for {selectedUserName}</h2>
-                  {loadingFlightLogs ? <Loading /> : flightLogsError ? (
-                    <Alert type="error" message={flightLogsError} />
-                  ) : userFlightLogs.length > 0 ? (
-                    <>
-                      <ResponsiveTable
-                        columns={enhancedFlightLogColumns}
-                        data={userFlightLogs}
-                        filterFields={[]}
-                        filters={{}}
-                        rowClickable={false}
-                        showActionColumn={true}
-                        actionColumnText="Actions"
-                        idField="flightlog_id"
-                        titleField="departure_date"
-                        onEdit={handleFlightLogEdit}
-                        editingId={editingFlightLogId}
-                        editingData={editingFlightLog}
-                        onEditChange={handleFlightLogEditChange}
-                        onSaveEdit={handleFlightLogSaveEdit}
-                        onCancelEdit={handleFlightLogCancelEdit}
-                        onDelete={handleFlightLogDelete}
-                        editFormFields={flightLogTableColumns.map(col => ({
-                          name: col.accessor,
-                          label: col.header,
-                          type: 'text',
-                          placeholder: col.header
-                        }))}
-                        tableStyles={tableStyles}
-                      />
-                      <Pagination currentPage={flightLogCurrentPage} totalPages={flightLogTotalPages} onPageChange={setFlightLogCurrentPage} />
-                    </>
-                  ) : (
-                    <div className="text-center py-4 bg-gray-100 rounded-md">This user has no flight logs.</div>
-                  )}
-                </div>
               </div>
-            )}
-          </>
-        )}
-        <ConfirmModal
-          open={!!confirmDeleteUserId}
-          title="Delete User"
-          message="Are you sure you want to delete this user? This action cannot be undone."
-          onConfirm={() => {
-            performDeleteUser(confirmDeleteUserId);
-            setConfirmDeleteUserId(null);
-          }}
-          onCancel={() => setConfirmDeleteUserId(null)}
-          confirmText="Delete"
-          cancelText="Cancel"
-        />
-        <ConfirmModal
-          open={!!confirmDeleteUavId}
-          title="Delete UAV"
-          message="Are you sure you want to delete this UAV? All flight logs associated with this UAV will also be deleted. This action cannot be undone."
-          onConfirm={() => {
-            performDeleteUav(confirmDeleteUavId);
-            setConfirmDeleteUavId(null);
-          }}
-          onCancel={() => setConfirmDeleteUavId(null)}
-          confirmText="Delete"
-          cancelText="Cancel"
-        />
-        <ConfirmModal
-          open={!!confirmDeleteFlightLogId}
-          title="Delete Flight Log"
-          message="Are you sure you want to delete this flight log?"
-          onConfirm={() => {
-            performDeleteFlightLog(confirmDeleteFlightLogId);
-            setConfirmDeleteFlightLogId(null);
-          }}
-          onCancel={() => setConfirmDeleteFlightLogId(null)}
-          confirmText="Delete"
-          cancelText="Cancel"
-        />
-      </div>
-    </div>
+            </div>
+          )}
+        </>
+      )}
+      <ConfirmModal
+        open={!!confirmDeleteUserId}
+        title="Delete User"
+        message="Are you sure you want to delete this user? This action cannot be undone."
+        onConfirm={() => {
+          performDeleteUser(confirmDeleteUserId);
+          setConfirmDeleteUserId(null);
+        }}
+        onCancel={() => setConfirmDeleteUserId(null)}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+      <ConfirmModal
+        open={!!confirmDeleteUavId}
+        title="Delete UAV"
+        message="Are you sure you want to delete this UAV? All flight logs associated with this UAV will also be deleted. This action cannot be undone."
+        onConfirm={() => {
+          performDeleteUav(confirmDeleteUavId);
+          setConfirmDeleteUavId(null);
+        }}
+        onCancel={() => setConfirmDeleteUavId(null)}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+      <ConfirmModal
+        open={!!confirmDeleteFlightLogId}
+        title="Delete Flight Log"
+        message="Are you sure you want to delete this flight log?"
+        onConfirm={() => {
+          performDeleteFlightLog(confirmDeleteFlightLogId);
+          setConfirmDeleteFlightLogId(null);
+        }}
+        onCancel={() => setConfirmDeleteFlightLogId(null)}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+    </Layout>
   );
 };
 

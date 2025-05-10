@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { BaseInstrument } from '../../../components';
 
 const VerticalSpeedIndicator = ({ 
   verticalSpeed = 0, 
@@ -87,10 +88,7 @@ const VerticalSpeedIndicator = ({
   };
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={center} cy={center} r={size / 2} fill="Black" /> 
-      <circle cx={center} cy={center} r={radius + 5} fill="#232323" /> 
-
+    <BaseInstrument size={size}>
       {generateTicks()}
       
       <text
@@ -164,7 +162,7 @@ const VerticalSpeedIndicator = ({
          />
          <circle cx={center} cy={center} r={size / 25} fill="#333" stroke="darkgrey" strokeWidth={1} /> 
       </g>
-    </svg>
+    </BaseInstrument>
   );
 };
 

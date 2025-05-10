@@ -1,9 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-/**
- * Hook that provides authentication utilities
- */
 export const useAuth = () => {
   const navigate = useNavigate();
 
@@ -34,9 +31,6 @@ export const useAuth = () => {
   return { getAuthHeaders, handleAuthError, checkAuthAndGetUser };
 };
 
-/**
- * Hook for making API calls with built-in authentication handling
- */
 export const useApi = (baseUrl, setError) => {
   const { getAuthHeaders, handleAuthError } = useAuth();
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { BaseInstrument } from '../../../components';
 
 const TurnCoordinator = ({ 
   turnRate = 0, // degrees per second
@@ -66,13 +67,7 @@ const TurnCoordinator = ({
   const rightHorzX = center + horzOffset;
   
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {/* Outer bezel */}
-      <circle cx={center} cy={center} r={size / 2} fill="Black" />
-      
-      {/* Instrument face */}
-      <circle cx={center} cy={center} r={radius + 5} fill="#232323" stroke="#333" strokeWidth="1" />
-      
+    <BaseInstrument size={size}>
       {/* Center point reference */}
       <circle cx={center} cy={center} r={2} fill="white" />
       
@@ -215,7 +210,7 @@ const TurnCoordinator = ({
         NO PITCH
         INFORMATION
       </text>
-    </svg>
+    </BaseInstrument>
   );
 };
 

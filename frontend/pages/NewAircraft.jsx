@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Alert, Sidebar, AircraftForm, Loading, ConfirmModal } from '../components';
-import { useAuth, useApi } from '../utils/authUtils';
+import { Layout, Button, Alert, AircraftForm, Loading, ConfirmModal } from '../components';
+import { useAuth, useApi } from '../hooks';
 
 const DEFAULT_FORM_DATA = {
   drone_name: '',
@@ -242,7 +242,6 @@ const NewAircraftPage = () => {
   const isEditMode = !!uavId;
   const { checkAuthAndGetUser } = useAuth();
   
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [confirmModal, setConfirmModal] = useState({
     type: null, 
     isOpen: false
@@ -263,8 +262,6 @@ const NewAircraftPage = () => {
     canDelete
   } = useAircraftForm(isEditMode, uavId);
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  
   const handleDelete = () => setConfirmModal({ type: 'delete', isOpen: true });
   const handleSetInactive = () => setConfirmModal({ type: 'inactive', isOpen: true });
   const handleToggleActive = () => setConfirmModal({ type: 'toggle', isOpen: true });
@@ -318,15 +315,6 @@ const NewAircraftPage = () => {
     if (!auth) return;
   }, [navigate, checkAuthAndGetUser]);
   
-  useEffect(() => {
-    const handleResize = () => {
-      setSidebarOpen(window.innerWidth >= 1024);
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  
   if (isLoading) {
     return <Loading message="Loading aircraft data..." />;
   }
@@ -334,61 +322,46 @@ const NewAircraftPage = () => {
   const modalConfig = getModalConfig();
 
   return (
-    <div className="flex h-screen relative">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-
-      <div 
-        className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
-          sidebarOpen ? 'lg:ml-64' : ''
-        }`}
-      >
-        <div className="flex items-center h-10 mb-4">
-          <div className="w-10 lg:hidden"></div>
-          <h1 className="text-2xl font-semibold text-center flex-1">
-            {isEditMode ? 'Edit Aircraft' : 'New Aircraft'}
-          </h1>
-        </div>
-
-        {isEditMode && formData.is_active === false && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4">
-            <div className="flex items-center">
-              <svg className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <p><strong>This aircraft is inactive.</strong> You must reactivate it to make changes.</p>
-            </div>
+    <Layout title={isEditMode ? 'Edit Aircraft' : 'New Aircraft'}>
+      {isEditMode && formData.is_active === false && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="flex items-center">
+            <svg className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p><strong>This aircraft is inactive.</strong> You must reactivate it to make changes.</p>
           </div>
-        )}
-        
-        {error && <Alert type="error" message={error} />}
-        {success && <Alert type="success" message={success} />}
-        
-        <AircraftForm
-          formData={formData}
-          handleChange={handleChange}
-          handleSubmit={handleSubmit}
-          handleDelete={handleDelete}
-          handleSetInactive={handleSetInactive}
-          handleToggleActive={handleToggleActive}
-          handleSetTodayMaintDates={handleSetTodayMaintDates}
-          formatDateForInput={formatDateForInput}
-          isEditMode={isEditMode}
-          isLoading={isLoading}
-          canDelete={canDelete}
-          handleBackToSettings={handleBackToSettings}
-        />
-        
-        <ConfirmModal
-          open={confirmModal.isOpen}
-          title={modalConfig.title}
-          message={modalConfig.message}
-          onConfirm={handleModalConfirm}
-          onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-          confirmText={modalConfig.confirmText}
-          cancelText="Cancel"
-        />
-      </div>
-    </div>
+        </div>
+      )}
+      
+      {error && <Alert type="error" message={error} />}
+      {success && <Alert type="success" message={success} />}
+      
+      <AircraftForm
+        formData={formData}
+        handleChange={handleChange}
+        handleSubmit={handleSubmit}
+        handleDelete={handleDelete}
+        handleSetInactive={handleSetInactive}
+        handleToggleActive={handleToggleActive}
+        handleSetTodayMaintDates={handleSetTodayMaintDates}
+        formatDateForInput={formatDateForInput}
+        isEditMode={isEditMode}
+        isLoading={isLoading}
+        canDelete={canDelete}
+        handleBackToSettings={handleBackToSettings}
+      />
+      
+      <ConfirmModal
+        open={confirmModal.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={handleModalConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        confirmText={modalConfig.confirmText}
+        cancelText="Cancel"
+      />
+    </Layout>
   );
 };
 

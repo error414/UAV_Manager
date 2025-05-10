@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Alert, Sidebar, FormInput, Loading } from '../components';
+import { Layout, Button, Alert, FormInput, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
-import { useAuth, useApi } from '../utils/authUtils';
+import { useAuth, useApi } from '../hooks';
 
 const LicenseField = ({
   label, dateName, dateValue, onChange, reminderName, reminderChecked, onReminderChange
@@ -50,7 +50,6 @@ const UserSettings = () => {
   const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL;
 
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -87,19 +86,11 @@ const UserSettings = () => {
   const { fetchData } = useApi(API_URL, setError);
 
   useEffect(() => {
-    const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
     const auth = checkAuthAndGetUser();
     if (!auth) return;
 
     fetchUserData();
   }, [navigate]);
-
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const formatDateForInput = (dateString) => {
     if (!dateString) return '';
@@ -204,13 +195,11 @@ const UserSettings = () => {
       const auth = checkAuthAndGetUser();
       if (!auth) return;
       
-      // Using fetch directly with auth headers because we need to handle blob response
       const response = await fetch(`${API_URL}/api/export-user-data/`, {
         headers: getAuthHeaders()
       });
       
       if (!response.ok) {
-        // Check for auth errors
         if (handleAuthError(response)) {
           throw new Error('Authentication failed');
         }
@@ -256,7 +245,6 @@ const UserSettings = () => {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Check if file is a ZIP
     if (!file.name.toLowerCase().endsWith('.zip')) {
       setError('Please select a ZIP file');
       return;
@@ -270,22 +258,17 @@ const UserSettings = () => {
       const auth = checkAuthAndGetUser();
       if (!auth) return;
       
-      // Create form data
       const formData = new FormData();
       formData.append('file', file);
       
-      // Make sure we're not setting Content-Type header
-      // Let the browser set it automatically with the correct boundary
       const response = await fetch(`${API_URL}/api/import-user-data/`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${auth.token}`
-          // Don't set Content-Type here, it will be set automatically
         },
         body: formData
       });
       
-      // Log more details about the error if debugging
       if (!response.ok) {
         console.error('Import failed with status:', response.status);
         const errorText = await response.text();
@@ -303,10 +286,8 @@ const UserSettings = () => {
       
       const result = await response.json();
       
-      // Clear the file input
       fileInputRef.current.value = '';
       
-      // Show success message with import details
       const details = result.details;
       setSuccess(
         `Import successful! Imported: ${details.uavs_imported} UAVs, ` +
@@ -386,296 +367,283 @@ const UserSettings = () => {
   }
 
   return (
-    <div className="flex h-screen relative">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+    <Layout title="User Settings">
+      {error && <Alert type="error" message={error} />}
+      {success && <Alert type="success" message={success} />}
 
-      <div 
-        className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
-          sidebarOpen ? 'lg:ml-64' : ''
-        }`}
-      >
-        <div className="flex items-center h-10 mb-4">
-          <div className="w-10 lg:hidden"></div>
-          <h1 className="text-2xl font-semibold text-center flex-1">User Settings</h1>
-        </div>
-        
-        {error && <Alert type="error" message={error} />}
-        {success && <Alert type="success" message={success} />}
-        
-        <div className="mb-6">
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="mb-4 md:mb-0">
-                <h3 className="text-lg font-medium text-gray-900">Data Management</h3>
-                <p className="text-sm text-gray-500">
-                  Export or import your drone data including UAVs, flight logs, and maintenance records.
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button 
-                  onClick={handleImportData} 
-                  variant="secondary" 
-                  disabled={isImporting}
-                  className="min-w-max"
-                >
-                  {isImporting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Importing...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"></path>
-                      </svg>
-                      Import Data
-                    </>
-                  )}
-                </Button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  accept=".zip"
-                  className="hidden"
-                />
-                <Button 
-                  onClick={handleExportData} 
-                  variant="secondary" 
-                  disabled={isExporting}
-                  className="min-w-max"
-                >
-                  {isExporting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Exporting...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                      </svg>
-                      Export Data
-                    </>
-                  )}
-                </Button>
-              </div>
+      <div className="mb-6">
+        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="mb-4 md:mb-0">
+              <h3 className="text-lg font-medium text-gray-900">Data Management</h3>
+              <p className="text-sm text-gray-500">
+                Export or import your drone data including UAVs, flight logs, and maintenance records.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button 
+                onClick={handleImportData} 
+                variant="secondary" 
+                disabled={isImporting}
+                className="min-w-max"
+              >
+                {isImporting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"></path>
+                    </svg>
+                    Import Data
+                  </>
+                )}
+              </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept=".zip"
+                className="hidden"
+              />
+              <Button 
+                onClick={handleExportData} 
+                variant="secondary" 
+                disabled={isExporting}
+                className="min-w-max"
+              >
+                {isExporting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Export Data
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
-        
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div>
-              <label>First name</label>
-              <FormInput
-                type="text"
-                name="first_name"
-                id="first_name"
-                value={formData.first_name}
-                onChange={handleChange}
-                placeholder="John"
-                required
-              />
-            </div>
-            
-            <div>
-              <label>Last name</label>
-              <FormInput
-                type="text"
-                name="last_name"
-                id="last_name"
-                value={formData.last_name}
-                onChange={handleChange}
-                placeholder="Doe"
-                required
-              />
-            </div>
-            
-            <div>
-              <label>Company Name</label>
-              <FormInput
-                type="text"
-                name="company"
-                id="company"
-                value={formData.company}
-                onChange={handleChange}
-                placeholder="Drone Solutions Inc."
-              />
-            </div>
-            
-            <div>
-              <label>E-mail</label>
-              <FormInput
-                type="email"
-                name="email"
-                id="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="john.doe@example.com"
-                required
-                disabled
-              />
-            </div>
-            
-            <div>
-              <label>Phone number</label>
-              <FormInput
-                type="text"
-                name="phone"
-                id="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="+1 234 567 8901"
-              />
-            </div>
-            
-            <div>
-              <label>Street Address</label>
-              <FormInput
-                type="text"
-                name="street"
-                id="street"
-                value={formData.street}
-                onChange={handleChange}
-                placeholder="123 Drone Street"
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label>Zip Code</label>
-                <FormInput
-                  type="text"
-                  name="zip"
-                  id="zip"
-                  value={formData.zip}
-                  onChange={handleChange}
-                  placeholder="12345"
-                />
-              </div>
-              <div>
-                <label>City</label>
-                <FormInput
-                  type="text"
-                  name="city"
-                  id="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="Drone City"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label>Country</label>
-              <div className="mt-1">
-                <CountryDropdown
-                  id="country"
-                  name="country"
-                  value={formData.country}
-                  onChange={selectCountry}
-                  defaultOptionLabel=" "
-                  className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <label>Drone Operator Number</label>
-              <FormInput
-                type="text"
-                name="drone_ops_nb"
-                id="drone_ops_nb"
-                value={formData.drone_ops_nb}
-                onChange={handleChange}
-                placeholder="CHEdkI9245ddjG325"
-              />
-            </div>
-            
-            <div>
-              <label>Pilot License number</label>
-              <FormInput
-                type="text"
-                name="pilot_license_nb"
-                id="pilot_license_nb"
-                value={formData.pilot_license_nb}
-                onChange={handleChange}
-                placeholder="FCL.CH.345789"
-              />
-            </div>
-            
-            <h3 className="text-lg font-medium pt-2 text-black">License Category</h3>
-            
-            <LicenseField 
-              label="A1 / A3"
-              dateName="a1_a3"
-              dateValue={formData.a1_a3}
-              onChange={handleChange}
-              reminderName="a1_a3_reminder"
-              reminderChecked={userSettings.a1_a3_reminder}
-              onReminderChange={handleSettingsChange}
-            />
-            
-            <LicenseField 
-              label="A2"
-              dateName="a2"
-              dateValue={formData.a2}
-              onChange={handleChange}
-              reminderName="a2_reminder"
-              reminderChecked={userSettings.a2_reminder}
-              onReminderChange={handleSettingsChange}
-            />
-            
-            <LicenseField 
-              label="STS"
-              dateName="sts"
-              dateValue={formData.sts}
-              onChange={handleChange}
-              reminderName="sts_reminder"
-              reminderChecked={userSettings.sts_reminder}
-              onReminderChange={handleSettingsChange}
-            />
-            
-            <div className="mt-4 border-t pt-4">
-              <h3 className="text-lg font-medium text-black">Notification Settings</h3>
-              
-              <div className="mt-4">
-                <label htmlFor="reminder_months_before" className="block text-sm font-medium text-gray-700">
-                  Send reminders before expiry (months):
-                </label>
-                <select
-                  id="reminder_months_before"
-                  name="reminder_months_before"
-                  value={userSettings.reminder_months_before}
-                  onChange={handleSettingsChange}
-                  className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="1">1 month</option>
-                  <option value="2">2 months</option>
-                  <option value="3">3 months</option>
-                  <option value="6">6 months</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <div className="col-span-1 md:col-span-2 mt-6 flex justify-center">
-            <Button type="submit" variant="primary" fullWidth={false} className="max-w-md">
-              Save changes
-            </Button>
-          </div>
-        </form>
       </div>
-    </div>
+
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <label>First name</label>
+            <FormInput
+              type="text"
+              name="first_name"
+              id="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              placeholder="John"
+              required
+            />
+          </div>
+          
+          <div>
+            <label>Last name</label>
+            <FormInput
+              type="text"
+              name="last_name"
+              id="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              placeholder="Doe"
+              required
+            />
+          </div>
+          
+          <div>
+            <label>Company Name</label>
+            <FormInput
+              type="text"
+              name="company"
+              id="company"
+              value={formData.company}
+              onChange={handleChange}
+              placeholder="Drone Solutions Inc."
+            />
+          </div>
+          
+          <div>
+            <label>E-mail</label>
+            <FormInput
+              type="email"
+              name="email"
+              id="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="john.doe@example.com"
+              required
+              disabled
+            />
+          </div>
+          
+          <div>
+            <label>Phone number</label>
+            <FormInput
+              type="text"
+              name="phone"
+              id="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="+1 234 567 8901"
+            />
+          </div>
+          
+          <div>
+            <label>Street Address</label>
+            <FormInput
+              type="text"
+              name="street"
+              id="street"
+              value={formData.street}
+              onChange={handleChange}
+              placeholder="123 Drone Street"
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label>Zip Code</label>
+              <FormInput
+                type="text"
+                name="zip"
+                id="zip"
+                value={formData.zip}
+                onChange={handleChange}
+                placeholder="12345"
+              />
+            </div>
+            <div>
+              <label>City</label>
+              <FormInput
+                type="text"
+                name="city"
+                id="city"
+                value={formData.city}
+                onChange={handleChange}
+                placeholder="Drone City"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label>Country</label>
+            <div className="mt-1">
+              <CountryDropdown
+                id="country"
+                name="country"
+                value={formData.country}
+                onChange={selectCountry}
+                defaultOptionLabel=" "
+                className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <label>Drone Operator Number</label>
+            <FormInput
+              type="text"
+              name="drone_ops_nb"
+              id="drone_ops_nb"
+              value={formData.drone_ops_nb}
+              onChange={handleChange}
+              placeholder="CHEdkI9245ddjG325"
+            />
+          </div>
+          
+          <div>
+            <label>Pilot License number</label>
+            <FormInput
+              type="text"
+              name="pilot_license_nb"
+              id="pilot_license_nb"
+              value={formData.pilot_license_nb}
+              onChange={handleChange}
+              placeholder="FCL.CH.345789"
+            />
+          </div>
+          
+          <h3 className="text-lg font-medium pt-2 text-black">License Category</h3>
+          
+          <LicenseField 
+            label="A1 / A3"
+            dateName="a1_a3"
+            dateValue={formData.a1_a3}
+            onChange={handleChange}
+            reminderName="a1_a3_reminder"
+            reminderChecked={userSettings.a1_a3_reminder}
+            onReminderChange={handleSettingsChange}
+          />
+          
+          <LicenseField 
+            label="A2"
+            dateName="a2"
+            dateValue={formData.a2}
+            onChange={handleChange}
+            reminderName="a2_reminder"
+            reminderChecked={userSettings.a2_reminder}
+            onReminderChange={handleSettingsChange}
+          />
+          
+          <LicenseField 
+            label="STS"
+            dateName="sts"
+            dateValue={formData.sts}
+            onChange={handleChange}
+            reminderName="sts_reminder"
+            reminderChecked={userSettings.sts_reminder}
+            onReminderChange={handleSettingsChange}
+          />
+          
+          <div className="mt-4 border-t pt-4">
+            <h3 className="text-lg font-medium text-black">Notification Settings</h3>
+            
+            <div className="mt-4">
+              <label htmlFor="reminder_months_before" className="block text-sm font-medium text-gray-700">
+                Send reminders before expiry (months):
+              </label>
+              <select
+                id="reminder_months_before"
+                name="reminder_months_before"
+                value={userSettings.reminder_months_before}
+                onChange={handleSettingsChange}
+                className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
+              >
+                <option value="1">1 month</option>
+                <option value="2">2 months</option>
+                <option value="3">3 months</option>
+                <option value="6">6 months</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div className="col-span-1 md:col-span-2 mt-6 flex justify-center">
+          <Button type="submit" variant="primary" fullWidth={false} className="max-w-md">
+            Save changes
+          </Button>
+        </div>
+      </form>
+    </Layout>
   );
 };
 

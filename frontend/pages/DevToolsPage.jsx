@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import reactLogo from '../src/assets/react.svg';
-import { useAuth, useApi } from '../utils/authUtils';
+import { useAuth, useApi } from '../hooks';
 
 function DevToolsPage() {
   const [count, setCount] = useState(0);
