@@ -24,3 +24,28 @@ export const formatFlightHours = seconds => {
  * @returns {string} Formatted date string or 'N/A'
  */
 export const formatDate = dateString => dateString ? new Date(dateString).toLocaleDateString() : 'N/A';
+
+/**
+ * Calculates flight duration in seconds from departure and landing times
+ * @param {string} deptTime - Departure time in format "HH:MM:SS" or "HH:MM"
+ * @param {string} landTime - Landing time in format "HH:MM:SS" or "HH:MM"
+ * @returns {number|string} Duration in seconds or empty string if invalid input
+ */
+export const calculateFlightDuration = (deptTime, landTime) => {
+  if (!deptTime || !landTime) return '';
+  
+  try {
+    const [deptHours, deptMinutes, deptSeconds = 0] = deptTime.split(':').map(Number);
+    const [landHours, landMinutes, landSeconds = 0] = landTime.split(':').map(Number);
+    const deptTotalSeconds = deptHours * 3600 + deptMinutes * 60 + deptSeconds;
+    const landTotalSeconds = landHours * 3600 + landMinutes * 60 + landSeconds;
+    let durationInSeconds = landTotalSeconds - deptTotalSeconds;
+    if (durationInSeconds < 0) {
+      durationInSeconds += 86400; // Handle overnight flights (add 24 hours in seconds)
+    }
+    
+    return Math.round(durationInSeconds);
+  } catch (error) {
+    return '';
+  }
+};

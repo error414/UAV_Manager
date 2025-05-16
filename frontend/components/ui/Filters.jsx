@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = false, mobileFiltersVisible = true }) => {
   if (asTable) {
     // Desktop view - render as table row

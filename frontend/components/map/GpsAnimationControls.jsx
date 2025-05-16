@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button } from '../index';
 
 // Add this new component for displaying GPS data

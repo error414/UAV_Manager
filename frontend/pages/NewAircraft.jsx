@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout, Button, Alert, AircraftForm, Loading, ConfirmModal } from '../components';
 import { useAuth, useApi } from '../hooks';

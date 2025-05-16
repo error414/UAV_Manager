@@ -1,29 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout, Alert, Button, ResponsiveTable, ConfirmModal, Pagination } from '../components';
-import { getEnhancedFlightLogColumns } from '../utils/tableDefinitions';
-import { getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS } from '../utils/formDefinitions';
-import { useAuth, useApi } from '../hooks';
-import { exportFlightLogToPDF } from '../utils/pdfUtils';
-
-const calculateFlightDuration = (deptTime, landTime) => {
-  if (!deptTime || !landTime) return '';
-  
-  try {
-    const [deptHours, deptMinutes, deptSeconds = 0] = deptTime.split(':').map(Number);
-    const [landHours, landMinutes, landSeconds = 0] = landTime.split(':').map(Number);
-    const deptTotalSeconds = deptHours * 3600 + deptMinutes * 60 + deptSeconds;
-    const landTotalSeconds = landHours * 3600 + landMinutes * 60 + landSeconds;
-    let durationInSeconds = landTotalSeconds - deptTotalSeconds;
-    if (durationInSeconds < 0) {
-      durationInSeconds += 86400;
-    }
-    
-    return Math.round(durationInSeconds);
-  } catch (error) {
-    return '';
-  }
-};
+import { getEnhancedFlightLogColumns, getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS, exportFlightLogToPDF, calculateFlightDuration, extractUavId } from '../utils';
+import { useAuth, useApi, useUAVs } from '../hooks';
 
 const Flightlog = () => {
   const navigate = useNavigate();
@@ -38,7 +17,7 @@ const Flightlog = () => {
   const [newFlight, setNewFlight] = useState({...INITIAL_FLIGHT_STATE});
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(19);
   const [isLoading, setIsLoading] = useState(false);
   const [sortField, setSortField] = useState('-departure_date,-departure_time');
   const [debouncedFilters, setDebouncedFilters] = useState({});
@@ -46,9 +25,11 @@ const Flightlog = () => {
   const [mobileFiltersVisible, setMobileFiltersVisible] = useState(false);
   const [mobileAddNewVisible, setMobileAddNewVisible] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [userData, setUserData] = useState(null);
 
   const fileInputRef = useRef(null);
   const filterTimer = useRef(null);
+  const tableContainerRef = useRef(null);
   
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
@@ -57,42 +38,43 @@ const Flightlog = () => {
     return Array.isArray(availableUAVs) ? availableUAVs : [];
   }, [availableUAVs]);
   
-  const filterFormFields = useMemo(() => getFlightFormFields(safeAvailableUAVs), [safeAvailableUAVs]);
-  const addFormFields = useMemo(() => getFlightFormFields(safeAvailableUAVs), [safeAvailableUAVs]);
+  const formFields = useMemo(() => getFlightFormFields(safeAvailableUAVs), [safeAvailableUAVs]);
   
-  const toggleMobileFilters = useCallback(() => {
-    setMobileFiltersVisible(prev => !prev);
-  }, []);
-  const toggleMobileAddNew = useCallback(() => {
-    setMobileAddNewVisible(prev => !prev);
-  }, []);
+  const toggleMobileFilters = useCallback(() => setMobileFiltersVisible(v => !v), []);
+  const toggleMobileAddNew = useCallback(() => setMobileAddNewVisible(v => !v), []);
+
+  const runAuthenticatedOperation = useCallback(async (operation) => {
+    const auth = checkAuthAndGetUser();
+    if (!auth) return null;
+    return await operation(auth);
+  }, [checkAuthAndGetUser]);
 
   const fetchFlightLogs = useCallback(async () => {
-    const auth = checkAuthAndGetUser();
-    if (!auth) return;
-    
-    setIsLoading(true);
-    
-    const queryParams = {
-      ...debouncedFilters,
-      page: currentPage,
-      page_size: pageSize,
-      ordering: sortField
-    };
-    
-    if (queryParams.uav && typeof queryParams.uav === 'object' && queryParams.uav.uav_id) {
-      queryParams.uav = queryParams.uav.uav_id;
-    }
-    
-    const result = await fetchData('/api/flightlogs/', queryParams);
-    
-    if (!result.error) {
-      setLogs(result.data.results || []);
-      setTotalPages(Math.ceil((result.data.count || 0) / pageSize));
-    }
-    
-    setIsLoading(false);
-  }, [checkAuthAndGetUser, fetchData, debouncedFilters, currentPage, pageSize, sortField]);
+    return runAuthenticatedOperation(async () => {
+      setIsLoading(true);
+      
+      const queryParams = {
+        ...debouncedFilters,
+        page: currentPage,
+        page_size: pageSize,
+        ordering: sortField
+      };
+      
+      if (queryParams.uav && typeof queryParams.uav === 'object' && queryParams.uav.uav_id) {
+        queryParams.uav = queryParams.uav.uav_id;
+      }
+      
+      const result = await fetchData('/api/flightlogs/', queryParams);
+      
+      if (!result.error) {
+        setLogs(result.data.results || []);
+        setTotalPages(Math.ceil((result.data.count || 0) / pageSize));
+      }
+      
+      setIsLoading(false);
+      return result;
+    });
+  }, [runAuthenticatedOperation, fetchData, debouncedFilters, currentPage, pageSize, sortField]);
 
   const fetchAllFlightLogs = useCallback(async () => {
     let allLogs = [];
@@ -117,61 +99,58 @@ const Flightlog = () => {
     return allLogs;
   }, [debouncedFilters, sortField, fetchData]);
 
-  const fetchUAVs = useCallback(async () => {
-    const auth = checkAuthAndGetUser();
-    if (!auth) return;
-    
-    const result = await fetchData('/api/uavs/');
-    
-    if (!result.error) {
-      const uavArray = Array.isArray(result.data) ? result.data : (result.data.results || []);
-      setAvailableUAVs(uavArray);
-    }
-  }, [checkAuthAndGetUser, fetchData]);
+  const { fetchUAVs } = useUAVs(runAuthenticatedOperation, fetchData, setAvailableUAVs);
 
-  const handleFormChange = useCallback((setter, e) => {
+  const handleFormChange = useCallback((setter, e, isEditMode = false) => {
     const { name, value } = e.target;
-    
     setter(prev => {
-      const newState = { ...prev, [name]: value };
-      
+      const newState = { ...prev };
+      if (name === 'uav') {
+        newState.uav = typeof value === 'object' && value !== null && 'uav_id' in value
+          ? value.uav_id
+          : parseInt(value, 10) || '';
+      } else {
+        newState[name] = value;
+      }
       if ((name === 'departure_time' || name === 'landing_time') && name !== 'flight_duration') {
         const deptTime = name === 'departure_time' ? value : prev.departure_time;
         const landTime = name === 'landing_time' ? value : prev.landing_time;
-        
         const duration = calculateFlightDuration(deptTime, landTime);
-        if (duration !== '') {
-          newState.flight_duration = duration;
-        }
+        if (duration !== '') newState.flight_duration = duration;
       }
-      
       return newState;
     });
   }, []);
 
   const handleFilterChange = useCallback((e) => {
     const { name, value } = e.target;
-    
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    if (filterTimer.current) {
-      clearTimeout(filterTimer.current);
-    }
-    
+    setFilters(prev => ({ ...prev, [name]: value }));
+    if (filterTimer.current) clearTimeout(filterTimer.current);
     filterTimer.current = setTimeout(() => {
       setCurrentPage(1);
-      setDebouncedFilters(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      setDebouncedFilters(f => ({ ...f, [name]: value }));
     }, 500);
   }, []);
 
-  const handleNewFlightChange = useCallback((e) => handleFormChange(setNewFlight, e), [handleFormChange]);
-  const handleEditChange = useCallback((e) => handleFormChange(setEditingLog, e), [handleFormChange]);
+  const handleNewFlightChange = useCallback((e) => handleFormChange(setNewFlight, e, false), [handleFormChange]);
+  const handleEditChange = useCallback((e) => handleFormChange(setEditingLog, e, true), [handleFormChange]);
+
+  const prepareFlightPayload = useCallback((flightData, userId) => {
+    const uavValue = extractUavId(flightData.uav);
+    if (!uavValue || isNaN(uavValue)) {
+      setError('UAV is required and must be a valid selection.');
+      return null;
+    }
+    return {
+      ...flightData,
+      uav_id: uavValue,
+      flight_duration: parseInt(flightData.flight_duration) || 0,
+      takeoffs: parseInt(flightData.takeoffs) || 1,  
+      landings: parseInt(flightData.landings) || 1,
+      comments: flightData.comments || '',
+      user: userId
+    };
+  }, []);
 
   const handleNewFlightAdd = useCallback(async () => {
     const requiredFields = ['departure_date', 'departure_time', 'landing_time', 'uav', 
@@ -183,26 +162,23 @@ const Flightlog = () => {
       return;
     }
   
-    const auth = checkAuthAndGetUser();
-    if (!auth) return;
-  
-    const flightPayload = {
-      ...newFlight,
-      flight_duration: parseInt(newFlight.flight_duration) || 0,
-      takeoffs: parseInt(newFlight.takeoffs) || 1,  
-      landings: parseInt(newFlight.landings) || 1,
-      comments: newFlight.comments || '',
-      user: auth.user_id
-    };
-  
-    const result = await fetchData('/api/flightlogs/', {}, 'POST', flightPayload);
-    
-    if (!result.error) {
-      fetchFlightLogs();
-      setNewFlight({...INITIAL_FLIGHT_STATE});
-      setError(null);
-    }
-  }, [fetchData, checkAuthAndGetUser, fetchFlightLogs, newFlight]);
+    return runAuthenticatedOperation(async (auth) => {
+      const flightPayload = prepareFlightPayload(newFlight, auth.user_id);
+      if (!flightPayload) return;
+      
+      delete flightPayload.uav;
+      
+      const result = await fetchData('/api/flightlogs/', {}, 'POST', flightPayload);
+      
+      if (!result.error) {
+        fetchFlightLogs();
+        setNewFlight({...INITIAL_FLIGHT_STATE});
+        setError(null);
+      } else {
+        setError(result.error?.detail || result.error?.message || 'Failed to add flight log');
+      }
+    });
+  }, [runAuthenticatedOperation, prepareFlightPayload, fetchData, fetchFlightLogs, newFlight]);
 
   const handleRowClick = useCallback((id) => {
     navigate(`/flightdetails/${id}`);
@@ -212,10 +188,7 @@ const Flightlog = () => {
     const logToEdit = logs.find(log => log.flightlog_id === id);
     
     if (logToEdit) {
-      let uavValue = logToEdit.uav;
-      if (uavValue && typeof uavValue === 'object' && uavValue.uav_id) {
-        uavValue = uavValue.uav_id;
-      }
+      const uavValue = extractUavId(logToEdit.uav);
       
       setEditingLog({
         ...logToEdit,
@@ -231,26 +204,25 @@ const Flightlog = () => {
   }, [logs]);
 
   const handleSaveEdit = useCallback(async () => {
-    const auth = checkAuthAndGetUser();
-    if (!auth) return;
+    return runAuthenticatedOperation(async (auth) => {
+      const flightPayload = prepareFlightPayload(editingLog, auth.user_id);
+      if (!flightPayload) return;
 
-    const updatedFlightLog = {
-      ...editingLog,
-      flight_duration: parseInt(editingLog.flight_duration) || 0,
-      takeoffs: parseInt(editingLog.takeoffs) || 0,
-      landings: parseInt(editingLog.landings) || 0,
-      user: auth.user_id
-    };
-
-    const result = await fetchData(`/api/flightlogs/${editingLogId}/`, {}, 'PUT', updatedFlightLog);
-    
-    if (!result.error) {
-      fetchFlightLogs();
-      setEditingLogId(null);
-      setEditingLog(null);
-      setError(null);
-    }
-  }, [fetchData, checkAuthAndGetUser, editingLog, editingLogId, fetchFlightLogs]);
+      delete flightPayload.uav;
+      
+      const result = await fetchData(`/api/flightlogs/${editingLogId}/`, {}, 'PUT', flightPayload);
+      
+      if (!result.error) {
+        fetchFlightLogs();
+        setEditingLogId(null);
+        setEditingLog(null);
+        setError(null);
+      } else {
+        console.error('Update error:', result.error);
+        setError(result.error?.detail || result.error?.message || 'Failed to update flight log');
+      }
+    });
+  }, [runAuthenticatedOperation, prepareFlightPayload, editingLog, editingLogId, fetchData, fetchFlightLogs]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingLogId(null);
@@ -262,18 +234,17 @@ const Flightlog = () => {
   }, []);
 
   const performDeleteLog = useCallback(async (id) => {
-    const auth = checkAuthAndGetUser();
-    if (!auth) return;
-    
-    const result = await fetchData(`/api/flightlogs/${id}/`, {}, 'DELETE');
-    
-    if (!result.error) {
-      fetchFlightLogs();
-      setEditingLogId(null);
-      setEditingLog(null);
-      setError(null);
-    }
-  }, [fetchData, checkAuthAndGetUser, fetchFlightLogs]);
+    return runAuthenticatedOperation(async () => {
+      const result = await fetchData(`/api/flightlogs/${id}/`, {}, 'DELETE');
+      
+      if (!result.error) {
+        fetchFlightLogs();
+        setEditingLogId(null);
+        setEditingLog(null);
+        setError(null);
+      }
+    });
+  }, [runAuthenticatedOperation, fetchData, fetchFlightLogs]);
 
   const handleFileUpload = useCallback(async (event) => {
     const file = event.target.files[0];
@@ -326,7 +297,6 @@ const Flightlog = () => {
     }
   }, []);
 
-  const [userData, setUserData] = useState(null);
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -362,14 +332,41 @@ const Flightlog = () => {
     return getEnhancedFlightLogColumns(safeAvailableUAVs);
   }, [safeAvailableUAVs]);
 
+  const calculateOptimalPageSize = useCallback(() => {
+    if (!tableContainerRef.current) return;
+    
+    const containerHeight = tableContainerRef.current.clientHeight;
+    const estimatedRowHeight = 53;
+    const nonDataHeight = 150;
+    const availableHeight = containerHeight - nonDataHeight;
+    let optimalRows = Math.floor(availableHeight / estimatedRowHeight);
+    optimalRows = Math.max(5, Math.min(optimalRows, 30));
+    if (optimalRows !== pageSize) {
+      setPageSize(optimalRows);
+    }
+  }, [pageSize]);
+
   useEffect(() => {
-    fetchFlightLogs();
-    fetchUAVs();
-  }, [fetchFlightLogs, fetchUAVs]);
+    const handleResize = () => {
+      calculateOptimalPageSize();
+    };
+    
+    calculateOptimalPageSize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [calculateOptimalPageSize]);
+
+  useEffect(() => {
+    calculateOptimalPageSize();
+  }, [calculateOptimalPageSize, tableContainerRef.current]);
 
   useEffect(() => {
     fetchFlightLogs();
-  }, [fetchFlightLogs, debouncedFilters, currentPage, sortField]);
+    fetchUAVs();
+  }, [fetchFlightLogs, fetchUAVs, debouncedFilters, currentPage, sortField]);
 
   useEffect(() => {
     return () => {
@@ -388,8 +385,8 @@ const Flightlog = () => {
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
         </div>
       ) : (
-        <>
-          <div className="md:hidden mt-0.5 mb-0.5 w-full">
+        <div className="flex flex-col h-full" style={{ height: "calc(100vh - 50px)" }}>
+          <div className="lg:hidden mt-0.5 mb-0.5 w-full">
             <Button 
               onClick={toggleMobileFilters}
               variant="secondary"
@@ -403,36 +400,42 @@ const Flightlog = () => {
               {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
             </Button>
           </div>
-
-          <ResponsiveTable 
-            columns={flightLogTableColumns}
-            data={logs}
-            onEdit={handleEdit}
-            onRowClick={handleRowClick}
-            filterFields={filterFormFields}
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            addFields={addFormFields}
-            newItem={newFlight}
-            onNewItemChange={handleNewFlightChange}
-            onAdd={handleNewFlightAdd}
-            editingId={editingLogId}
-            editingData={editingLog}
-            onEditChange={handleEditChange}
-            onSaveEdit={handleSaveEdit}
-            onCancelEdit={handleCancelEdit}
-            onDelete={handleDeleteLog}
-            availableOptions={{ availableUAVs: safeAvailableUAVs }}
-            rowClickable={true}
-            showActionColumn={true}
-            actionColumnText="Actions"
-            titleField="uav"
-            mobileFiltersVisible={mobileFiltersVisible}
-            mobileAddNewVisible={mobileAddNewVisible}
-            toggleMobileAddNew={toggleMobileAddNew}
-          />
           
-          <div className="md:hidden mt-3 mb-0.5 w-full">
+          <div className="flex-grow overflow-auto" ref={tableContainerRef}>
+            <ResponsiveTable 
+              columns={flightLogTableColumns}
+              data={logs}
+              onEdit={handleEdit}
+              onRowClick={handleRowClick}
+              filterFields={formFields}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              addFields={formFields}
+              newItem={newFlight}
+              onNewItemChange={handleNewFlightChange}
+              onAdd={handleNewFlightAdd}
+              editingId={editingLogId}
+              editingData={editingLog}
+              onEditChange={handleEditChange}
+              onSaveEdit={handleSaveEdit}
+              onCancelEdit={handleCancelEdit}
+              onDelete={handleDeleteLog}
+              onSort={handleSortChange}
+              availableOptions={{ 
+                availableUAVs: safeAvailableUAVs,
+                formOptions: FLIGHT_FORM_OPTIONS
+              }}
+              rowClickable={true}
+              showActionColumn={true}
+              actionColumnText="Actions"
+              titleField="uav"
+              mobileFiltersVisible={mobileFiltersVisible}
+              mobileAddNewVisible={mobileAddNewVisible}
+              toggleMobileAddNew={toggleMobileAddNew}
+            />
+          </div>
+          
+          <div className="lg:hidden mt-3 mb-0.5 w-full">
             <Button 
               onClick={toggleMobileAddNew}
               variant="success"
@@ -446,49 +449,85 @@ const Flightlog = () => {
               {mobileAddNewVisible ? 'Hide Add New Form' : 'Add New Flight'}
             </Button>
           </div>
-        </>
+          
+          <div className="flex-shrink-0 border-t border-gray-200 bg-white mt-0 -mb-7 lg:-mb-7">
+            <div className="lg:hidden py-1">
+              <div className="flex justify-center mb-2">
+                <Pagination 
+                  currentPage={currentPage} 
+                  totalPages={totalPages} 
+                  onPageChange={handlePageChange} 
+                  className="flex justify-center items-center gap-2" 
+                />
+              </div>
+              <div className="space-y-2 px-1">
+                <Button 
+                  onClick={handleImportClick}
+                  variant="primary"
+                  size="md"
+                  fullWidth={true}
+                  className="flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Import CSV
+                </Button>
+                <Button
+                  onClick={handleExportPDF}
+                  variant="secondary"
+                  size="md"
+                  fullWidth={true}
+                  className="flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Export PDF
+                </Button>
+              </div>
+            </div>
+            
+            <div className="hidden lg:grid grid-cols-3 py-3 pb-6">
+              <div className="flex space-x-2 self-center">
+                <Button 
+                  onClick={handleImportClick}
+                  variant="primary"
+                  size="md"
+                >
+                  Import CSV
+                </Button>
+                <Button
+                  onClick={handleExportPDF}
+                  variant="secondary"
+                  size="md"
+                >
+                  Export PDF
+                </Button>
+              </div>
+
+              <div className="flex justify-center">
+                <Pagination 
+                  currentPage={currentPage} 
+                  totalPages={totalPages} 
+                  onPageChange={handlePageChange} 
+                  className="flex justify-center items-center gap-2" 
+                />
+              </div>
+              
+              <div></div>
+            </div>
+          </div>
+        </div>
       )}
 
-      <div className="flex flex-col md:flex-row items-center">
-        <div className="mt-4 w-full md:w-auto md:flex-1 flex md:justify-start mb-2 md:mb-0">
-          <Button 
-            onClick={handleImportClick}
-            variant="primary"
-            size="md"
-            fullWidth={true}
-            className="md:w-auto"
-          >
-            Import CSV
-          </Button>
-          <Button
-            onClick={handleExportPDF}
-            variant="secondary"
-            size="md"
-            fullWidth={true}
-            className="md:w-auto ml-2"
-          >
-            Export PDF
-          </Button>
-        </div>
-
-        <div className="w-full md:flex-1 flex justify-center">
-          <Pagination 
-            currentPage={currentPage} 
-            totalPages={totalPages} 
-            onPageChange={handlePageChange} 
-          />
-        </div>
-        
-        <div className="hidden md:block md:flex-1"></div>
-        
-        <input 
-          type="file" 
-          accept=".csv" 
-          ref={fileInputRef} 
-          onChange={handleFileUpload} 
-          style={{ display: 'none' }} 
-        />
-      </div>
+      <input 
+        type="file" 
+        accept=".csv" 
+        ref={fileInputRef} 
+        onChange={handleFileUpload} 
+        style={{ display: 'none' }} 
+      />
 
       <ConfirmModal
         open={!!confirmDeleteId}

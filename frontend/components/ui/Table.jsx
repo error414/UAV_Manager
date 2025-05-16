@@ -3,22 +3,6 @@ import { Button } from '../index';
 import Filters from './Filters';
 import { CountryDropdown } from 'react-country-region-selector';
 
-const FIELD_OPTIONS = {
-  light_conditions: [
-    { value: 'Day', label: 'Day' },
-    { value: 'Night', label: 'Night' }
-  ],
-  ops_conditions: [
-    { value: 'VLOS', label: 'VLOS' },
-    { value: 'BLOS', label: 'BLOS' }
-  ],
-  pilot_type: [
-    { value: 'PIC', label: 'PIC' },
-    { value: 'Dual', label: 'Dual' },
-    { value: 'Instruction', label: 'Instruction' }
-  ]
-};
-
 const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   const fieldName = fieldConfig.name || fieldConfig.accessor;
   const value = data ? data[fieldName] || '' : '';
@@ -70,7 +54,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
     );
   }
   
-  if (FIELD_OPTIONS[fieldName]) {
+  if (availableOptions?.formOptions?.[fieldName]) {
     return (
       <select
         name={fieldName}
@@ -79,7 +63,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
         className="w-full px-2 py-1 border border-gray-300 rounded"
       >
         <option value="">{isEditing ? `Select ${fieldConfig.header}` : fieldConfig.placeholder}</option>
-        {FIELD_OPTIONS[fieldName].map((option) => (
+        {availableOptions.formOptions[fieldName].map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </select>
@@ -121,11 +105,10 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   );
 };
 
-const EditingActions = ({ onSaveEdit, onCancelEdit, onDelete, itemId }) => (
-  <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-    <Button onClick={onSaveEdit} className="bg-green-500 hover:bg-green-600">Save</Button>
-    <Button onClick={onCancelEdit} className="bg-gray-500 hover:bg-gray-600">Cancel</Button>
-    <Button onClick={() => onDelete(itemId)} className="bg-red-500 hover:bg-red-600">Delete</Button>
+const EditingActions = ({ onSaveEdit, onDelete, itemId }) => (
+  <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2 justify-end" onClick={(e) => e.stopPropagation()}>
+    <Button onClick={onSaveEdit} className="bg-green-500 hover:bg-green-600 text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2">Save</Button>
+    <Button onClick={() => onDelete(itemId)} className="bg-red-500 hover:bg-red-600 text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2">Delete</Button>
   </div>
 );
 
@@ -197,7 +180,6 @@ const ResponsiveTable = ({
             ))}
             <EditingActions 
               onSaveEdit={onSaveEdit} 
-              onCancelEdit={onCancelEdit} 
               onDelete={onDelete} 
               itemId={item[idField]} 
             />
@@ -235,10 +217,20 @@ const ResponsiveTable = ({
     );
   };
 
+  // Check if any row is being edited
+  const isAnyRowInEditMode = editingId !== null;
+
+  // Get column classes based on current edit state
+  const getColumnClasses = (col) => {
+    let columnClass = '';
+    
+    return columnClass;
+  };
+
   return (
     <div>
       {/* Mobile View */}
-      <div className="sm:hidden overflow-auto pb-0">
+      <div className="lg:hidden overflow-auto pb-0">
         {mobileFiltersVisible && (
           <Filters 
             fields={filterFields}
@@ -274,19 +266,25 @@ const ResponsiveTable = ({
       </div>
 
       {/* Desktop View */}
-      <div className="hidden sm:block">
-        <div className="overflow-x-auto relative shadow-md sm:rounded-lg border border-gray-200">
-          <table className="w-full text-sm text-left text-gray-500 table-auto" style={tableStyles}>
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+      <div className="hidden lg:block lg:h-[calc(100vh-160px)] lg:min-h-[400px] flex flex-col">
+        <div className="flex-grow overflow-hidden rounded-lg border border-gray-200 shadow-md">
+          <table className="w-full text-sm text-left text-gray-500 table-fixed" style={tableStyles}>
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
               <tr>
                 {columns.map((col) => (
-                  <th key={col.accessor} className="p-2 pl-3">{col.header}</th>
+                  <th key={col.accessor} className={`p-2 pl-3 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`}>
+                    {col.header}
+                  </th>
                 ))}
-                {showActionColumn && <th className="p-2 pl-3 text-right">{actionColumnText}</th>}
+                {showActionColumn && (
+                  <th className={`p-2 pl-3 text-right ${isAnyRowInEditMode ? 'w-[150px]' : 'w-[100px]'}`}>
+                    {actionColumnText}
+                  </th>
+                )}
               </tr>
             </thead>
-            <tbody>
-              {!hideDesktopFilters && (
+            {!hideDesktopFilters && (
+              <tbody className="bg-gray-50">
                 <Filters 
                   fields={filterFields}
                   filters={filters}
@@ -295,60 +293,70 @@ const ResponsiveTable = ({
                   asTable={true}
                   columnsCount={showActionColumn ? columns.length + 1 : columns.length}
                 />
-              )}
-              
-              {data.map((item) => (
-                <tr 
-                  key={item[idField]} 
-                  className={`${item.is_active === false ? 'bg-red-100' : 'bg-white'} border-b hover:bg-gray-50 ${rowClickable ? 'cursor-pointer' : ''}`}
-                  onClick={rowClickable ? () => onRowClick(item[idField]) : undefined}
-                >
-                  {editingId === item[idField] ? (
-                    <>
-                      {columns.map((col) => (
-                        <td key={col.accessor} className="py-3 px-4 pl-3" onClick={(e) => e.stopPropagation()}>
-                          <FormField fieldConfig={col} data={editingData} onChange={onEditChange} availableOptions={availableOptions} />
+              </tbody>
+            )}
+            <tbody className="divide-y divide-gray-200 overflow-auto">
+                {data.map((item) => (
+                  <tr 
+                    key={item[idField]} 
+                    className={`${item.is_active === false ? 'bg-red-100' : 'bg-white'} border-b hover:bg-gray-50 ${rowClickable ? 'cursor-pointer' : ''}`}
+                    onClick={rowClickable ? () => onRowClick(item[idField]) : undefined}
+                  >
+                    {editingId === item[idField] ? (
+                      <>
+                        {columns.map((col) => (
+                          <td key={col.accessor} 
+                              className={`py-1 px-2 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`} 
+                              onClick={(e) => e.stopPropagation()}>
+                            <FormField 
+                              fieldConfig={col} 
+                              data={editingData} 
+                              onChange={onEditChange} 
+                              availableOptions={availableOptions} 
+                            />
+                          </td>
+                        ))}
+                        <td className="py-1 px-2 text-right w-[150px]" onClick={(e) => e.stopPropagation()}>
+                          <EditingActions 
+                            onSaveEdit={onSaveEdit} 
+                            onDelete={onDelete} 
+                            itemId={item[idField]} 
+                          />
                         </td>
-                      ))}
-                      <td className="py-3 px-4 pl-3 text-right" onClick={(e) => e.stopPropagation()}>
-                        <EditingActions 
-                          onSaveEdit={onSaveEdit} 
-                          onCancelEdit={onCancelEdit} 
-                          onDelete={onDelete} 
-                          itemId={item[idField]} 
-                        />
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      {columns.map((col) => (
-                        <td key={col.accessor} className="py-3 px-4 pl-3">
-                          {col.render ? col.render(item[col.accessor], item) : item[col.accessor]}
-                        </td>
-                      ))}
-                      {showActionColumn && (
-                        <td className="py-3 px-4 pl-3 text-right" onClick={(e) => e.stopPropagation()}>
-                          {renderActionButtons(item[idField], item)}
-                        </td>
-                      )}
-                    </>
-                  )}
-                </tr>
-              ))}
-              
-              {showAddRow && addFields && (
-                <tr className="bg-white border-b">
+                      </>
+                    ) : (
+                      <>
+                        {columns.map((col) => (
+                          <td key={col.accessor} className={`py-2 px-3 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`}>
+                            <div className="truncate">
+                              {col.render ? col.render(item[col.accessor], item) : item[col.accessor]}
+                            </div>
+                          </td>
+                        ))}
+                        {showActionColumn && (
+                          <td className="py-2 px-3 text-right w-[100px]" onClick={(e) => e.stopPropagation()}>
+                            {renderActionButtons(item[idField], item)}
+                          </td>
+                        )}
+                      </>
+                    )}
+                  </tr>
+                ))}
+            </tbody>
+            {showAddRow && addFields && (
+              <tfoot className="bg-white border-t sticky bottom-0 z-10">
+                <tr>
                   {addFields.map((field) => (
-                    <td key={field.name} className="py-3 px-4 pl-3">
+                    <td key={field.name} className="py-2 px-3">
                       <FormField fieldConfig={field} data={newItem} onChange={onNewItemChange} availableOptions={availableOptions} />
                     </td>
                   ))}
-                  <td className="py-3 px-4 pl-3">
+                  <td className="py-2 px-3 text-right">
                     <Button onClick={onAdd} className="bg-green-500 hover:bg-green-600">Add</Button>
                   </td>
                 </tr>
-              )}
-            </tbody>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

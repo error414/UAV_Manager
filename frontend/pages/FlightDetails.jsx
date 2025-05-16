@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
-  Layout, Loading, ConfirmModal, Button, Alert, FlightInfoCard, AnimatedMarker, GpsAnimationControls, AirspeedIndicator, AttitudeIndicator, AltitudeIndicator, ArrowButton,
-  VerticalSpeedIndicator, CompassIndicator, TurnCoordinator, ThrottleYawStick, ElevatorAileronStick, SignalStrengthIndicator, ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator
+  Layout, Loading, ConfirmModal, Button, Alert, FlightInfoCard, AnimatedMarker, GpsAnimationControls, AirspeedIndicator, AttitudeIndicator, AltitudeIndicator, ArrowButton, VerticalSpeedIndicator, CompassIndicator,
+  TurnCoordinator, ThrottleYawStick, ElevatorAileronStick, SignalStrengthIndicator, ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator, DataPanel, AccordionPanel
 } from '../components';
 import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState} from '../hooks';
 import { takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics } from '../utils';
@@ -65,26 +65,6 @@ const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying
   );
 };
 
-// Reusable accordion panel component for mobile view
-const MobileAccordionPanel = ({ title, isOpen, toggleOpen, children }) => {
-  return (
-    <div className="bg-gray-50 p-2 rounded-lg shadow mb-2">
-      <button
-        className="w-full flex items-center justify-between font-semibold text-gray-700"
-        onClick={toggleOpen}
-      >
-        {title}
-        <span>{isOpen ? '▲' : '▼'}</span>
-      </button>
-      {isOpen && (
-        <div className="mt-2">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
-
 // Reusable component for flight instruments
 const FlightInstruments = ({ currentGpsPoint, size, fullGpsData, currentPointIndex }) => {
   const getTurnRate = () => {
@@ -108,50 +88,6 @@ const FlightInstruments = ({ currentGpsPoint, size, fullGpsData, currentPointInd
         <VerticalSpeedIndicator verticalSpeed={currentGpsPoint?.vertical_speed || 0} size={size} minSpeed={-15} maxSpeed={15} />
       </div>
     </>
-  );
-};
-
-// TelemetryData component to display data panels
-const TelemetryData = ({ currentGpsPoint, gpsStats }) => {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      <div className="bg-white p-3 rounded-md shadow-sm">
-        <h4 className="text-md font-medium text-gray-700 mb-2">Statistics</h4>
-        <div className="text-sm space-y-1">
-          <p><span className="font-medium">Altitude:</span> {gpsStats.minAltitude?.toFixed(1) || 'N/A'} - {gpsStats.maxAltitude?.toFixed(1) || 'N/A'} m</p>
-          <p><span className="font-medium">Speed:</span> {gpsStats.minSpeed?.toFixed(1) || 'N/A'} - {gpsStats.maxSpeed?.toFixed(1) || 'N/A'} km/h</p>
-          <p><span className="font-medium">Vertical Speed:</span> {gpsStats.minVerticalSpeed?.toFixed(1) || 'N/A'} - {gpsStats.maxVerticalSpeed?.toFixed(1) || 'N/A'} m/s</p>
-          <p><span className="font-medium">Satellites:</span> {gpsStats.minSatellites || 'N/A'} - {gpsStats.maxSatellites || 'N/A'}</p>
-        </div>
-      </div>
-      <div className="bg-white p-3 rounded-md shadow-sm">
-        <h4 className="text-md font-medium text-gray-700 mb-2">Position Data</h4>
-        <div className="text-sm space-y-1">
-          <p><span className="font-medium">Latitude:</span> {currentGpsPoint?.latitude?.toFixed(6) || 'N/A'}</p>
-          <p><span className="font-medium">Longitude:</span> {currentGpsPoint?.longitude?.toFixed(6) || 'N/A'}</p>
-          <p><span className="font-medium">Satellites:</span> {currentGpsPoint?.num_sat || 'N/A'}</p>
-          <p><span className="font-medium">Timestamp:</span> {currentGpsPoint?.timestamp || 'N/A'}</p>
-        </div>
-      </div>
-      <div className="bg-white p-3 rounded-md shadow-sm">
-        <h4 className="text-md font-medium text-gray-700 mb-2">Movement Data</h4>
-        <div className="text-sm space-y-1">
-          <p><span className="font-medium">Speed:</span> {currentGpsPoint?.speed?.toFixed(1) || 'N/A'} km/h</p>
-          <p><span className="font-medium">Vertical Speed:</span> {currentGpsPoint?.vertical_speed?.toFixed(1) || 'N/A'} m/s</p>
-          <p><span className="font-medium">Altitude:</span> {currentGpsPoint?.altitude?.toFixed(1) || 'N/A'} m</p>
-          <p><span className="font-medium">Ground Course:</span> {currentGpsPoint?.ground_course?.toFixed(1) || 'N/A'}°</p>
-        </div>
-      </div>
-      <div className="bg-white p-3 rounded-md shadow-sm">
-        <h4 className="text-md font-medium text-gray-700 mb-2">Attitude Data</h4>
-        <div className="text-sm space-y-1">
-          <p><span className="font-medium">Pitch:</span> {currentGpsPoint?.pitch?.toFixed(1) || 'N/A'}°</p>
-          <p><span className="font-medium">Roll:</span> {currentGpsPoint?.roll?.toFixed(1) || 'N/A'}°</p>
-          <p><span className="font-medium">Yaw:</span> {currentGpsPoint?.yaw?.toFixed(1) || 'N/A'}°</p>
-          <p><span className="font-medium">Heading:</span> {currentGpsPoint?.ground_course?.toFixed(1) || 'N/A'}°</p>
-        </div>
-      </div>
-    </div>
   );
 };
 
@@ -249,11 +185,10 @@ const FlightDetails = () => {
 
   // Update telemetryOpen state based on GPS track availability
   useEffect(() => {
-    // Only expand when no GPS track is available
     if (!gpsTrack || gpsTrack.length === 0) {
       setTelemetryOpen(true);
     } else {
-      setTelemetryOpen(false); // Ensure it's collapsed when GPS data is available
+      setTelemetryOpen(false);
     }
   }, [gpsTrack]);
 
@@ -419,6 +354,35 @@ const FlightDetails = () => {
     ? fullGpsData[currentPointIndex] 
     : null;
 
+  // Prepare telemetry data items for DataPanel
+  const statisticsItems = [
+    { label: 'Altitude', value: `${gpsStats.minAltitude?.toFixed(1) || 'N/A'} - ${gpsStats.maxAltitude?.toFixed(1) || 'N/A'} m` },
+    { label: 'Speed', value: `${gpsStats.minSpeed?.toFixed(1) || 'N/A'} - ${gpsStats.maxSpeed?.toFixed(1) || 'N/A'} km/h` },
+    { label: 'Vertical Speed', value: `${gpsStats.minVerticalSpeed?.toFixed(1) || 'N/A'} - ${gpsStats.maxVerticalSpeed?.toFixed(1) || 'N/A'} m/s` },
+    { label: 'Satellites', value: `${gpsStats.minSatellites || 'N/A'} - ${gpsStats.maxSatellites || 'N/A'}` }
+  ];
+  
+  const positionItems = [
+    { label: 'Latitude', value: currentGpsPoint?.latitude?.toFixed(6) || 'N/A' },
+    { label: 'Longitude', value: currentGpsPoint?.longitude?.toFixed(6) || 'N/A' },
+    { label: 'Satellites', value: currentGpsPoint?.num_sat || 'N/A' },
+    { label: 'Timestamp', value: currentGpsPoint?.timestamp || 'N/A' }
+  ];
+  
+  const movementItems = [
+    { label: 'Speed', value: `${currentGpsPoint?.speed?.toFixed(1) || 'N/A'} km/h` },
+    { label: 'Vertical Speed', value: `${currentGpsPoint?.vertical_speed?.toFixed(1) || 'N/A'} m/s` },
+    { label: 'Altitude', value: `${currentGpsPoint?.altitude?.toFixed(1) || 'N/A'} m` },
+    { label: 'Ground Course', value: `${currentGpsPoint?.ground_course?.toFixed(1) || 'N/A'}°` }
+  ];
+  
+  const attitudeItems = [
+    { label: 'Pitch', value: `${currentGpsPoint?.pitch?.toFixed(1) || 'N/A'}°` },
+    { label: 'Roll', value: `${currentGpsPoint?.roll?.toFixed(1) || 'N/A'}°` },
+    { label: 'Yaw', value: `${currentGpsPoint?.yaw?.toFixed(1) || 'N/A'}°` },
+    { label: 'Heading', value: `${currentGpsPoint?.ground_course?.toFixed(1) || 'N/A'}°` }
+  ];
+
   return (
     <Layout>
       <ConfirmModal
@@ -460,7 +424,7 @@ const FlightDetails = () => {
             <div className="md:col-span-3 2xl:col-span-2 flex flex-col">
               {/* MOBILE: Instruments stacked, each box collapsible individually */}
               <div className="lg:hidden flex flex-col gap-4">
-                <MobileAccordionPanel 
+                <AccordionPanel 
                   title="Flight Instruments" 
                   isOpen={accordion.instruments} 
                   toggleOpen={() => toggleAccordion('instruments')}
@@ -473,9 +437,9 @@ const FlightDetails = () => {
                       currentPointIndex={currentPointIndex}
                     />
                   </div>
-                </MobileAccordionPanel>
+                </AccordionPanel>
                 
-                <MobileAccordionPanel 
+                <AccordionPanel 
                   title="Signal" 
                   isOpen={accordion.signal} 
                   toggleOpen={() => toggleAccordion('signal')}
@@ -489,9 +453,9 @@ const FlightDetails = () => {
                       direction="vertical"
                     />
                   </div>
-                </MobileAccordionPanel>
+                </AccordionPanel>
                 
-                <MobileAccordionPanel 
+                <AccordionPanel 
                   title="Flight Control Sticks" 
                   isOpen={accordion.sticks} 
                   toggleOpen={() => toggleAccordion('sticks')}
@@ -499,9 +463,9 @@ const FlightDetails = () => {
                   <div className="flex flex-row justify-center items-center gap-4 min-h-[220px]">
                     <FlightControlSticks currentGpsPoint={currentGpsPoint} size={200} />
                   </div>
-                </MobileAccordionPanel>
+                </AccordionPanel>
                 
-                <MobileAccordionPanel 
+                <AccordionPanel 
                   title="Telemetry" 
                   isOpen={accordion.telemetry} 
                   toggleOpen={() => toggleAccordion('telemetry')}
@@ -509,7 +473,7 @@ const FlightDetails = () => {
                   <div className="flex flex-col items-center justify-center w-full">
                     <TelemetryIndicators currentGpsPoint={currentGpsPoint} size={48} />
                   </div>
-                </MobileAccordionPanel>
+                </AccordionPanel>
               </div>
               
               {/* DESKTOP: Instruments side by side as before */}
@@ -594,7 +558,12 @@ const FlightDetails = () => {
                 <div className="flex-1" />
               </div>
               {telemetryOpen && (
-                <TelemetryData currentGpsPoint={currentGpsPoint} gpsStats={gpsStats} />
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <DataPanel title="Statistics" items={statisticsItems} />
+                  <DataPanel title="Position Data" items={positionItems} />
+                  <DataPanel title="Movement Data" items={movementItems} />
+                  <DataPanel title="Attitude Data" items={attitudeItems} />
+                </div>
               )}
             </div>
           </div>

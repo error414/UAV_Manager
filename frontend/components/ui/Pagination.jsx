@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const getVisiblePageNumbers = (currentPage, totalPages, siblingsCount = 1) => {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, i) => i + 1);

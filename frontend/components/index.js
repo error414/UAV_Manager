@@ -14,7 +14,6 @@ export { default as Loading } from './ui/Loading';
 export { default as ConfirmModal } from './ui/ConfirmModal';
 export { default as Pagination } from './ui/Pagination';
 export { getVisiblePageNumbers } from './ui/Pagination';
-export { default as FlightInfoCard } from './map/FlightInfoCard';
 export { default as AnimatedMarker } from './map/AnimatedMarker';
 export { default as GpsAnimationControls } from './map/GpsAnimationControls';
 export { default as TelemetryPanel } from './map/TelemetryPanel';
@@ -30,3 +29,5 @@ export { default as ThrottleYawStick } from './instruments/controls/ThrottleYawS
 export { default as ElevatorAileronStick } from './instruments/controls/ElevatorAileronStick';
 export { default as SignalStrengthIndicator } from './instruments/telemetry/SignalStrengthIndicator';
 export { ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator } from './instruments/telemetry/DigitalTelemetryIndicators';
+export { default as ConfigFileTable } from './ui/ConfigFileTable';
+export { InfoRow, GridInfo, InfoSection, DataPanel, AccordionPanel, FlightInfoCard } from './ui/InfoSection';

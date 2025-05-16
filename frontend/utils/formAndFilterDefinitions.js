@@ -1,4 +1,9 @@
-// Form definitions for user management
+/**
+ * Combined form and filter definitions for the application
+ * Contains all form fields, filter configurations, and initial states
+ */
+
+// === USER MANAGEMENT ===
 export const userFilterFormFields = [
   { name: 'email', label: 'Email', type: 'text', placeholder: 'Search by email' },
   { name: 'first_name', label: 'First Name', type: 'text', placeholder: 'Search by first name' },
@@ -12,7 +17,8 @@ export const userFilterFormFields = [
   { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Select active status', options: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }] }
 ];
 
-// Form definitions for UAV management
+// === UAV MANAGEMENT ===
+// UAV Edit Form
 export const uavEditFormFields = [
   { name: 'drone_name', label: 'Aircraft Name', type: 'text', placeholder: 'Aircraft Name' },
   { name: 'manufacturer', label: 'Manufacturer', type: 'text', placeholder: 'Manufacturer' },
@@ -38,7 +44,26 @@ export const uavEditFormFields = [
   { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Active Status', options: [{ value: true, label: 'Yes' }, { value: false, label: 'No' }] }
 ];
 
-// Utility constants for flight log forms
+// UAV Filter Initial State
+export const UAV_INITIAL_FILTERS = {
+  drone_name: '',
+  manufacturer: '',
+  type: '',
+  motors: '',
+  motor_type: '',
+  firmware_version: '',
+  video_system: '',
+  gps: '',
+  mag: '',
+  baro: '',
+  gyro: '',
+  acc: '',
+  registration_number: '',
+  serial_number: ''
+};
+
+// === FLIGHT LOG MANAGEMENT ===
+// Flight Log Form Options
 export const FLIGHT_FORM_OPTIONS = {
   light_conditions: [
     { value: 'Day', label: 'Day' },
@@ -55,6 +80,7 @@ export const FLIGHT_FORM_OPTIONS = {
   ]
 };
 
+// Flight Log Initial State
 export const INITIAL_FLIGHT_STATE = {
   departure_place: '',
   departure_date: '',

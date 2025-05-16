@@ -1,17 +1,39 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout,Alert, Button, ResponsiveTable, Loading, ConfirmModal, Pagination } from '../components';
-import { uavTableColumns, UAV_INITIAL_FILTERS } from '../utils';
-import { useAuth, useApi } from '../hooks';
+import { Layout, Alert, Button, ResponsiveTable, Loading, ConfirmModal, Pagination } from '../components';
+import { uavTableColumns, UAV_INITIAL_FILTERS, extractUavId } from '../utils';
+import { useAuth, useApi, useUAVs } from '../hooks';
+
+// Hilfshook für debounce-Filter
+function useDebouncedFilters(initialFilters, delay = 500) {
+  const [filters, setFilters] = useState(initialFilters);
+  const [debouncedFilters, setDebouncedFilters] = useState(initialFilters);
+  const filterTimer = useRef(null);
+
+  const handleFilterChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFilters(prev => {
+      const updated = { ...prev, [name]: value };
+      if (filterTimer.current) clearTimeout(filterTimer.current);
+      filterTimer.current = setTimeout(() => {
+        setDebouncedFilters(updated);
+      }, delay);
+      return updated;
+    });
+  }, [delay]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (filterTimer.current) clearTimeout(filterTimer.current);
+    };
+  }, []);
+
+  return { filters, setFilters, debouncedFilters, handleFilterChange };
+}
 
 const AircraftList = () => {
   const API_URL = import.meta.env.VITE_API_URL;
-
-  const filterFieldsForTable = uavTableColumns.map(col => ({
-    name: col.accessor,
-    placeholder: col.header,
-  }));
-
   const navigate = useNavigate();
   const [aircrafts, setAircrafts] = useState([]);
   const [error, setError] = useState(null);
@@ -19,92 +41,82 @@ const AircraftList = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize] = useState(20);
   const [sortField, setSortField] = useState('drone_name');
-  const [debouncedFilters, setDebouncedFilters] = useState({});
-  const filterTimer = useRef(null);
   const [importResult, setImportResult] = useState(null);
-  const [filters, setFilters] = useState(UAV_INITIAL_FILTERS);
-  const filtersRef = useRef(filters);
   const [mobileFiltersVisible, setMobileFiltersVisible] = useState(false);
-  
+
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
 
+  // Debounced Filter Hook
+  const {
+    filters,
+    setFilters,
+    debouncedFilters,
+    handleFilterChange
+  } = useDebouncedFilters(UAV_INITIAL_FILTERS);
+
+  // UAVs laden (nutzt useUAVs, aber hier für die Tabelle)
+  const { fetchUAVs } = useUAVs(
+    async (cb) => {
+      const auth = checkAuthAndGetUser();
+      if (!auth) return null;
+      return await cb();
+    },
+    fetchData,
+    setAircrafts
+  );
+
+  // Daten laden
   const fetchAircrafts = useCallback(async () => {
     const auth = checkAuthAndGetUser();
     if (!auth) return;
-    
     setIsLoading(true);
-    
     const queryParams = {
       ...debouncedFilters,
       page: currentPage,
       page_size: pageSize,
       ordering: sortField
     };
-    
     const result = await fetchData('/api/uavs/', queryParams);
-    
     if (!result.error) {
       setAircrafts(result.data.results || []);
       setTotalPages(Math.ceil((result.data.count || 0) / pageSize));
     }
-    
     setIsLoading(false);
   }, [fetchData, checkAuthAndGetUser, debouncedFilters, currentPage, pageSize, sortField]);
-
-  useEffect(() => {
-    filtersRef.current = filters;
-  }, [filters]);
 
   useEffect(() => {
     fetchAircrafts();
   }, [fetchAircrafts]);
 
-  useEffect(() => {
-    return () => {
-      if (filterTimer.current) {
-        clearTimeout(filterTimer.current);
-      }
-    };
-  }, []);
-
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
-    event.target.value = null; 
-
+    event.target.value = null;
     if (!file.name.endsWith('.csv')) {
       setError('File must be a CSV');
       return;
     }
-
     setIsLoading(true);
     setError(null);
-
     const formData = new FormData();
     formData.append('file', file);
-
     try {
       const response = await fetch(`${API_URL}/api/import/uav/`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: formData
       });
-
       const result = await response.json();
-
       if (!response.ok) {
         if (handleAuthError(response)) return;
         setError(result.error || 'Failed to import UAVs');
         setIsLoading(false);
         return;
       }
-
       await fetchAircrafts();
-      
       setImportResult({
         message: (result.message || '') + (result.details?.duplicate_message || '')
       });
@@ -115,123 +127,59 @@ const AircraftList = () => {
     }
   };
 
-  const handleFilterChange = useCallback((e) => {
-    const { name, value } = e.target;
-
-    setFilters(prev => {
-      const updated = { ...prev, [name]: value };
-      filtersRef.current = updated;
-      if (filterTimer.current) {
-        clearTimeout(filterTimer.current);
-      }
-      filterTimer.current = setTimeout(() => {
-        setCurrentPage(1);
-        setDebouncedFilters({ ...filtersRef.current });
-      }, 500);
-      return updated;
-    });
-  }, []);
-
-  const handleNewAircraft = () => {
-    navigate('/newaircraft');
-  };
-
-  const handleImportCSV = () => {
-    fileInputRef.current.click();
-  };
-
-  const handleAircraftClick = (uavId) => {
-    navigate(`/aircraftsettings/${uavId}`);
-  };
-
-  const handlePageChange = useCallback((page) => {
-    setCurrentPage(page);
-  }, []);
+  const handleNewAircraft = () => navigate('/newaircraft');
+  const handleImportCSV = () => fileInputRef.current.click();
+  const handleAircraftClick = (uav) => navigate(`/aircraftsettings/${extractUavId(uav)}`);
+  const handlePageChange = useCallback((page) => setCurrentPage(page), []);
 
   const handleExportCSV = () => {
     if (aircrafts.length === 0) {
       alert('No aircraft data to export.');
       return;
     }
-    
     const headers = [
       'drone_name', 'manufacturer', 'type', 'motors', 'motor_type',
       'video', 'video_system', 'esc', 'esc_firmware', 'receiver',
       'receiver_firmware', 'flight_controller', 'firmware', 'firmware_version',
       'gps', 'mag', 'baro', 'gyro', 'acc', 'registration_number', 'serial_number'
     ];
-    
-    const csvData = aircrafts.map(aircraft => [
-      aircraft.drone_name || '',
-      aircraft.manufacturer || '',
-      aircraft.type || '',
-      aircraft.motors || '',
-      aircraft.motor_type || '',
-      aircraft.video || '',
-      aircraft.video_system || '',
-      aircraft.esc || '',
-      aircraft.esc_firmware || '',
-      aircraft.receiver || '',
-      aircraft.receiver_firmware || '',
-      aircraft.flight_controller || '',
-      aircraft.firmware || '',
-      aircraft.firmware_version || '',
-      aircraft.gps || '',
-      aircraft.mag || '',
-      aircraft.baro || '',
-      aircraft.gyro || '',
-      aircraft.acc || '',
-      aircraft.registration_number || '',
-      aircraft.serial_number || ''
-    ]);
-    
+    const csvData = aircrafts.map(aircraft => headers.map(h => aircraft[h] || ''));
     csvData.unshift(headers);
-    
-    const csvContent = csvData.map(row => {
-      return row.map(cell => {
-        if (cell === null || cell === undefined) {
-          return '';
-        }
-        
+    const csvContent = csvData.map(row =>
+      row.map(cell => {
+        if (cell === null || cell === undefined) return '';
         const cellStr = String(cell);
-        
         if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
           return `"${cellStr.replace(/"/g, '""')}"`;
         }
         return cellStr;
-      }).join(',');
-    }).join('\n');
-    
+      }).join(',')
+    ).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').substring(0, 15);
-    
     link.setAttribute('href', url);
     link.setAttribute('download', `uav-export-${timestamp}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
     setTimeout(() => {
       URL.revokeObjectURL(url);
     }, 100);
   };
 
-  const toggleMobileFilters = () => {
-    setMobileFiltersVisible(prev => !prev);
-  };
+  const toggleMobileFilters = () => setMobileFiltersVisible(prev => !prev);
 
   const modifiedAircrafts = aircrafts.map(aircraft => ({
     ...aircraft,
-    flightlog_id: aircraft.uav_id
+    flightlog_id: extractUavId(aircraft)
   }));
 
   return (
     <Layout title="Aircraft List">
       <Alert type="error" message={error} />
-      
       {isLoading ? (
         <Loading message="Loading aircraft data..." />
       ) : (
@@ -250,11 +198,13 @@ const AircraftList = () => {
               {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
             </Button>
           </div>
-          
           <ResponsiveTable
             columns={uavTableColumns}
             data={modifiedAircrafts || []}
-            filterFields={filterFieldsForTable}
+            filterFields={uavTableColumns.map(col => ({
+              name: col.accessor,
+              placeholder: col.header,
+            }))}
             filters={filters}
             onFilterChange={handleFilterChange}
             onEdit={handleAircraftClick}
@@ -268,13 +218,11 @@ const AircraftList = () => {
           />
         </>
       )}
-      
       <Pagination 
         currentPage={currentPage} 
         totalPages={totalPages} 
         onPageChange={handlePageChange} 
       />
-
       <div className="flex justify-center gap-4 p-4 mt-4">
         <Button 
           onClick={handleNewAircraft} 
@@ -300,7 +248,6 @@ const AircraftList = () => {
         >
           Export CSV
         </Button>
-        
         <input
           type="file"
           ref={fileInputRef}

@@ -1,5 +1,3 @@
-import React from 'react';
-
 /**
  * Displays flight telemetry data including control surfaces and system information
  * @param {Object} gpsPoint - Current GPS data point with telemetry information

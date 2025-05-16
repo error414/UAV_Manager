@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Loading = ({ message = 'Loading...' }) => (
   <div className="flex h-screen items-center justify-center">
     <div className="flex flex-col items-center">

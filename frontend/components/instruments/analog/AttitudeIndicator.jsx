@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 export const AttitudeIndicator = ({ pitch = 0, roll = 0, size = 300 }) => {
   const canvasRef = useRef(null);

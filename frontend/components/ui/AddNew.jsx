@@ -1,4 +1,3 @@
-import React from 'react';
 import Button from './Button';
 
 const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", asTable }) => {
