@@ -450,7 +450,7 @@ const Flightlog = () => {
             </Button>
           </div>
           
-          <div className="flex-shrink-0 border-t border-gray-200 bg-white mt-0 -mb-7 lg:-mb-7">
+          <div className="flex-shrink-0 border-t border-gray-200 bg-white mt-0 mb-0">
             <div className="lg:hidden py-1">
               <div className="flex justify-center mb-2">
                 <Pagination 
@@ -488,7 +488,7 @@ const Flightlog = () => {
               </div>
             </div>
             
-            <div className="hidden lg:grid grid-cols-3 py-3 pb-6">
+            <div className="hidden lg:grid grid-cols-3 py-3 pb-1">
               <div className="flex space-x-2 self-center">
                 <Button 
                   onClick={handleImportClick}

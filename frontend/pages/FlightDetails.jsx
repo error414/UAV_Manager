@@ -421,7 +421,7 @@ const FlightDetails = () => {
           {/* Top row: Instruments + Map (top), responsive */}
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             {/* Left column */}
-            <div className="md:col-span-3 2xl:col-span-2 flex flex-col">
+            <div className="md:col-span-3 xl:col-span-2 flex flex-col">
               {/* MOBILE: Instruments stacked, each box collapsible individually */}
               <div className="lg:hidden flex flex-col gap-4">
                 <AccordionPanel 
@@ -511,8 +511,7 @@ const FlightDetails = () => {
                 </div>
               </div>
             </div>
-            <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col md:col-span-3 2xl:col-span-4" style={{ minHeight: '400px' }}>
-              <h3 className="text-lg font-medium text-gray-800 mb-3">Map View</h3>
+            <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col md:col-span-3 xl:col-span-4" style={{ minHeight: '400px' }}>
               <div className="flex-1" style={{ minHeight: '350px' }}>
                 <FlightMap
                   flight={flight}
