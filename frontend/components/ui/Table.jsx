@@ -143,6 +143,7 @@ const ResponsiveTable = ({
   mobileFiltersVisible = true, 
   mobileAddNewVisible = true,
   tableStyles = {},
+  containerStyles = {},
 }) => {
   const renderActionButtons = actionButtons || ((itemId) => (
     <Button 
@@ -224,6 +225,14 @@ const ResponsiveTable = ({
   const getColumnClasses = (col) => {
     let columnClass = '';
     
+    // Check if column has a width specified and apply it
+    if (col.width) {
+      columnClass += ` w-[${col.width}]`;
+    } else if (!showActionColumn) {
+      // Distribute width more evenly when no action column
+      columnClass += ` flex-1`;
+    }
+    
     return columnClass;
   };
 
@@ -266,9 +275,14 @@ const ResponsiveTable = ({
       </div>
 
       {/* Desktop View */}
-      <div className="hidden xl:block xl:h-[calc(100vh-160px)] xl:min-h-[400px] flex flex-col">
+      <div className="hidden xl:block xl:flex flex-col" 
+          style={{
+            height: containerStyles.height || 'calc(100vh-160px)',
+            minHeight: containerStyles.minHeight || '400px',
+            maxHeight: containerStyles.maxHeight
+          }}>
         <div className="flex-grow overflow-hidden rounded-lg border border-gray-200 shadow-md">
-          <table className="w-full text-sm text-left text-gray-500 table-fixed" style={tableStyles}>
+          <table className={`w-full text-sm text-left text-gray-500 ${showActionColumn ? 'table-fixed' : ''}`} style={tableStyles}>
             <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
               <tr>
                 {columns.map((col) => (
@@ -295,7 +309,7 @@ const ResponsiveTable = ({
                 />
               </tbody>
             )}
-            <tbody className="divide-y divide-gray-200 overflow-auto">
+            <tbody className="divide-y divide-gray-200">
                 {data.map((item) => (
                   <tr 
                     key={item[idField]} 

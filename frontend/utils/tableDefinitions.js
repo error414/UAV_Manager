@@ -13,24 +13,14 @@ export const userTableColumns = [
 
 export const uavTableColumns = [
   { header: 'Aircraft', accessor: 'drone_name' },
-  { header: 'Manufacturer', accessor: 'manufacturer' },
   { header: 'Type', accessor: 'type' },
   { header: 'Motors', accessor: 'motors' },
   { header: 'Motor Type', accessor: 'motor_type' },
-  { header: 'Flight Time', accessor: 'total_flight_time', render: (seconds) => {
-    if (!seconds) return 'N/A';
-    const hh = Math.floor(seconds / 3600);
-    const mm = Math.floor((seconds % 3600) / 60);
-    return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
-  }},
-  { header: 'TO', accessor: 'total_takeoffs' },
-  { header: 'LDG', accessor: 'total_landings' },
   { header: 'Flight Controller', accessor: 'flight_controller' },
   { header: 'Firmware', accessor: 'firmware' },
   { header: 'Version', accessor: 'firmware_version' },
   { header: 'ESC', accessor: 'esc' },
   { header: 'ESC Firmware', accessor: 'esc_firmware' },
-  { header: 'Video', accessor: 'video' },
   { header: 'Video System', accessor: 'video_system' },
   { header: 'Receiver', accessor: 'receiver' },
   { header: 'Receiver FW', accessor: 'receiver_firmware' },
@@ -39,7 +29,6 @@ export const uavTableColumns = [
   { header: 'BARO', accessor: 'baro' },
   { header: 'GYRO', accessor: 'gyro' },
   { header: 'ACC', accessor: 'acc' },
-  { header: 'Reg. Number', accessor: 'registration_number' },
   { header: 'Serial Number', accessor: 'serial_number' },
   { header: 'Status', accessor: 'is_active', render: (value) => value ? 'Active' : 'Inactive' }
 ];

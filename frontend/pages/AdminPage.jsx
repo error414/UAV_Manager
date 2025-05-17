@@ -397,6 +397,17 @@ const AdminPage = () => {
     width: "100%"
   };
 
+  // Add this for controlling table container heights
+  const mainTableContainerStyles = {
+    height: "auto", 
+    minHeight: "auto"
+  };
+  
+  const secondaryTableContainerStyles = {
+    height: "auto", 
+    minHeight: "auto"
+  };
+
   if (loading) return <Loading />;
   if (!isStaff) return <Navigate to="/flightlog" state={{ from: location }} replace />;
 
@@ -420,102 +431,115 @@ const AdminPage = () => {
             </Button>
           </div>
 
-          <ResponsiveTable 
-            columns={userTableColumns}
-            data={users}
-            onEdit={handleEdit}
-            filterFields={userFilterFormFields}
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            editingId={editingUserId}
-            editingData={editingUser}
-            onEditChange={handleEditChange}
-            onSaveEdit={handleSaveEdit}
-            onCancelEdit={handleCancelEdit}
-            onDelete={handleDeleteUser}
-            showAddRow={false}
-            rowClickable={true}
-            showActionColumn={true}
-            actionColumnText="Actions"
-            idField="user_id"
-            titleField="email"
-            onRowClick={handleUserSelect}
-            mobileFiltersVisible={mobileFiltersVisible}
-            tableStyles={tableStyles}
-          />
+          <div className="mb-2">
+            <ResponsiveTable 
+              columns={userTableColumns}
+              data={users}
+              onEdit={handleEdit}
+              filterFields={userFilterFormFields}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              editingId={editingUserId}
+              editingData={editingUser}
+              onEditChange={handleEditChange}
+              onSaveEdit={handleSaveEdit}
+              onCancelEdit={handleCancelEdit}
+              onDelete={handleDeleteUser}
+              showAddRow={false}
+              rowClickable={true}
+              showActionColumn={true}
+              actionColumnText="Actions"
+              idField="user_id"
+              titleField="email"
+              onRowClick={handleUserSelect}
+              mobileFiltersVisible={mobileFiltersVisible}
+              tableStyles={tableStyles}
+              containerStyles={mainTableContainerStyles}
+            />
+          </div>
+          
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+          
           {selectedUserId && (
-            <div className="mt-10">
-              <h2 className="text-xl font-semibold mb-4 text-center">Aircraft for {selectedUserName}</h2>
+            <div className="mt-2">
+              <h2 className="text-lg font-semibold mb-1 text-center">Aircraft for {selectedUserName}</h2>
               {loadingUAVs ? <Loading /> : userUAVs.length > 0 ? (
                 <>
                   <Alert type="error" message={uavError} />
-                  <ResponsiveTable 
-                    columns={uavTableColumns}
-                    data={userUAVs}
-                    onEdit={handleUavEdit}
-                    filterFields={[]}
-                    filters={{}}
-                    rowClickable={false}
-                    showActionColumn={true}
-                    actionColumnText="Actions"
-                    idField="uav_id"
-                    titleField="drone_name"
-                    editingId={editingUavId}
-                    editingData={editingUav}
-                    onEditChange={handleUavEditChange}
-                    onSaveEdit={handleUavSaveEdit}
-                    onCancelEdit={handleUavCancelEdit}
-                    onDelete={handleDeleteUav}
-                    editFormFields={uavEditFormFields}
-                    tableStyles={tableStyles}
-                  />
-                  <Pagination currentPage={uavCurrentPage} totalPages={uavTotalPages} onPageChange={handleUavPageChange} />
-                </>
-              ) : (
-                <div className="text-center py-4 bg-gray-100 rounded-md">This user has no registered aircraft.</div>
-              )}
-              <div className="mt-10">
-                <h2 className="text-xl font-semibold mb-4 text-center">Flight Logs for {selectedUserName}</h2>
-                {loadingFlightLogs ? <Loading /> : flightLogsError ? (
-                  <Alert type="error" message={flightLogsError} />
-                ) : userFlightLogs.length > 0 ? (
-                  <>
-                    <ResponsiveTable
-                      columns={enhancedFlightLogColumns}
-                      data={userFlightLogs}
+                  <div className="mb-1">
+                    <ResponsiveTable 
+                      columns={uavTableColumns}
+                      data={userUAVs}
+                      onEdit={handleUavEdit}
                       filterFields={[]}
                       filters={{}}
                       rowClickable={false}
                       showActionColumn={true}
                       actionColumnText="Actions"
-                      idField="flightlog_id"
-                      titleField="departure_date"
-                      onEdit={handleFlightLogEdit}
-                      editingId={editingFlightLogId}
-                      editingData={editingFlightLog}
-                      onEditChange={handleFlightLogEditChange}
-                      onSaveEdit={handleFlightLogSaveEdit}
-                      onCancelEdit={handleFlightLogCancelEdit}
-                      onDelete={handleFlightLogDelete}
-                      editFormFields={flightLogTableColumns.map(col => ({
-                        name: col.accessor,
-                        label: col.header,
-                        type: 'text',
-                        placeholder: col.header
-                      }))}
+                      idField="uav_id"
+                      titleField="drone_name"
+                      editingId={editingUavId}
+                      editingData={editingUav}
+                      onEditChange={handleUavEditChange}
+                      onSaveEdit={handleUavSaveEdit}
+                      onCancelEdit={handleUavCancelEdit}
+                      onDelete={handleDeleteUav}
+                      editFormFields={uavEditFormFields}
                       tableStyles={tableStyles}
+                      containerStyles={secondaryTableContainerStyles}
                     />
+                  </div>
+                  <Pagination currentPage={uavCurrentPage} totalPages={uavTotalPages} onPageChange={handleUavPageChange} />
+                </>
+              ) : (
+                <div className="text-center py-1 bg-gray-100 rounded-md">This user has no registered aircraft.</div>
+              )}
+              
+              <div className="mt-2">
+                <h2 className="text-lg font-semibold mb-1 text-center">Flight Logs for {selectedUserName}</h2>
+                {loadingFlightLogs ? <Loading /> : flightLogsError ? (
+                  <Alert type="error" message={flightLogsError} />
+                ) : userFlightLogs.length > 0 ? (
+                  <>
+                    <div className="mb-1">
+                      <ResponsiveTable
+                        columns={enhancedFlightLogColumns}
+                        data={userFlightLogs}
+                        filterFields={[]}
+                        filters={{}}
+                        rowClickable={false}
+                        showActionColumn={true}
+                        actionColumnText="Actions"
+                        idField="flightlog_id"
+                        titleField="departure_date"
+                        onEdit={handleFlightLogEdit}
+                        editingId={editingFlightLogId}
+                        editingData={editingFlightLog}
+                        onEditChange={handleFlightLogEditChange}
+                        onSaveEdit={handleFlightLogSaveEdit}
+                        onCancelEdit={handleFlightLogCancelEdit}
+                        onDelete={handleFlightLogDelete}
+                        editFormFields={flightLogTableColumns.map(col => ({
+                          name: col.accessor,
+                          label: col.header,
+                          type: 'text',
+                          placeholder: col.header
+                        }))}
+                        tableStyles={tableStyles}
+                        containerStyles={secondaryTableContainerStyles}
+                      />
+                    </div>
                     <Pagination currentPage={flightLogCurrentPage} totalPages={flightLogTotalPages} onPageChange={setFlightLogCurrentPage} />
                   </>
                 ) : (
-                  <div className="text-center py-4 bg-gray-100 rounded-md">This user has no flight logs.</div>
+                  <div className="text-center py-1 bg-gray-100 rounded-md">This user has no flight logs.</div>
                 )}
               </div>
             </div>
           )}
         </>
       )}
+      
       <ConfirmModal
         open={!!confirmDeleteUserId}
         title="Delete User"

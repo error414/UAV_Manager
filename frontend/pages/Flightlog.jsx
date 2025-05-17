@@ -17,7 +17,7 @@ const Flightlog = () => {
   const [newFlight, setNewFlight] = useState({...INITIAL_FLIGHT_STATE});
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(17);
   const [isLoading, setIsLoading] = useState(true);
   const [sortField, setSortField] = useState('-departure_date,-departure_time');
   const [debouncedFilters, setDebouncedFilters] = useState({});
@@ -69,6 +69,7 @@ const Flightlog = () => {
       const result = await fetchData('/api/flightlogs/', queryParams);
       
       if (!result.error) {
+        const resultCount = result.data.results?.length || 0;
         setLogs(result.data.results || []);
         setTotalPages(Math.ceil((result.data.count || 0) / pageSize));
       }
@@ -359,24 +360,23 @@ const Flightlog = () => {
     const nonDataHeight = 150;
     const availableHeight = containerHeight - nonDataHeight;
     let optimalRows = Math.floor(availableHeight / estimatedRowHeight);
-    optimalRows = Math.max(5, Math.min(optimalRows, 30));
+    optimalRows = Math.max(5, Math.min(optimalRows, 50)); // Increase min to 10, max to 50
     
     setPageSize(optimalRows);
     setPageSizeInitialized(true);
     setPageSizeCalculationAttempted(true);
   }, [pageSizeCalculationAttempted]);
 
-  // Immediate effect to calculate page size as soon as possible, with a longer timeout
+  // Make the timeout longer to ensure DOM is fully rendered
   useEffect(() => {
-    // A longer timeout (100ms) to ensure DOM is fully rendered
+    // Longer timeout (250ms) to ensure DOM is fully rendered
     const timer = setTimeout(() => {
       calculateOptimalPageSize();
-    }, 100);
+    }, 250);
     
     // Safety timer to prevent infinite loading
     const safetyTimer = setTimeout(() => {
       if (!pageSizeInitialized) {
-        console.warn("Page size calculation timed out, using default value");
         setPageSizeInitialized(true);
         setIsLoading(false);
       }
