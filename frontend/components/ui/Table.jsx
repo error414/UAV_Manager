@@ -230,7 +230,7 @@ const ResponsiveTable = ({
   return (
     <div>
       {/* Mobile View */}
-      <div className="lg:hidden overflow-auto pb-0">
+      <div className="xl:hidden overflow-auto pb-0">
         {mobileFiltersVisible && (
           <Filters 
             fields={filterFields}
@@ -266,7 +266,7 @@ const ResponsiveTable = ({
       </div>
 
       {/* Desktop View */}
-      <div className="hidden lg:block lg:h-[calc(100vh-160px)] lg:min-h-[400px] flex flex-col">
+      <div className="hidden xl:block xl:h-[calc(100vh-160px)] xl:min-h-[400px] flex flex-col">
         <div className="flex-grow overflow-hidden rounded-lg border border-gray-200 shadow-md">
           <table className="w-full text-sm text-left text-gray-500 table-fixed" style={tableStyles}>
             <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">

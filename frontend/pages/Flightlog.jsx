@@ -17,8 +17,8 @@ const Flightlog = () => {
   const [newFlight, setNewFlight] = useState({...INITIAL_FLIGHT_STATE});
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [pageSize, setPageSize] = useState(19);
-  const [isLoading, setIsLoading] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
+  const [isLoading, setIsLoading] = useState(true);
   const [sortField, setSortField] = useState('-departure_date,-departure_time');
   const [debouncedFilters, setDebouncedFilters] = useState({});
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -26,6 +26,8 @@ const Flightlog = () => {
   const [mobileAddNewVisible, setMobileAddNewVisible] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [pageSizeInitialized, setPageSizeInitialized] = useState(false);
+  const [pageSizeCalculationAttempted, setPageSizeCalculationAttempted] = useState(false);
 
   const fileInputRef = useRef(null);
   const filterTimer = useRef(null);
@@ -333,25 +335,64 @@ const Flightlog = () => {
   }, [safeAvailableUAVs]);
 
   const calculateOptimalPageSize = useCallback(() => {
-    if (!tableContainerRef.current) return;
+    if (!tableContainerRef.current) {
+      // If table container isn't available, use default
+      if (!pageSizeCalculationAttempted) {
+        setPageSizeCalculationAttempted(true);
+        setPageSizeInitialized(true);
+      }
+      return;
+    }
     
     const containerHeight = tableContainerRef.current.clientHeight;
+    
+    // If container height is too small, use default
+    if (containerHeight < 100) {
+      if (!pageSizeCalculationAttempted) {
+        setPageSizeCalculationAttempted(true);
+        setPageSizeInitialized(true);
+      }
+      return;
+    }
+    
     const estimatedRowHeight = 53;
     const nonDataHeight = 150;
     const availableHeight = containerHeight - nonDataHeight;
     let optimalRows = Math.floor(availableHeight / estimatedRowHeight);
     optimalRows = Math.max(5, Math.min(optimalRows, 30));
-    if (optimalRows !== pageSize) {
-      setPageSize(optimalRows);
-    }
-  }, [pageSize]);
+    
+    setPageSize(optimalRows);
+    setPageSizeInitialized(true);
+    setPageSizeCalculationAttempted(true);
+  }, [pageSizeCalculationAttempted]);
+
+  // Immediate effect to calculate page size as soon as possible, with a longer timeout
+  useEffect(() => {
+    // A longer timeout (100ms) to ensure DOM is fully rendered
+    const timer = setTimeout(() => {
+      calculateOptimalPageSize();
+    }, 100);
+    
+    // Safety timer to prevent infinite loading
+    const safetyTimer = setTimeout(() => {
+      if (!pageSizeInitialized) {
+        console.warn("Page size calculation timed out, using default value");
+        setPageSizeInitialized(true);
+        setIsLoading(false);
+      }
+    }, 2000);
+    
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(safetyTimer);
+    };
+  }, [calculateOptimalPageSize]);
 
   useEffect(() => {
     const handleResize = () => {
       calculateOptimalPageSize();
     };
     
-    calculateOptimalPageSize();
     window.addEventListener('resize', handleResize);
     
     return () => {
@@ -359,14 +400,17 @@ const Flightlog = () => {
     };
   }, [calculateOptimalPageSize]);
 
+  // Separate effect for fetching UAVs
   useEffect(() => {
-    calculateOptimalPageSize();
-  }, [calculateOptimalPageSize, tableContainerRef.current]);
-
-  useEffect(() => {
-    fetchFlightLogs();
     fetchUAVs();
-  }, [fetchFlightLogs, fetchUAVs, debouncedFilters, currentPage, sortField]);
+  }, [fetchUAVs]);
+
+  // Modified to ensure data loads even if page size calculation had issues
+  useEffect(() => {
+    if (pageSizeInitialized) {
+      fetchFlightLogs();
+    }
+  }, [fetchFlightLogs, pageSizeInitialized, debouncedFilters, currentPage, sortField]);
 
   useEffect(() => {
     return () => {
@@ -386,7 +430,7 @@ const Flightlog = () => {
         </div>
       ) : (
         <div className="flex flex-col h-full" style={{ height: "calc(100vh - 50px)" }}>
-          <div className="lg:hidden mt-0.5 mb-0.5 w-full">
+          <div className="xl:hidden mt-0.5 mb-0.5 w-full">
             <Button 
               onClick={toggleMobileFilters}
               variant="secondary"
@@ -435,7 +479,7 @@ const Flightlog = () => {
             />
           </div>
           
-          <div className="lg:hidden mt-3 mb-0.5 w-full">
+          <div className="xl:hidden mt-3 mb-0.5 w-full">
             <Button 
               onClick={toggleMobileAddNew}
               variant="success"
@@ -451,7 +495,7 @@ const Flightlog = () => {
           </div>
           
           <div className="flex-shrink-0 border-t border-gray-200 bg-white mt-0 mb-0">
-            <div className="lg:hidden py-1">
+            <div className="xl:hidden py-1">
               <div className="flex justify-center mb-2">
                 <Pagination 
                   currentPage={currentPage} 
@@ -488,7 +532,7 @@ const Flightlog = () => {
               </div>
             </div>
             
-            <div className="hidden lg:grid grid-cols-3 py-3 pb-1">
+            <div className="hidden xl:grid grid-cols-3 py-3 pb-1">
               <div className="flex space-x-2 self-center">
                 <Button 
                   onClick={handleImportClick}

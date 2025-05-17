@@ -4,7 +4,7 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
   if (asTable) {
     // Desktop view: render as a table row.
     return (
-      <tr className="hidden lg:table-row">
+      <tr className="hidden xl:table-row">
         {fields.map(field => (
           <td key={field.name} className="p-2">
             {field.type === "select" ? (
@@ -47,7 +47,7 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
 
   // Mobile view: render as a block.
   return (
-    <div className="lg:hidden p-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
+    <div className="xl:hidden p-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
       <h3 className="font-medium text-gray-700 mb-3">Add New Item</h3>
       <div className="space-y-3">
         {fields.map(field => (
