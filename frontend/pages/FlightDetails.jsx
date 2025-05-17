@@ -421,7 +421,7 @@ const FlightDetails = () => {
           {/* Top row: Instruments + Map (top), responsive */}
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             {/* Left column */}
-            <div className="md:col-span-3 xl:col-span-2 flex flex-col">
+            <div className="md:col-span-3 2xl:col-span-2 flex flex-col">
               {/* MOBILE: Instruments stacked, each box collapsible individually */}
               <div className="lg:hidden flex flex-col gap-4">
                 <AccordionPanel 
@@ -511,8 +511,9 @@ const FlightDetails = () => {
                 </div>
               </div>
             </div>
-            <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col md:col-span-3 xl:col-span-4" style={{ minHeight: '400px' }}>
-              <div className="flex-1" style={{ minHeight: '350px' }}>
+            <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col justify-between md:col-span-3 2xl:col-span-4" 
+                 style={{ height: 'calc(100% - 1rem)' }}>
+              <div className="flex-1" style={{ minHeight: '280px' }}>
                 <FlightMap
                   flight={flight}
                   gpsTrack={gpsTrack}
@@ -524,20 +525,20 @@ const FlightDetails = () => {
                   fullGpsData={fullGpsData}
                 />
               </div>
+              <div className="mt-2 pt-2 border-t border-gray-200">
+                <GpsAnimationControls
+                  isPlaying={isPlaying}
+                  startAnimation={startAnimation}
+                  pauseAnimation={pauseAnimation}
+                  resetAnimation={resetAnimation}
+                  animationSpeed={animationSpeed}
+                  changeSpeed={changeSpeed}
+                  currentPointIndex={currentPointIndex}
+                  trackLength={gpsTrack?.length || 0}
+                  onPositionChange={handlePositionChange}
+                />
+              </div>
             </div>
-          </div>
-          <div>
-            <GpsAnimationControls
-              isPlaying={isPlaying}
-              startAnimation={startAnimation}
-              pauseAnimation={pauseAnimation}
-              resetAnimation={resetAnimation}
-              animationSpeed={animationSpeed}
-              changeSpeed={changeSpeed}
-              currentPointIndex={currentPointIndex}
-              trackLength={gpsTrack?.length || 0}
-              onPositionChange={handlePositionChange}
-            />
           </div>
           <div>
             <div className="bg-gray-50 p-4 rounded-lg shadow">

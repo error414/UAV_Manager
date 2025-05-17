@@ -81,8 +81,7 @@ const GpsAnimationControls = ({
   onPositionChange
 }) => {
   return (
-    <div className="bg-gray-50 p-4 rounded-lg shadow">
-      <h3 className="text-lg font-medium text-gray-800 mb-3">GPS Track Animation</h3>
+    <>
       <div className="flex flex-wrap gap-4 justify-center items-center">
         <div className="flex gap-2">
           {!isPlaying ? (
@@ -152,7 +151,7 @@ const GpsAnimationControls = ({
           <span>End</span>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
