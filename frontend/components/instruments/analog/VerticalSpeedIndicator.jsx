@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { BaseInstrument } from '../../../components';
+import { useState, useEffect } from 'react';
 
 const VerticalSpeedIndicator = ({ 
   verticalSpeed = 0, 
@@ -7,6 +8,19 @@ const VerticalSpeedIndicator = ({
   minSpeed = -15,  
   maxSpeed = 15,
 }) => {
+  // State to track if any extreme value has been detected
+  const [dataInvalid, setDataInvalid] = useState(false);
+  
+  // Check if vertical speed exceeds reasonable limits
+  useEffect(() => {
+    if (Math.abs(verticalSpeed) > 180) {
+      setDataInvalid(true);
+    }
+  }, [verticalSpeed]);
+  
+  // Use 0 if data has been marked invalid at any point
+  const validVerticalSpeed = dataInvalid ? 0 : verticalSpeed;
+  
   // Calculate needle angle - 0 m/s is at 0 deg (top), negative down, positive up
   const calculateNeedleAngle = (speed) => {
     // Clamp speed to valid range
@@ -16,7 +30,7 @@ const VerticalSpeedIndicator = ({
     return (clampedSpeed / (maxSpeed - minSpeed)) * 180 * 2;
   };
   
-  const needleAngle = calculateNeedleAngle(verticalSpeed);
+  const needleAngle = calculateNeedleAngle(validVerticalSpeed);
   const center = size / 2;
   const radius = size * 0.45;
   const textRadius = radius * 0.75;

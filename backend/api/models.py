@@ -263,16 +263,32 @@ def delete_file_on_log_delete(sender, instance, **kwargs):
         MaintenanceService.handle_file_deletion(instance.file.path)
 
 
+# Komponentenwahl für Wartungserinnerungen
+COMPONENT_CHOICES = [
+    ('MOTOR', 'Motor'),
+    ('PROPELLER', 'Propeller'),
+    ('FRAME', 'Frame'),
+]
+
 # Wartungserinnerungen (MAINTENANCE_REMINDERS)
 class MaintenanceReminder(models.Model):
     reminder_id = models.AutoField(primary_key=True)
-    uav = models.ForeignKey(UAV, on_delete=models.CASCADE, related_name='maintenance_reminders')
-    component = models.CharField(max_length=100)
-    last_maintenance = models.DateTimeField()
-    next_maintenance = models.DateTimeField()
+    uav = models.ForeignKey(UAV, on_delete=models.CASCADE, related_name='reminders')
+    component = models.CharField(max_length=50, choices=COMPONENT_CHOICES)
+    last_maintenance = models.DateField()
+    next_maintenance = models.DateField()
     reminder_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        # verhindert ab jetzt doppelte (uav, component)-Paare
+        constraints = [
+            models.UniqueConstraint(
+                fields=['uav', 'component'],
+                name='unique_uav_component_reminder'
+            )
+        ]
     
     def __str__(self):
         return f"Reminder for {self.component} on UAV {self.uav}"

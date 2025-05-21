@@ -105,15 +105,25 @@ const useAircraftForm = (isEditMode, uavId) => {
 
       const filteredFormData = { ...formData };
       
-      ['props_maint_date', 'motor_maint_date', 'frame_maint_date',
-       'props_reminder_date', 'motor_reminder_date', 'frame_reminder_date'
-      ].forEach(field => {
-        if (!filteredFormData[field] || filteredFormData[field].trim() === '') {
+      // Collect maintenance dates for later use
+      const maintFields = [
+        'props_maint_date', 'motor_maint_date', 'frame_maint_date',
+        'props_reminder_date', 'motor_reminder_date', 'frame_reminder_date'
+      ];
+      
+      const maintenanceData = {};
+      
+      maintFields.forEach(field => {
+        if (filteredFormData[field] && filteredFormData[field].trim() !== '') {
+          maintenanceData[field] = filteredFormData[field];
+        }
+        // Remove from initial payload if not in edit mode
+        if (!isEditMode) {
           delete filteredFormData[field];
         }
       });
 
-      const aircraftPayload = {
+      const basicPayload = {
         ...filteredFormData,
         user: auth.user_id,
         motors: parseInt(filteredFormData.motors),
@@ -124,17 +134,45 @@ const useAircraftForm = (isEditMode, uavId) => {
         acc: parseInt(filteredFormData.acc)
       };
 
-      const endpoint = isEditMode ? `/api/uavs/${uavId}/` : '/api/uavs/';
-      const method = isEditMode ? 'PUT' : 'POST';
-      
-      const result = await fetchData(endpoint, {}, method, aircraftPayload);
-      
-      if (!result.error) {
-        setSuccess(isEditMode ? 'Aircraft successfully updated!' : 'Aircraft successfully registered!');
+      if (isEditMode) {
+        // In edit mode, update everything in one request
+        const endpoint = `/api/uavs/${uavId}/`;
+        const result = await fetchData(endpoint, {}, 'PUT', basicPayload);
         
-        if (!isEditMode) {
+        if (!result.error) {
+          setSuccess('Aircraft successfully updated!');
+          setTimeout(() => navigate('/AircraftList'), 1500);
+        }
+      } else {
+        // For new aircraft: first create the UAV, then add maintenance data
+        const createResult = await fetchData('/api/uavs/', {}, 'POST', basicPayload);
+        
+        if (!createResult.error) {
+          const newUavId = createResult.data.id || createResult.data.uav_id;
+          
+          // Check if we have maintenance dates to update
+          const hasMaintData = Object.keys(maintenanceData).length > 0;
+          
+          if (hasMaintData && newUavId) {
+            // Update the newly created UAV with maintenance dates
+            const updateResult = await fetchData(
+              `/api/uavs/${newUavId}/`, 
+              {}, 
+              'PATCH', 
+              maintenanceData
+            );
+            
+            if (updateResult.error) {
+              setSuccess('Aircraft registered, but there was an issue setting maintenance dates.');
+            } else {
+              setSuccess('Aircraft successfully registered with maintenance dates!');
+            }
+          } else {
+            setSuccess('Aircraft successfully registered!');
+          }
+          
           setFormData(DEFAULT_FORM_DATA);
-        } else {
+          // Add redirection to AircraftList after successful creation
           setTimeout(() => navigate('/AircraftList'), 1500);
         }
       }

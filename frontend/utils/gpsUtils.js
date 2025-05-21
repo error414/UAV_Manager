@@ -133,7 +133,6 @@ export const parseGPSFile = async (file) => {
         gpsPoint.transmitter_power = parseInt(columns[indexMap.tpwr], 10);
       }
       
-      // Add new control input fields
       if (indexMap.ail !== -1 && columns[indexMap.ail]) {
         gpsPoint.aileron = parseFloat(columns[indexMap.ail]);
       }

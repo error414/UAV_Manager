@@ -22,7 +22,6 @@ function useDebouncedFilters(initialFilters, delay = 500) {
     });
   }, [delay]);
 
-  // Cleanup
   useEffect(() => {
     return () => {
       if (filterTimer.current) clearTimeout(filterTimer.current);
@@ -209,12 +208,13 @@ const AircraftList = () => {
             onFilterChange={handleFilterChange}
             onEdit={handleAircraftClick}
             onRowClick={handleAircraftClick}
-            hideDesktopFilters={false}
+            hideDesktopFilters={true}
             rowClickable={true}
             showActionColumn={false}
             idField="flightlog_id"
             titleField="drone_name"
             mobileFiltersVisible={mobileFiltersVisible}
+            tableStyles={{ width: '100%' }}
           />
         </>
       )}

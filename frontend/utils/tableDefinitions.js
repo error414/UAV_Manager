@@ -16,21 +16,16 @@ export const uavTableColumns = [
   { header: 'Type', accessor: 'type' },
   { header: 'Motors', accessor: 'motors' },
   { header: 'Motor Type', accessor: 'motor_type' },
-  { header: 'Flight Controller', accessor: 'flight_controller' },
   { header: 'Firmware', accessor: 'firmware' },
   { header: 'Version', accessor: 'firmware_version' },
-  { header: 'ESC', accessor: 'esc' },
-  { header: 'ESC Firmware', accessor: 'esc_firmware' },
+  { header: 'ESC FW', accessor: 'esc_firmware' },
   { header: 'Video System', accessor: 'video_system' },
-  { header: 'Receiver', accessor: 'receiver' },
   { header: 'Receiver FW', accessor: 'receiver_firmware' },
   { header: 'GPS', accessor: 'gps' },
   { header: 'MAG', accessor: 'mag' },
   { header: 'BARO', accessor: 'baro' },
   { header: 'GYRO', accessor: 'gyro' },
   { header: 'ACC', accessor: 'acc' },
-  { header: 'Serial Number', accessor: 'serial_number' },
-  { header: 'Status', accessor: 'is_active', render: (value) => value ? 'Active' : 'Inactive' }
 ];
 
 export const flightLogTableColumns = [
