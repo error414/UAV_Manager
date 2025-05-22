@@ -97,7 +97,12 @@ class UAV(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'drone_name'], name='unique_user_drone_name')
+        ]
+
     def __str__(self):
         return f"{self.drone_name} ({self.serial_number})"
 

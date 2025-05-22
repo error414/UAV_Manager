@@ -50,33 +50,64 @@ const DROPDOWN_OPTIONS = {
   ]
 };
 
-const MaintenanceDatePair = ({ label, maintDate, reminderDate, onChange, formatDate, reminderDateValue, disabled }) => (
-  <div className="grid grid-cols-2 gap-4">
-    <div>
-      <label>{label} Maint:</label>
-      <FormInput
-        type="date"
-        name={`${maintDate}_maint_date`}
-        id={`${maintDate}_maint_date`}
-        value={formatDate}
-        onChange={onChange}
-        disabled={disabled}
-      />
+const MaintenanceDatePair = ({ label, maintDate, onChange, formatDate, reminderDateValue, disabled, reminderChecked, onReminderChange, reminderMonthsBefore }) => {
+  const nextDate = reminderDateValue ? new Date(reminderDateValue) : null;
+  const threshold = new Date();
+  threshold.setMonth(threshold.getMonth() + reminderMonthsBefore);
+
+  // disable checkbox if no date or nextDate ≤ threshold or parent disabled
+  const disableCheckbox = disabled || !nextDate || nextDate <= threshold;
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <label>{label} Maint:</label>
+        <FormInput
+          type="date"
+          name={`${maintDate}_maint_date`}
+          id={`${maintDate}_maint_date`}
+          value={formatDate}
+          onChange={onChange}
+          disabled={disabled}
+        />
+      </div>
+      <div>
+        <label>Next:</label>
+        <FormInput
+          type="date"
+          name={`${maintDate}_reminder_date`}
+          id={`${maintDate}_reminder_date`}
+          value={reminderDateValue}
+          onChange={onChange}
+          className="mt-0 w-full"
+          disabled={disabled}
+        />
+      </div>
+      <div className="col-span-2 flex items-center mt-1">
+        <input
+          type="checkbox"
+          name={`${maintDate}_reminder_active`}
+          id={`${maintDate}_reminder_active`}
+          checked={reminderChecked}
+          onChange={onReminderChange}
+          disabled={disableCheckbox}
+          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+        />
+        <label
+          htmlFor={`${maintDate}_reminder_active`}
+          className={`ml-2 text-sm ${disableCheckbox ? 'text-gray-400' : 'text-gray-700'}`}
+        >
+          Send me a reminder {reminderMonthsBefore} months before expiry
+        </label>
+        {!disableCheckbox || (
+          <span className="ml-2 text-xs text-gray-400">
+            (Reminder disabled: date within {reminderMonthsBefore} months)
+          </span>
+        )}
+      </div>
     </div>
-    <div>
-      <label>Next:</label>
-      <FormInput
-        type="date"
-        name={`${maintDate}_reminder_date`}
-        id={`${maintDate}_reminder_date`}
-        value={reminderDateValue}
-        onChange={onChange}
-        className="mt-0 w-full"
-        disabled={disabled}
-      />
-    </div>
-  </div>
-);
+  );
+};
 
 const AircraftForm = ({ 
   formData, 
@@ -90,6 +121,7 @@ const AircraftForm = ({
   handleSetInactive,
   handleToggleActive,
   handleSetTodayMaintDates,
+  reminderMonthsBefore,     // hier hinzugefügt
   handleBackToSettings // New prop
 }) => {
   return (
@@ -237,9 +269,7 @@ const AircraftForm = ({
             disabled={isEditMode && formData.is_active === false}
           />
         </div>
-      </div>
-      
-      <div className="space-y-4">
+        
         <div>
           <label>Flight Controller</label>
           <FormInput
@@ -252,7 +282,9 @@ const AircraftForm = ({
             disabled={isEditMode && formData.is_active === false}
           />
         </div>
-        
+      </div>
+      
+      <div className="space-y-4">
         <FormInput
           type="select"
           label="Firmware"
@@ -338,10 +370,12 @@ const AircraftForm = ({
             key={item}
             label={item.charAt(0).toUpperCase() + item.slice(1)}
             maintDate={item}
-            reminderDate={item}
             onChange={handleChange}
+            onReminderChange={handleChange}
             formatDate={formatDateForInput(formData[`${item}_maint_date`])}
             reminderDateValue={formatDateForInput(formData[`${item}_reminder_date`])}
+            reminderChecked={formData[`${item}_reminder_active`]}
+            reminderMonthsBefore={reminderMonthsBefore}  // übergeben
             disabled={isEditMode && formData.is_active === false}
           />
         ))}

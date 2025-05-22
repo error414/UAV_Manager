@@ -113,16 +113,17 @@ class UAVService:
         for component in components:
             maint_date_key = f'{component}_maint_date'
             reminder_date_key = f'{component}_reminder_date'
+            active_key = f'{component}_reminder_active'
             
             if maint_date_key in data and data[maint_date_key]:
-                # Update or create the maintenance reminder
-                reminder, created = MaintenanceReminder.objects.update_or_create(
+                # Update or create die Wartungserinnerung
+                MaintenanceReminder.objects.update_or_create(
                     uav=uav,
                     component=component,
                     defaults={
                         'last_maintenance': data[maint_date_key],
                         'next_maintenance': data.get(reminder_date_key) or data[maint_date_key],
-                        'reminder_active': True
+                        'reminder_active': data.get(active_key, False)
                     }
                 )
 

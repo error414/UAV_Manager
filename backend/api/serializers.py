@@ -40,12 +40,25 @@ class UAVSerializer(serializers.ModelSerializer):
     props_reminder_date = serializers.DateField(required=False, allow_null=True)
     motor_reminder_date = serializers.DateField(required=False, allow_null=True)
     frame_reminder_date = serializers.DateField(required=False, allow_null=True)
-    
+    # neu: Checkbox-Flags
+    props_reminder_active = serializers.BooleanField(required=False)
+    motor_reminder_active = serializers.BooleanField(required=False)
+    frame_reminder_active = serializers.BooleanField(required=False)
+
     class Meta:
         model = UAV
         fields = '__all__'
         read_only_fields = ('created_at', 'updated_at')
     
+    def validate_drone_name(self, value):
+        user = self.context['request'].user
+        qs = UAV.objects.filter(user=user, drone_name=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("You already have a UAV with this name.")
+        return value
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         
@@ -58,8 +71,31 @@ class UAVSerializer(serializers.ModelSerializer):
             if component in ['props', 'motor', 'frame']:
                 representation[f'{component}_maint_date'] = reminder.last_maintenance.strftime('%Y-%m-%d')
                 representation[f'{component}_reminder_date'] = reminder.next_maintenance.strftime('%Y-%m-%d')
+                # neu: Status der Checkbox
+                representation[f'{component}_reminder_active'] = reminder.reminder_active
         
         return representation
+
+    def create(self, validated_data):
+        # 1) Extract maintenance/reminder fields
+        reminder_keys = [
+            'props_maint_date','motor_maint_date','frame_maint_date',
+            'props_reminder_date','motor_reminder_date','frame_reminder_date',
+            'props_reminder_active','motor_reminder_active','frame_reminder_active'
+        ]
+        reminder_data = {}
+        for key in reminder_keys:
+            if key in validated_data:
+                reminder_data[key] = validated_data.pop(key)
+
+        # 2) Create the UAV object with remaining fields
+        uav = super().create(validated_data)
+
+        # 3) Create/update reminders
+        from .services.uav_service import UAVService
+        UAVService.update_maintenance_reminders(uav, reminder_data)
+
+        return uav
 
 class FlightLogSerializer(serializers.ModelSerializer):
     # Use full UAV serializer for read operations

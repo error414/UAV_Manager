@@ -31,6 +31,9 @@ const DEFAULT_FORM_DATA = {
   props_reminder_date: '',
   motor_reminder_date: '',
   frame_reminder_date: '',
+  props_reminder_active: false,
+  motor_reminder_active: false,
+  frame_reminder_active: false,
   is_active: true  
 };
 
@@ -56,20 +59,31 @@ const useAircraftForm = (isEditMode, uavId) => {
   const [success, setSuccess] = useState(null);
   const [canDelete, setCanDelete] = useState(true);
   const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
+  const [reminderMonthsBefore, setReminderMonthsBefore] = useState(3);
   
   const { checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prevData => {
-      const newData = { ...prevData, [name]: value };
-      
-      if (name.endsWith('_maint_date') && value) {
-        const reminderFieldName = name.replace('_maint_date', '_reminder_date');
-        newData[reminderFieldName] = getNextYearDate(value);
+    const { name, value, type, checked } = e.target;
+    const val = type === 'checkbox' ? checked : value;
+    setFormData(prev => {
+      const newData = { ...prev, [name]: val };
+
+      // Datum gesetzt ⇒ nächsten Jahrestermin berechnen
+      if (type !== 'checkbox' && name.endsWith('_maint_date')) {
+        if (val) {
+          newData[name.replace('_maint_date', '_reminder_date')] = getNextYearDate(val);
+        } else {
+          newData[name.replace('_maint_date', '_reminder_active')] = false;
+        }
       }
-      
+
+      // Reminder‐Date manuell geändert ⇒ Flag zurücksetzen
+      if (type !== 'checkbox' && name.endsWith('_reminder_date')) {
+        newData[name.replace('_reminder_date', '_reminder_active')] = false;
+      }
+
       return newData;
     });
   };
@@ -142,23 +156,44 @@ const useAircraftForm = (isEditMode, uavId) => {
         if (!result.error) {
           setSuccess('Aircraft successfully updated!');
           setTimeout(() => navigate('/AircraftList'), 1500);
+        } else {
+          // display field errors
+          const data = result.data || {};
+          const msgs = Object.entries(data)
+            .map(([f, arr]) => `${f}: ${arr.join(', ')}`)
+            .join('; ');
+          setError(msgs || 'Update failed. You already have a UAV with this name.');
         }
       } else {
         // For new aircraft: first create the UAV, then add maintenance data
         const createResult = await fetchData('/api/uavs/', {}, 'POST', basicPayload);
-        
+
         if (!createResult.error) {
           const newUavId = createResult.data.id || createResult.data.uav_id;
+
+          // Collect reminder‐flags too
+          const activeFields = [
+            'props_reminder_active', 
+            'motor_reminder_active', 
+            'frame_reminder_active'
+          ];
+
+          // Merge active‐flag fields into maintenanceData if set
+          activeFields.forEach(flag => {
+            if (flag in filteredFormData) {
+              maintenanceData[flag] = filteredFormData[flag];
+            }
+          });
           
-          // Check if we have maintenance dates to update
+          // Check if we have any maintenance data or flags
           const hasMaintData = Object.keys(maintenanceData).length > 0;
-          
+
           if (hasMaintData && newUavId) {
-            // Update the newly created UAV with maintenance dates
+            // Update the newly created UAV with maintenance dates and flags
             const updateResult = await fetchData(
-              `/api/uavs/${newUavId}/`, 
-              {}, 
-              'PATCH', 
+              `/api/uavs/${newUavId}/`,
+              {},
+              'PATCH',
               maintenanceData
             );
             
@@ -174,6 +209,13 @@ const useAircraftForm = (isEditMode, uavId) => {
           setFormData(DEFAULT_FORM_DATA);
           // Add redirection to AircraftList after successful creation
           setTimeout(() => navigate('/AircraftList'), 1500);
+        } else {
+          const data = createResult.data || {};
+          const msgs = Object.entries(data)
+            .map(([f, arr]) => `${f}: ${arr.join(', ')}`)
+            .join('; ');
+          setError(msgs || 'Creation failed. You already have a UAV with this name.');
+          return;
         }
       }
     } catch (err) {
@@ -256,6 +298,16 @@ const useAircraftForm = (isEditMode, uavId) => {
     checkCanDelete();
   }, [API_URL, isEditMode, uavId, fetchData]);
 
+  // lade UserSettings einmal
+  useEffect(() => {
+    (async () => {
+      const res = await fetchData('/api/user-settings/');
+      if (!res.error && Array.isArray(res.data) && res.data[0]) {
+        setReminderMonthsBefore(res.data[0].reminder_months_before || 3);
+      }
+    })();
+  }, []);
+
   return {
     formData,
     isLoading,
@@ -269,7 +321,8 @@ const useAircraftForm = (isEditMode, uavId) => {
     handleSetTodayMaintDates,
     formatDateForInput,
     setError,
-    canDelete
+    canDelete,
+    reminderMonthsBefore
   };
 };
 
@@ -297,7 +350,8 @@ const NewAircraftPage = () => {
     handleToggleActive: executeToggleActive,
     handleSetTodayMaintDates,
     formatDateForInput,
-    canDelete
+    canDelete,
+    reminderMonthsBefore
   } = useAircraftForm(isEditMode, uavId);
 
   const handleDelete = () => setConfirmModal({ type: 'delete', isOpen: true });
@@ -387,6 +441,7 @@ const NewAircraftPage = () => {
         isEditMode={isEditMode}
         isLoading={isLoading}
         canDelete={canDelete}
+        reminderMonthsBefore={reminderMonthsBefore}
         handleBackToSettings={handleBackToSettings}
       />
       
