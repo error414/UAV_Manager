@@ -10,7 +10,6 @@ const AirspeedIndicator = ({
   redLineSpeed = 160,
 }) => {
   useEffect(() => {
-    // console.log("Current airspeed:", airspeed);
   }, [airspeed]);
 
   const calculateNeedleAngle = (speed) => {
@@ -88,69 +87,59 @@ const AirspeedIndicator = ({
   };
 
   return (
-    <div className="instrument-container flex flex-col items-center">
-      <svg 
-        width="100%" 
-        height="auto" 
-        viewBox={`0 0 ${size} ${size}`} 
-        style={{ maxWidth: size, maxHeight: size }}
+    <BaseInstrument size={size}>
+      {generateTicks()}
+      
+      <text
+        x={center}
+        y={center - radius * 0.55}
+        fill="white"
+        fontSize={size / 18}
+        fontWeight="bold"
+        textAnchor="middle"
       >
-        <g>
-          <circle cx={center} cy={center} r={size / 2} fill="#333" />
-          {generateTicks()}
-          
-          <text
-            x={center}
-            y={center - radius * 0.55}
-            fill="white"
-            fontSize={size / 18}
-            fontWeight="bold"
-            textAnchor="middle"
-          >
-            GPS
-          </text>
-          <text
-            x={center}
-            y={center - radius * 0.35}
-            fill="white"
-            fontSize={size / 18}
-            fontWeight="bold"
-            textAnchor="middle"
-          >
-            SPEED
-          </text>
-          
-          <text
-            x={center}
-            y={center + radius * 0.32}
-            fill="white"
-            fontSize={size / 22}
-            textAnchor="middle"
-          >
-            KM/H
-          </text>
-          
-          <g transform={`rotate(${needleAngle}, ${center}, ${center})`}>
-            <polygon 
-              points={`${center},${center - radius * 0.95} ${center - size * 0.015},${center} ${center + size * 0.015},${center}`}
-              fill="white" 
-              stroke="black" 
-              strokeWidth="0.5"
-            />
-            <line 
-              x1={center} 
-              y1={center} 
-              x2={center} 
-              y2={center + radius * 0.15}
-              stroke="#333" 
-              strokeWidth={size * 0.03}
-              strokeLinecap="butt"
-            />
-            <circle cx={center} cy={center} r={size / 25} fill="#333" stroke="darkgrey" strokeWidth={1} /> 
-          </g>
-        </g>
-      </svg>
-    </div>
+        GPS
+      </text>
+      <text
+        x={center}
+        y={center - radius * 0.35}
+        fill="white"
+        fontSize={size / 18}
+        fontWeight="bold"
+        textAnchor="middle"
+      >
+        SPEED
+      </text>
+      
+      <text
+        x={center}
+        y={center + radius * 0.32}
+        fill="white"
+        fontSize={size / 22}
+        textAnchor="middle"
+      >
+        KM/H
+      </text>
+      
+      <g transform={`rotate(${needleAngle}, ${center}, ${center})`}>
+        <polygon 
+          points={`${center},${center - radius * 0.95} ${center - size * 0.015},${center} ${center + size * 0.015},${center}`}
+          fill="white" 
+          stroke="black" 
+          strokeWidth="0.5"
+        />
+        <line 
+          x1={center} 
+          y1={center} 
+          x2={center} 
+          y2={center + radius * 0.15}
+          stroke="#333" 
+          strokeWidth={size * 0.03}
+          strokeLinecap="butt"
+        />
+        <circle cx={center} cy={center} r={size / 25} fill="#333" stroke="darkgrey" strokeWidth={1} /> 
+      </g>
+    </BaseInstrument>
   );
 };
 

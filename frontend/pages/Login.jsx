@@ -80,7 +80,7 @@ const Login = () => {
 
       <form onSubmit={handleSubmit}>
         <FormInput
-          label="E-Mail"
+          label="Email"
           type="email"
           name="email"
           id="email"
@@ -108,6 +108,12 @@ const Login = () => {
           <span className="text-gray-300">Don't have an account? </span>
           <Link to="/register" className="text-blue-400 hover:text-blue-300">
             Register
+          </Link>
+        </div>
+
+        <div className="mt-4 text-center">
+          <Link to="/forgot-password" className="text-blue-400 hover:text-blue-300">
+            Forgot Password?
           </Link>
         </div>
       </form>

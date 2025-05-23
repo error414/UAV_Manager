@@ -275,13 +275,13 @@ const ResponsiveTable = ({
       </div>
 
       {/* Desktop View */}
-      <div className="hidden xl:block xl:flex flex-col" 
-          style={{
-            height: containerStyles.height || 'calc(100vh-160px)',
-            minHeight: containerStyles.minHeight || '400px',
-            maxHeight: containerStyles.maxHeight
-          }}>
-        <div className="flex-grow overflow-hidden rounded-lg border border-gray-200 shadow-md">
+      <div
+        className="hidden xl:block xl:flex flex-col w-full"
+        style={{
+          // Entferne height/minHeight/maxHeight, damit der Container sich der Tabelle anpasst
+        }}
+      >
+        <div className="flex-grow overflow-hidden rounded-lg border border-gray-200 shadow-md bg-white">
           <table className={`w-full text-sm text-left text-gray-500 ${showActionColumn ? 'table-fixed' : ''}`} style={tableStyles}>
             <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
               <tr>

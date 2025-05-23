@@ -360,7 +360,7 @@ const Flightlog = () => {
     const nonDataHeight = 150;
     const availableHeight = containerHeight - nonDataHeight;
     let optimalRows = Math.floor(availableHeight / estimatedRowHeight);
-    optimalRows = Math.max(5, Math.min(optimalRows, 50)); // Increase min to 10, max to 50
+    optimalRows = Math.max(1, Math.min(optimalRows, 50)); // Increase min to 10, max to 50
     
     setPageSize(optimalRows);
     setPageSizeInitialized(true);

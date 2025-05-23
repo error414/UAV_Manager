@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'api',
+    'django.contrib.sites',     # <-- added for Djoser password reset
+    'api.apps.ApiConfig',    # ← use AppConfig so ready() runs
     'rest_framework',
     'djoser',
     'corsheaders',
@@ -64,7 +65,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -159,6 +160,12 @@ DJOSER = {
         'user_create': 'api.serializers.CustomUserCreateSerializer',
         'user': 'api.serializers.UserSerializer',
     },
+    # Emit only the path; DOMAIN/SERVER_PROTOCOL will be prepended
+    'PASSWORD_RESET_CONFIRM_URL': 'reset-password/{uid}/{token}',
+
+    'DOMAIN': 'localhost:5173',      # <-- your React dev server
+    'SITE_NAME': 'UAV Manager',
+    'SERVER_PROTOCOL': 'http',
 }
 
 DJOSER.update({
@@ -223,11 +230,15 @@ CRONJOBS = [
     ('0 7 * * *', 'api.services.user_service.UserService.check_license_expiry')
 ]
 
-# E-Mail Backend Konfiguration
+# Required by django.contrib.sites (used by Djoser for building reset URLs)
+SITE_ID = 1
+
+# E-Mail Backend Konfiguration – always send via SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.example.com'           # z.B. smtp.gmail.com oder dein SMTP-Server
-EMAIL_PORT = 587                          # 587 für TLS, 465 für SSL
-EMAIL_USE_TLS = True                      # True für TLS, False für SSL
-EMAIL_HOST_USER = 'dein-benutzer@example.com'   # Deine Absenderadresse
-EMAIL_HOST_PASSWORD = 'dein-passwort'          # Dein SMTP-Passwort
-DEFAULT_FROM_EMAIL = 'DroneLogbook <dein-benutzer@example.com>'  # Absendername und Adresse
+EMAIL_HOST = 'example.hosting.ch'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True      # SSL on 465
+EMAIL_USE_TLS = False     # no TLS upgrade
+EMAIL_HOST_USER = 'info@uav-manager.com'
+EMAIL_HOST_PASSWORD = ''
+DEFAULT_FROM_EMAIL = 'UAV Manager <info@uav-manager.com>'
