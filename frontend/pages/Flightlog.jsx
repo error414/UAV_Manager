@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Alert, Button, ResponsiveTable, ConfirmModal, Pagination } from '../components';
 import { getEnhancedFlightLogColumns, getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS, exportFlightLogToPDF, calculateFlightDuration, extractUavId } from '../utils';
 import { useAuth, useApi, useUAVs } from '../hooks';
+import { useQueryState } from '../hooks/useQueryState';
 
 const Flightlog = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const API_URL = import.meta.env.VITE_API_URL;
   
   const [logs, setLogs] = useState([]);
@@ -35,6 +37,8 @@ const Flightlog = () => {
   
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
+  
+  const { getQueryState, setQueryState } = useQueryState('-departure_date,-departure_time');
   
   const safeAvailableUAVs = useMemo(() => {
     return Array.isArray(availableUAVs) ? availableUAVs : [];
@@ -132,6 +136,7 @@ const Flightlog = () => {
     filterTimer.current = setTimeout(() => {
       setCurrentPage(1);
       setDebouncedFilters(f => ({ ...f, [name]: value }));
+      // Query-String wird durch useEffect aktualisiert
     }, 500);
   }, []);
 
@@ -184,8 +189,9 @@ const Flightlog = () => {
   }, [runAuthenticatedOperation, prepareFlightPayload, fetchData, fetchFlightLogs, newFlight]);
 
   const handleRowClick = useCallback((id) => {
-    navigate(`/flightdetails/${id}`);
-  }, [navigate]);
+    // Query-String bleibt erhalten, daher bleibt Zustand beim Zurückgehen erhalten
+    navigate(`/flightdetails/${id}${location.search}`);
+  }, [navigate, location.search]);
 
   const handleEdit = useCallback((id) => {
     const logToEdit = logs.find(log => log.flightlog_id === id);
@@ -319,6 +325,7 @@ const Flightlog = () => {
 
   const handlePageChange = useCallback((page) => {
     setCurrentPage(page);
+    // Query-String wird durch useEffect aktualisiert
   }, []);
 
   const handleSortChange = useCallback((field) => {
@@ -329,6 +336,7 @@ const Flightlog = () => {
       
       return prevSort === field ? `-${field}` : (prevSort === `-${field}` ? field : field);
     });
+    // Query-String wird durch useEffect aktualisiert
   }, []);
 
   const flightLogTableColumns = useMemo(() => {
@@ -411,6 +419,22 @@ const Flightlog = () => {
       fetchFlightLogs();
     }
   }, [fetchFlightLogs, pageSizeInitialized, debouncedFilters, currentPage, sortField]);
+
+  // --- Query-String initialisieren ---
+  useEffect(() => {
+    const { page, sort, filters: parsedFilters } = getQueryState();
+    setCurrentPage(page);
+    setSortField(sort);
+    setFilters(prev => ({ ...prev, ...parsedFilters }));
+    setDebouncedFilters(parsedFilters);
+    // eslint-disable-next-line
+  }, []); // nur beim ersten Mount
+
+  // --- Query-String aktualisieren, wenn Filter/Seite/Sortierung sich ändern ---
+  useEffect(() => {
+    setQueryState(currentPage, sortField, debouncedFilters);
+    // eslint-disable-next-line
+  }, [currentPage, sortField, debouncedFilters]);
 
   useEffect(() => {
     return () => {

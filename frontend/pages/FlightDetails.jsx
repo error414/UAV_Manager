@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -7,7 +7,7 @@ import {
   Layout, Loading, ConfirmModal, Button, Alert, FlightInfoCard, AnimatedMarker, GpsAnimationControls, AirspeedIndicator, AttitudeIndicator, AltitudeIndicator, ArrowButton, VerticalSpeedIndicator, CompassIndicator,
   TurnCoordinator, ThrottleYawStick, ElevatorAileronStick, SignalStrengthIndicator, ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator, DataPanel, AccordionPanel
 } from '../components';
-import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState} from '../hooks';
+import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState, useQueryState } from '../hooks';
 import { takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics } from '../utils';
 
 // Ensure Leaflet default icons are properly set
@@ -123,6 +123,7 @@ const TelemetryIndicators = ({ currentGpsPoint, size }) => {
 const FlightDetails = () => {
   const { flightId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef(null);
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -579,7 +580,10 @@ const FlightDetails = () => {
 
       <div className="mt-6 flex justify-center gap-4">
         <Button 
-          onClick={() => navigate('/flightlog')} 
+          onClick={() => {
+            const search = location.search || '';
+            navigate('/flightlog' + search);
+          }} 
           variant="secondary"
         >
           Back to Flight Log

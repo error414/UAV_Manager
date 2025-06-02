@@ -16,26 +16,13 @@ export const landingIcon = createIcon('red');
 
 // Calculate bearing between two coordinates for rotation
 export const calculateBearing = (start, end) => {
-  // Handle different coordinate input formats (array or object)
-  let startLat, startLng, endLat, endLng;
-  
-  if (Array.isArray(start) && Array.isArray(end)) {
-    // Format: [lat, lng]
-    startLat = start[0];
-    startLng = start[1];
-    endLat = end[0];
-    endLng = end[1];
-  } else if (start?.lat !== undefined && end?.lat !== undefined) {
-    // Format: {lat, lng} or {lat, lon}
-    startLat = start.lat;
-    startLng = start.lng || start.lon;
-    endLat = end.lat;
-    endLng = end.lng || end.lon;
-  } else {
-    // Invalid input format
-    return 0; // Default heading
+  // Erwartetes Format: [lat, lng]
+  if (!Array.isArray(start) || !Array.isArray(end) || start.length !== 2 || end.length !== 2) { 
+    return 0;
   }
-  
+  let [startLat, startLng] = start; 
+  let [endLat, endLng] = end;
+
   // Validate coordinates
   if (typeof startLat !== 'number' || typeof startLng !== 'number' || 
       typeof endLat !== 'number' || typeof endLng !== 'number' ||

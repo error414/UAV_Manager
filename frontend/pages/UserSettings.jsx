@@ -442,7 +442,7 @@ const UserSettings = () => {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <label>First name</label>
+            <label>First name*</label>
             <FormInput
               type="text"
               name="first_name"
@@ -455,7 +455,7 @@ const UserSettings = () => {
           </div>
           
           <div>
-            <label>Last name</label>
+            <label>Last name*</label>
             <FormInput
               type="text"
               name="last_name"

@@ -39,7 +39,6 @@ class GPSService:
                 receiver_quality=point.get('receiver_quality'),
                 transmitter_quality=point.get('transmitter_quality'),
                 transmitter_power=point.get('transmitter_power'),
-                # Add new flight control fields
                 aileron=point.get('aileron'),
                 elevator=point.get('elevator'),
                 throttle=point.get('throttle'),

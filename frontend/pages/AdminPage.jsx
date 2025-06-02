@@ -470,21 +470,12 @@ const AdminPage = () => {
                     <ResponsiveTable 
                       columns={uavTableColumns}
                       data={userUAVs}
-                      onEdit={handleUavEdit}
                       filterFields={[]}
                       filters={{}}
                       rowClickable={false}
-                      showActionColumn={true}
-                      actionColumnText="Actions"
+                      showActionColumn={false}
                       idField="uav_id"
                       titleField="drone_name"
-                      editingId={editingUavId}
-                      editingData={editingUav}
-                      onEditChange={handleUavEditChange}
-                      onSaveEdit={handleUavSaveEdit}
-                      onCancelEdit={handleUavCancelEdit}
-                      onDelete={handleDeleteUav}
-                      editFormFields={uavEditFormFields}
                       tableStyles={tableStyles}
                       containerStyles={secondaryTableContainerStyles}
                     />
@@ -508,23 +499,9 @@ const AdminPage = () => {
                         filterFields={[]}
                         filters={{}}
                         rowClickable={false}
-                        showActionColumn={true}
-                        actionColumnText="Actions"
+                        showActionColumn={false}
                         idField="flightlog_id"
                         titleField="departure_date"
-                        onEdit={handleFlightLogEdit}
-                        editingId={editingFlightLogId}
-                        editingData={editingFlightLog}
-                        onEditChange={handleFlightLogEditChange}
-                        onSaveEdit={handleFlightLogSaveEdit}
-                        onCancelEdit={handleFlightLogCancelEdit}
-                        onDelete={handleFlightLogDelete}
-                        editFormFields={flightLogTableColumns.map(col => ({
-                          name: col.accessor,
-                          label: col.header,
-                          type: 'text',
-                          placeholder: col.header
-                        }))}
                         tableStyles={tableStyles}
                         containerStyles={secondaryTableContainerStyles}
                       />

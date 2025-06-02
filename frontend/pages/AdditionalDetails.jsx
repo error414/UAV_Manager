@@ -86,7 +86,7 @@ const AdditionalDetails = () => {
     
     if (!result.error) {
       setSuccess('Details updated successfully!');
-      navigate('/flightlog');
+      navigate('/newaircraft');
     }
   };
 
@@ -101,7 +101,7 @@ const AdditionalDetails = () => {
 
       <form onSubmit={handleSubmit}>
         <FormInput
-          label="First Name"
+          label="First Name*"
           type="text"
           name="first_name"
           id="first_name"
@@ -112,7 +112,7 @@ const AdditionalDetails = () => {
         />
 
         <FormInput
-          label="Last Name"
+          label="Last Name*"
           type="text"
           name="last_name"
           id="last_name"

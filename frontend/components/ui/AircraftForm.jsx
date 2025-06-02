@@ -128,7 +128,7 @@ const AircraftForm = ({
     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-4">
         <div>
-          <label>Drone Name</label>
+          <label>Drone Name*</label>
           <FormInput
             type="text"
             name="drone_name"
@@ -156,7 +156,7 @@ const AircraftForm = ({
         
         <FormInput
           type="select"
-          label="Type"
+          label="Type*"
           name="type"
           id="type"
           value={formData.type}
@@ -168,7 +168,7 @@ const AircraftForm = ({
         
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label>Motors</label>
+            <label>Motors*</label>
             <FormInput
               type="number"
               name="motors"
@@ -184,7 +184,7 @@ const AircraftForm = ({
           <div>
             <FormInput
               type="select"
-              label="Type of Motor"
+              label="Type of Motor*"
               name="motor_type"
               id="motor_type"
               value={formData.motor_type}

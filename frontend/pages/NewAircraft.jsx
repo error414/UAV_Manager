@@ -169,7 +169,7 @@ const useAircraftForm = (isEditMode, uavId) => {
         const createResult = await fetchData('/api/uavs/', {}, 'POST', basicPayload);
 
         if (!createResult.error) {
-          const newUavId = createResult.data.id || createResult.data.uav_id;
+          const newUavId = createResult.data.uav_id;
 
           // Collect reminder‐flags too
           const activeFields = [

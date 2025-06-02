@@ -18,7 +18,6 @@ class UserService:
     def update_user_settings(user, settings_data):
         """Create or update user settings"""
         settings, created = UserSettings.objects.get_or_create(user=user)
-        # Reset reminder flags if license date is not set or not in the future
         today = datetime.now().date()
         if ('a1_a3_reminder' in settings_data and settings_data['a1_a3_reminder']):
             if not user.a1_a3 or user.a1_a3 <= today:

@@ -12,8 +12,6 @@ from datetime import datetime
 from ..models import User, UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, FlightGPSLog, UAVConfig
 
 class ImportService:
-    DEBUG = False  # Set to True for debug output
-
     @staticmethod
     def _get_new_uav_id(user, old_uav_id, uav_mapping, data):
         # Hilfsfunktion zur Ermittlung der neuen UAV-ID
@@ -191,7 +189,7 @@ class ImportService:
                     'message': f"Import failed: {str(e)}",
                     'details': {'errors': [str(e)]}
                 }
-    
+
     @staticmethod
     def _cleanup_empty_directories(path):
         """Entferne rekursiv alle leeren Verzeichnisse unter dem angegebenen Pfad"""
@@ -218,35 +216,56 @@ class ImportService:
         for uav_data in uavs_data:
             old_id = uav_data.get('uav_id')
             
-            # Check if UAV already exists
+            # Check if UAV already exists - use more specific criteria
             drone_name = uav_data.get('drone_name')
             manufacturer = uav_data.get('manufacturer')
-            drone_type = uav_data.get('type')
+            serial_number = uav_data.get('serial_number')
             
-            # Check if a UAV with similar attributes already exists
-            existing_uavs = UAV.objects.filter(
-                user=user, 
-                drone_name=drone_name
-            )
+            # First check by serial number if it exists and is not empty
+            existing_uav = None
+            if serial_number and serial_number.strip():
+                existing_uav = UAV.objects.filter(
+                    user=user, 
+                    serial_number=serial_number
+                ).first()
             
-            if manufacturer:
-                existing_uavs = existing_uavs.filter(manufacturer=manufacturer)
+            # If no match by serial number, check by drone name and manufacturer
+            if not existing_uav:
+                existing_uavs = UAV.objects.filter(
+                    user=user, 
+                    drone_name=drone_name
+                )
                 
-            if drone_type:
-                existing_uavs = existing_uavs.filter(type=drone_type)
+                if manufacturer:
+                    existing_uavs = existing_uavs.filter(manufacturer=manufacturer)
+                    
+                existing_uav = existing_uavs.first()
             
-            if existing_uavs.exists():
+            if existing_uav:
                 # Add to mapping so flight logs can still reference it
                 if old_id:
-                    uav_mapping[old_id] = existing_uavs.first().uav_id
+                    uav_mapping[old_id] = existing_uav.uav_id
                     
                 skipped_count += 1
                 continue
             
+            # Extract maintenance reminder data before removing conflict fields
+            maintenance_data = {}
+            maintenance_fields = [
+                'props_maint_date', 'motor_maint_date', 'frame_maint_date',
+                'props_reminder_date', 'motor_reminder_date', 'frame_reminder_date',
+                'props_reminder_active', 'motor_reminder_active', 'frame_reminder_active'
+            ]
+            
+            for field in maintenance_fields:
+                if field in uav_data:
+                    maintenance_data[field] = uav_data[field]
+            
             # Remove fields that would cause conflicts
             ImportService._remove_conflict_fields(uav_data, [
                 'uav_id', 'props_maint_date', 'motor_maint_date', 'frame_maint_date',
-                'props_reminder_date', 'motor_reminder_date', 'frame_reminder_date'
+                'props_reminder_date', 'motor_reminder_date', 'frame_reminder_date',
+                'props_reminder_active', 'motor_reminder_active', 'frame_reminder_active'
             ])
             uav_data['user'] = user
             
@@ -254,6 +273,11 @@ class ImportService:
             try:
                 # Create new UAV
                 new_uav = UAV.objects.create(**uav_data)
+                
+                # Create maintenance reminders if maintenance data exists
+                if maintenance_data:
+                    from .uav_service import UAVService
+                    UAVService.update_maintenance_reminders(new_uav, maintenance_data)
                 
                 # Add to mapping
                 if old_id:
@@ -272,8 +296,15 @@ class ImportService:
                         uav_data.pop(field_name, None)
                         # Try again with the field removed
                         new_uav = UAV.objects.create(**uav_data)
+                        
+                        # Create maintenance reminders if maintenance data exists
+                        if maintenance_data:
+                            from .uav_service import UAVService
+                            UAVService.update_maintenance_reminders(new_uav, maintenance_data)
+                        
                         if old_id:
                             uav_mapping[old_id] = new_uav.uav_id
+                        
                         imported_count += 1
                 else:
                     raise  # Re-raise if it's not about unexpected keywords
