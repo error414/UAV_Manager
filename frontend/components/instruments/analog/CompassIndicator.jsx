@@ -5,16 +5,15 @@ const CompassIndicator = ({
   heading = 0, 
   size = 300,
 }) => {
-  // Calculate needle angle
+  // Returns negative heading to rotate dial opposite to needle
   const calculateNeedleAngle = (hdg) => {
-    // Convert heading to a valid range (0-360)
     const normalizedHeading = ((hdg % 360) + 360) % 360;
-    // For compass, needle is fixed and the dial rotates in the opposite direction
     return -normalizedHeading;
   };
 
+  // Rotates dial so North (0/360) is at the top
   const calculateDialAngle = (deg) => {
-    return deg - 90; // Adjust to make 0/360 (North) at the top
+    return deg - 90;
   };
 
   const dialAngle = calculateNeedleAngle(heading);
@@ -24,9 +23,8 @@ const CompassIndicator = ({
   const tickOuterRadius = radius;
   const majorTickInnerRadius = radius * 0.8;
   const minorTickInnerRadius = radius * 0.85;
-  const cardinalTextRadius = tickTextRadius; // Buchstaben gleich nah wie Zahlen
+  const cardinalTextRadius = tickTextRadius;
 
-  // Define compass cardinal points
   const cardinalPoints = [
     { deg: 0, text: 'N' }, 
     { deg: 90, text: 'E' }, 
@@ -34,7 +32,7 @@ const CompassIndicator = ({
     { deg: 270, text: 'W' }
   ];
 
-  // Map degrees to the requested number labels
+  // Maps degree to compass number label
   const degreeToNumberMap = {
     30: '3',
     60: '6',
@@ -51,7 +49,7 @@ const CompassIndicator = ({
     const majorTickInterval = 30;
     const minorTickInterval = 10;
 
-    // Generate tick marks from 0 to 360
+    // Draw tick marks and labels
     for (let deg = 0; deg < 360; deg += minorTickInterval) {
       const angle = calculateDialAngle(deg);
       const angleRad = angle * (Math.PI / 180);
@@ -78,6 +76,7 @@ const CompassIndicator = ({
         />
       );
 
+      // Draw number labels for major ticks except cardinal points
       if (isMajorTick && deg % 90 !== 0) {
         const textX = center + tickTextRadius * cosAngle;
         const textY = center + tickTextRadius * sinAngle;
@@ -100,7 +99,7 @@ const CompassIndicator = ({
       }
     }
 
-    // Add cardinal points
+    // Draw cardinal direction labels
     cardinalPoints.forEach(({ deg, text }) => {
       const angle = calculateDialAngle(deg);
       const angleRad = angle * (Math.PI / 180);
@@ -137,6 +136,7 @@ const CompassIndicator = ({
           {generateTicks()}
         </g>
 
+        {/* Compass needle outline */}
         <path
           d={`
             M ${center} ${center - size * 0.24}
@@ -163,6 +163,7 @@ const CompassIndicator = ({
           strokeLinejoin="miter"
         />
 
+        {/* Heading value display */}
         <text
           x={center}
           y={center - size * 0.025}
@@ -175,6 +176,7 @@ const CompassIndicator = ({
           {Math.round(((heading % 360) + 360) % 360)}°
         </text>
 
+        {/* Red triangle at top for North */}
         <path 
           d={`M${center},${center - radius - 2} L${center - size * 0.025},${center - radius * 0.8} L${center + size * 0.025},${center - radius * 0.8} Z`}
           fill="red" 

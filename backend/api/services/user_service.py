@@ -6,7 +6,7 @@ from django.core.mail import send_mail
 class UserService:
     @staticmethod
     def get_user_profile(user):
-        """Get a user's profile data"""
+        # Returns the user's profile instance
         return User.objects.filter(pk=user.pk).first()
     
     @staticmethod
@@ -16,7 +16,7 @@ class UserService:
     
     @staticmethod
     def update_user_settings(user, settings_data):
-        """Create or update user settings"""
+        # Create or update user settings
         settings, created = UserSettings.objects.get_or_create(user=user)
         today = datetime.now().date()
         if ('a1_a3_reminder' in settings_data and settings_data['a1_a3_reminder']):
@@ -35,19 +35,18 @@ class UserService:
     
     @staticmethod
     def check_license_expiry():
-        """Check for licenses that will expire soon and send reminders"""
+        # Check licenses expiring soon and send reminders
         today = datetime.now().date()
         
-        # Get all user settings with reminders enabled
         settings_with_reminders = UserSettings.objects.filter(
             notifications_enabled=True
         ).select_related('user')
         
         for setting in settings_with_reminders:
             user = setting.user
-            reminder_days = setting.reminder_months_before * 30  # Approximate month to days
+            reminder_days = setting.reminder_months_before * 30  # Approximate months to days
             
-            # Check A1/A3 license
+            # A1/A3 license check
             if setting.a1_a3_reminder and user.a1_a3:
                 expiry_date = user.a1_a3
                 days_until_expiry = (expiry_date - today).days
@@ -57,7 +56,7 @@ class UserService:
                         user, "A1/A3", expiry_date, days_until_expiry
                     )
             
-            # Check A2 license
+            # A2 license check
             if setting.a2_reminder and user.a2:
                 expiry_date = user.a2
                 days_until_expiry = (expiry_date - today).days
@@ -67,7 +66,7 @@ class UserService:
                         user, "A2", expiry_date, days_until_expiry
                     )
             
-            # Check STS license
+            # STS license check
             if setting.sts_reminder and user.sts:
                 expiry_date = user.sts
                 days_until_expiry = (expiry_date - today).days
@@ -79,7 +78,7 @@ class UserService:
     
     @staticmethod
     def send_license_reminder(user, license_type, expiry_date, days_left):
-        """Send email reminder about license expiration"""
+        # Sends email reminder about license expiration
         subject = f"Reminder: Your {license_type} license expires soon"
         message = f"""
         Hello {user.first_name},
@@ -96,6 +95,6 @@ class UserService:
             subject,
             message,
             settings.DEFAULT_FROM_EMAIL,
-            [user.email],  # <-- E-Mail geht an den User, der den Alert gesetzt hat
+            [user.email],  # Email is sent to the user who set the alert
             fail_silently=False,
         )

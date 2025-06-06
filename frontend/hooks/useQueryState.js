@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCallback } from 'react';
 
-// Parses query string into { page, sort, filters }
+// Parse query string into { page, sort, filters }
 export function parseQuery(search, defaultSort = '-departure_date,-departure_time') {
   const params = new URLSearchParams(search);
   const filters = {};
@@ -16,7 +16,7 @@ export function parseQuery(search, defaultSort = '-departure_date,-departure_tim
   };
 }
 
-// Builds query string from { page, sort, filters }
+// Build query string from { page, sort, filters }
 export function buildQuery(page, sort, filters, defaultSort = '-departure_date,-departure_time') {
   const params = new URLSearchParams();
   if (page && page > 1) params.set('page', page);
@@ -27,7 +27,7 @@ export function buildQuery(page, sort, filters, defaultSort = '-departure_date,-
   return params.toString();
 }
 
-// React hook for query state
+// React hook for managing query state in URL
 export function useQueryState(defaultSort = '-departure_date,-departure_time') {
   const location = useLocation();
   const navigate = useNavigate();

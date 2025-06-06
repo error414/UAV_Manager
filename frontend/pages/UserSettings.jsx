@@ -7,9 +7,11 @@ import { useAuth, useApi } from '../hooks';
 const LicenseField = ({
   label, dateName, dateValue, onChange, reminderName, reminderChecked, onReminderChange
 }) => {
+  // Only enable reminder if date is in the future
   const isDateValid = dateValue && new Date(dateValue) > new Date();
   return (
     <div className="grid grid-cols-4 gap-2 items-center">
+      {/* License label */}
       <div className="col-span-1">
         <label>{label}</label>
       </div>
@@ -86,6 +88,7 @@ const UserSettings = () => {
   const { fetchData } = useApi(API_URL, setError);
 
   useEffect(() => {
+    // Check authentication and fetch user data on mount
     const auth = checkAuthAndGetUser();
     if (!auth) return;
 
@@ -93,6 +96,7 @@ const UserSettings = () => {
   }, [navigate]);
 
   const formatDateForInput = (dateString) => {
+    // Format date as YYYY-MM-DD for input fields
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toISOString().split('T')[0];
@@ -125,6 +129,7 @@ const UserSettings = () => {
           const settingsData = settingsResult.data;
           if (settingsData && settingsData.length > 0) {
             const today = new Date();
+            // Check if license dates are valid (future)
             const isA1A3Valid = a1_a3 && new Date(a1_a3) > today;
             const isA2Valid = a2 && new Date(a2) > today;
             const isSTSValid = sts && new Date(sts) > today;
@@ -150,16 +155,19 @@ const UserSettings = () => {
   };
 
   const handleChange = (e) => {
+    // Update form data on input change
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSettingsChange = (e) => {
+    // Update user settings on change
     const { name, value, type, checked } = e.target;
 
     setUserSettings(prev => {
       const updated = { ...prev, [name]: type === 'checkbox' ? checked : value };
 
+      // Disable reminders if license date is not valid
       if (type === 'checkbox' && checked) {
         if (name === 'a1_a3_reminder' && (!formData.a1_a3 || new Date(formData.a1_a3) <= new Date())) {
           updated.a1_a3_reminder = false;
@@ -172,6 +180,7 @@ const UserSettings = () => {
         }
       }
 
+      // Enable notifications if any reminder is enabled
       if (name === 'a1_a3_reminder' || name === 'a2_reminder' || name === 'sts_reminder') {
         updated.notifications_enabled =
           updated.a1_a3_reminder ||
@@ -206,6 +215,7 @@ const UserSettings = () => {
         throw new Error(`Failed to export: ${response.status} ${response.statusText}`);
       }
       
+      // Download exported ZIP file
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -225,10 +235,10 @@ const UserSettings = () => {
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-      
+
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       setSuccess('Your data has been exported successfully!');
     } catch (err) {
       setError('Failed to export data: ' + (err.message || 'Unknown error'));
@@ -238,6 +248,7 @@ const UserSettings = () => {
   };
 
   const handleImportData = () => {
+    // Trigger file input click
     fileInputRef.current.click();
   };
 
@@ -270,6 +281,7 @@ const UserSettings = () => {
       });
       
       if (!response.ok) {
+        // Log error details for debugging
         console.error('Import failed with status:', response.status);
         const errorText = await response.text();
         console.error('Error response:', errorText);
@@ -288,6 +300,7 @@ const UserSettings = () => {
       
       fileInputRef.current.value = '';
       
+      // Show import summary
       const details = result.details;
       setSuccess(
         `Import successful! Imported: ${details.uavs_imported} UAVs, ` +
@@ -317,6 +330,7 @@ const UserSettings = () => {
         return;
       }
 
+      // Remove empty license dates
       const cleanedData = { ...formData };
       if (!cleanedData.a1_a3) delete cleanedData.a1_a3;
       if (!cleanedData.a2) delete cleanedData.a2;
@@ -330,6 +344,7 @@ const UserSettings = () => {
       );
 
       if (!userResult.error) {
+        // Use PUT for update, POST for create
         const settingsMethod = userSettings.settings_id ? 'PUT' : 'POST';
         const settingsEndpoint = userSettings.settings_id
           ? `/api/user-settings/${userSettings.settings_id}/`
@@ -389,6 +404,7 @@ const UserSettings = () => {
               >
                 {isImporting ? (
                   <>
+                    {/* Spinner icon */}
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -397,6 +413,7 @@ const UserSettings = () => {
                   </>
                 ) : (
                   <>
+                    {/* Import icon */}
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"></path>
                     </svg>
@@ -419,6 +436,7 @@ const UserSettings = () => {
               >
                 {isExporting ? (
                   <>
+                    {/* Spinner icon */}
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -427,6 +445,7 @@ const UserSettings = () => {
                   </>
                 ) : (
                   <>
+                    {/* Export icon */}
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                     </svg>

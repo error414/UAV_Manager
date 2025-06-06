@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db.models import Q
 
 class FileService:
-    # Directory constant to ensure consistency across the application
+    # Directory name for UAV configs
     UAV_CONFIGS_DIR = 'uav_configs'
     
     @staticmethod
@@ -15,7 +15,7 @@ class FileService:
             
         queryset = File.objects.filter(uav__user=user)
         
-        # Add filters as needed
+        # Optional filter by UAV
         uav_id = query_params.get('uav')
         if uav_id:
             queryset = queryset.filter(uav_id=uav_id)
@@ -31,12 +31,12 @@ class FileService:
             
         queryset = UAVConfig.objects.filter(user=user)
         
-        # Filter by UAV if specified
+        # Optional filter by UAV
         uav_id = query_params.get('uav')
         if uav_id:
             queryset = queryset.filter(uav_id=uav_id)
             
-        # Filter by name if specified
+        # Optional filter by name
         name = query_params.get('name')
         if name:
             queryset = queryset.filter(name__icontains=name)
@@ -45,8 +45,7 @@ class FileService:
     
     @staticmethod
     def ensure_upload_directory_exists():
-        """Ensure that the upload directory for UAV config files exists"""
-        # Create the main directory
+        # Ensure main upload directory exists
         upload_dir = os.path.join(settings.MEDIA_ROOT, FileService.UAV_CONFIGS_DIR)
         if not os.path.exists(upload_dir):
             try:
@@ -56,11 +55,9 @@ class FileService:
     
     @staticmethod
     def ensure_user_upload_directory_exists(user_id):
-        """Ensure that the user-specific upload directory exists"""
-        # First make sure main directory exists
+        # Ensure user-specific upload directory exists
         FileService.ensure_upload_directory_exists()
         
-        # Then create the user-specific directory - use absolute path
         user_upload_dir = os.path.join(settings.MEDIA_ROOT, FileService.UAV_CONFIGS_DIR, str(user_id))
         if not os.path.exists(user_upload_dir):
             try:
@@ -71,18 +68,16 @@ class FileService:
     
     @staticmethod
     def handle_config_file_update(instance, old_instance):
-        """Handle file updates for UAV config files"""
-        # Ensure user directory exists
+        # Remove old file if replaced
         user_id = instance.user.user_id
         FileService.ensure_user_upload_directory_exists(user_id)
         
-        # If there was an old file and it's changed, delete the old one
         if old_instance and old_instance.file and instance.file != old_instance.file:
             FileService.handle_file_deletion(old_instance.file.path)
     
     @staticmethod
     def handle_file_deletion(file_path):
-        """Delete a file from the filesystem"""
+        # Remove file from filesystem if it exists
         try:
             if os.path.isfile(file_path):
                 os.remove(file_path)
@@ -90,5 +85,4 @@ class FileService:
             else:
                 print(f"File not found for deletion: {file_path}")
         except (ValueError, OSError) as e:
-            # Log the error but don't raise it
             print(f"Error deleting file {file_path}: {str(e)}")

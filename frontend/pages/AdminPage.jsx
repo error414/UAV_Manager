@@ -22,6 +22,7 @@ const AdminPage = () => {
   
   const [filters, setFilters] = useState({});
   const [debouncedFilters, setDebouncedFilters] = useState({});
+  // Debounce filter changes to avoid excessive API calls
   const filterTimer = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -388,21 +389,24 @@ const AdminPage = () => {
   const handlePageChange = useCallback((page) => setCurrentPage(page), []);
   const handleUavPageChange = useCallback((page) => setUavCurrentPage(page), []);
 
+  // Memoize columns to avoid unnecessary recalculations
   const enhancedFlightLogColumns = useMemo(() => {
     return getEnhancedFlightLogColumns(userUAVs);
   }, [userUAVs]);
 
+  // Table layout styles
   const tableStyles = {
     tableLayout: "fixed", 
     width: "100%"
   };
 
-  // Add this for controlling table container heights
+  // Main user table container styles
   const mainTableContainerStyles = {
     height: "auto", 
     minHeight: "auto"
   };
   
+  // Secondary tables (UAVs, Flight Logs) container styles
   const secondaryTableContainerStyles = {
     height: "auto", 
     minHeight: "auto"
@@ -424,6 +428,7 @@ const AdminPage = () => {
               fullWidth={true}
               className="flex items-center justify-center"
             >
+              {/* Filter icon */}
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
               </svg>

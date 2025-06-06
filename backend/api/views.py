@@ -32,14 +32,14 @@ class UAVPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
-# Endpunkte für UAVs (USERS besitzt UAVs)
+# UAV endpoints (UAVs are owned by USERS)
 class UAVListCreateView(generics.ListCreateAPIView):
     serializer_class = UAVSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = UAVPagination
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['drone_name', 'manufacturer', 'type', 'motors', 'registration_number', 'created_at']
-    ordering = ['drone_name']  # Default sorting
+    ordering = ['drone_name']  # Default ordering
     
     def get_queryset(self):
         return UAVService.get_uav_queryset(self.request.user, self.request.query_params)
@@ -86,12 +86,12 @@ class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
         
-        # Use the service to add flight statistics to the response data
+        # Add flight statistics to the response
         response.data = UAVService.enrich_uav_data(response.data)
         
         return response
 
-# Add a new view for UAV metadata
+# UAV metadata endpoint
 class UAVMetaView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -101,20 +101,20 @@ class UAVMetaView(APIView):
         max_id = qs.order_by('-uav_id').values_list('uav_id', flat=True).first()
         return Response({'minId': min_id, 'maxId': max_id})
 
-# Paginierung für FlightLogs
+# Pagination for FlightLogs
 class FlightLogPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
 
-# Endpunkte für Fluglogs
+# Flight log endpoints
 class FlightLogListCreateView(generics.ListCreateAPIView):
     serializer_class = FlightLogSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = FlightLogPagination
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['departure_date', 'departure_time', 'landing_time', 'flight_duration']
-    ordering = ['-departure_date', '-departure_time']  # Default sorting - newest first
+    ordering = ['-departure_date', '-departure_time']  # Default: newest first
     
     def get_queryset(self):
         return FlightLogService.get_flightlog_queryset(
@@ -126,13 +126,13 @@ class FlightLogListCreateView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 class FlightLogDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = FlightLogWithGPSSerializer  # Updated to include GPS logs
+    serializer_class = FlightLogWithGPSSerializer  # Includes GPS logs
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
         return FlightLog.objects.filter(user=self.request.user)
 
-# Add a new view for handling GPS data upload
+# Endpoint for uploading and managing GPS data
 class FlightGPSDataUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
@@ -176,7 +176,7 @@ class FlightGPSDataUploadView(APIView):
             "deleted_count": deleted_count
         }, status=status.HTTP_200_OK)
 
-# Add a new view for retrieving flight log metadata
+# Flight log metadata endpoint
 class FlightLogMetaView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -186,7 +186,7 @@ class FlightLogMetaView(APIView):
         max_id = qs.order_by('-flightlog_id').values_list('flightlog_id', flat=True).first()
         return Response({'minId': min_id, 'maxId': max_id})
 
-# Endpunkte für Wartungsprotokolle
+# Maintenance log endpoints
 class MaintenanceLogListCreateView(generics.ListCreateAPIView):
     serializer_class = MaintenanceLogSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -207,7 +207,7 @@ class MaintenanceLogDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return MaintenanceLog.objects.filter(user=self.request.user)
 
-# Endpunkte für Wartungserinnerungen
+# Maintenance reminder endpoints
 class MaintenanceReminderListCreateView(generics.ListCreateAPIView):
     serializer_class = MaintenanceReminderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -222,7 +222,7 @@ class MaintenanceReminderDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return MaintenanceReminder.objects.filter(uav__user=self.request.user)
 
-# Endpunkte für Dateien
+# File endpoints
 class FileListCreateView(generics.ListCreateAPIView):
     serializer_class = FileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -237,25 +237,25 @@ class FileDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return FileService.get_files_queryset(self.request.user)
 
-# Angepasste Endpunkte für Benutzer und Benutzereinstellungen
+# User endpoints (only returns the authenticated user)
 class UserListCreateView(generics.ListCreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Gibt nur das aktuell authentifizierte Benutzerobjekt zurück
+        # Returns only the currently authenticated user object
         return User.objects.filter(pk=self.request.user.pk)
 
-# Der Benutzer kann nur sein eigenes Profil abrufen, aktualisieren oder löschen.
+# User can only access their own profile
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        # Gibt immer das aktuell authentifizierte Benutzerobjekt zurück
+        # Always returns the currently authenticated user object
         return self.request.user
 
-# Endpunkte für Benutzereinstellungen
+# User settings endpoints
 class UserSettingsListCreateView(generics.ListCreateAPIView):
     serializer_class = UserSettingsSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -273,20 +273,20 @@ class UserSettingsDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return UserService.get_user_settings(self.request.user)
 
-# Pagination for Admin Users
+# Pagination for admin user list
 class AdminUserPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
 
-# Admin-specific views
+# Admin endpoints
 class AdminUserListView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = AdminUserPagination
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['email', 'first_name', 'last_name', 'created_at']
-    ordering = ['email']  # Default sorting
+    ordering = ['email']  # Default ordering
     
     def get_queryset(self):
         return AdminService.get_user_queryset(
@@ -295,7 +295,7 @@ class AdminUserListView(generics.ListAPIView):
         )
     
     def list(self, request, *args, **kwargs):
-        # Check if user is staff
+        # Only staff users can access this endpoint
         if not request.user.is_staff:
             return Response(
                 {"detail": "You do not have permission to perform this action."}, 
@@ -308,14 +308,14 @@ class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        # Only staff users can access this view
+        # Only staff users can access this endpoint
         if not self.request.user.is_staff:
             return User.objects.none()
         return User.objects.all()
     
     def check_permissions(self, request):
         super().check_permissions(request)
-        # Additional check for staff status
+        # Additional staff check
         if not request.user.is_staff:
             self.permission_denied(
                 request,
@@ -323,14 +323,14 @@ class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
                 code=status.HTTP_403_FORBIDDEN
             )
 
-# Admin UAV views
+# Admin UAV endpoints
 class AdminUAVListView(generics.ListAPIView):
     serializer_class = UAVSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = UAVPagination
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ['drone_name', 'manufacturer', 'type', 'motors', 'registration_number', 'created_at']
-    ordering = ['drone_name']  # Default sorting
+    ordering = ['drone_name']  # Default ordering
     
     def get_queryset(self):
         user_id = self.request.query_params.get('user_id')
@@ -341,7 +341,7 @@ class AdminUAVListView(generics.ListAPIView):
         )
     
     def list(self, request, *args, **kwargs):
-        # Check if user is staff
+        # Only staff users can access this endpoint
         if not request.user.is_staff:
             return Response(
                 {"detail": "You do not have permission to perform this action."}, 
@@ -373,14 +373,14 @@ class AdminUAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        # Only staff users can access this view
+        # Only staff users can access this endpoint
         if not self.request.user.is_staff:
             return UAV.objects.none()
         return UAV.objects.all()
     
     def check_permissions(self, request):
         super().check_permissions(request)
-        # Additional check for staff status
+        # Additional staff check
         if not request.user.is_staff:
             self.permission_denied(
                 request,
@@ -395,7 +395,7 @@ class AdminUAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
         
-        # Use the service to add flight statistics to the response data
+        # Add flight statistics to the response
         response.data = UAVService.enrich_uav_data(response.data)
         
         return response
@@ -524,7 +524,7 @@ class UserDataImportView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-# Endpoints for UAV Configurations
+# UAV configuration endpoints
 class UAVConfigListCreateView(generics.ListCreateAPIView):
     serializer_class = UAVConfigSerializer
     permission_classes = [permissions.IsAuthenticated]

@@ -55,11 +55,12 @@ const MaintenanceDatePair = ({ label, maintDate, onChange, formatDate, reminderD
   const threshold = new Date();
   threshold.setMonth(threshold.getMonth() + reminderMonthsBefore);
 
-  // disable checkbox if no date or nextDate ≤ threshold or parent disabled
+  // Disable checkbox if no date, nextDate is within threshold, or parent is disabled
   const disableCheckbox = disabled || !nextDate || nextDate <= threshold;
 
   return (
     <div className="grid grid-cols-2 gap-4">
+      {/* Maintenance date input */}
       <div>
         <label>{label} Maint:</label>
         <FormInput
@@ -71,6 +72,7 @@ const MaintenanceDatePair = ({ label, maintDate, onChange, formatDate, reminderD
           disabled={disabled}
         />
       </div>
+      {/* Next maintenance date input */}
       <div>
         <label>Next:</label>
         <FormInput
@@ -99,6 +101,7 @@ const MaintenanceDatePair = ({ label, maintDate, onChange, formatDate, reminderD
         >
           Send me a reminder {reminderMonthsBefore} months before expiry
         </label>
+        {/* Show reason if reminder is disabled */}
         {!disableCheckbox || (
           <span className="ml-2 text-xs text-gray-400">
             (Reminder disabled: date within {reminderMonthsBefore} months)
@@ -121,12 +124,13 @@ const AircraftForm = ({
   handleSetInactive,
   handleToggleActive,
   handleSetTodayMaintDates,
-  reminderMonthsBefore,     // hier hinzugefügt
+  reminderMonthsBefore,     // Passed as prop
   handleBackToSettings // New prop
 }) => {
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-4">
+        {/* Drone name input */}
         <div>
           <label>Drone Name*</label>
           <FormInput
@@ -141,6 +145,7 @@ const AircraftForm = ({
           />
         </div>
         
+        {/* Manufacturer input */}
         <div>
           <label>Manufacturer</label>
           <FormInput
@@ -218,6 +223,7 @@ const AircraftForm = ({
           disabled={isEditMode && formData.is_active === false}
         />
         
+        {/* ESC input */}
         <div>
           <label>ESC</label>
           <FormInput
@@ -231,6 +237,7 @@ const AircraftForm = ({
           />
         </div>
         
+        {/* ESC firmware input */}
         <div>
           <label>ESC Firmware</label>
           <FormInput
@@ -244,6 +251,7 @@ const AircraftForm = ({
           />
         </div>
         
+        {/* Receiver input */}
         <div>
           <label>Receiver</label>
           <FormInput
@@ -257,6 +265,7 @@ const AircraftForm = ({
           />
         </div>
         
+        {/* Receiver firmware input */}
         <div>
           <label>Receiver Firmware</label>
           <FormInput
@@ -270,6 +279,7 @@ const AircraftForm = ({
           />
         </div>
         
+        {/* Flight controller input */}
         <div>
           <label>Flight Controller</label>
           <FormInput
@@ -296,6 +306,7 @@ const AircraftForm = ({
           disabled={isEditMode && formData.is_active === false}
         />
         
+        {/* Firmware version input */}
         <div>
           <label>Firmware Version</label>
           <FormInput
@@ -309,6 +320,7 @@ const AircraftForm = ({
           />
         </div>
         
+        {/* Sensor count inputs */}
         <div className="grid grid-cols-5 gap-1">
           {['gps', 'mag', 'baro', 'gyro', 'acc'].map(sensor => (
             <div key={sensor}>
@@ -327,6 +339,7 @@ const AircraftForm = ({
           ))}
         </div>
         
+        {/* Registration number input */}
         <div>
           <label>Registration Number</label>
           <FormInput
@@ -340,6 +353,7 @@ const AircraftForm = ({
           />
         </div>
         
+        {/* Serial number input */}
         <div>
           <label>Serial Number</label>
           <FormInput
@@ -353,6 +367,7 @@ const AircraftForm = ({
           />
         </div>
         
+        {/* Maintenance section */}
         <div className="flex items-center gap-2 pt-2">
           <h3 className="text-lg font-medium text-black">Last Maintenance:</h3>
           <button
@@ -375,7 +390,7 @@ const AircraftForm = ({
             formatDate={formatDateForInput(formData[`${item}_maint_date`])}
             reminderDateValue={formatDateForInput(formData[`${item}_reminder_date`])}
             reminderChecked={formData[`${item}_reminder_active`]}
-            reminderMonthsBefore={reminderMonthsBefore}  // übergeben
+            reminderMonthsBefore={reminderMonthsBefore} 
             disabled={isEditMode && formData.is_active === false}
           />
         ))}

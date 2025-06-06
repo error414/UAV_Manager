@@ -3,12 +3,14 @@ import { Button } from '../index';
 import Filters from './Filters';
 import { CountryDropdown } from 'react-country-region-selector';
 
+// Renders a form field based on config and options
 const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   const fieldName = fieldConfig.name || fieldConfig.accessor;
   const value = data ? data[fieldName] || '' : '';
   const isEditing = 'accessor' in fieldConfig;
   
   if (fieldName === 'uav') {
+    // UAV select with dynamic options
     const uavOptions = Array.isArray(availableOptions?.availableUAVs) 
       ? availableOptions.availableUAVs : [];
     
@@ -28,6 +30,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   }
   
   if (fieldName === 'country') {
+    // Country dropdown using external library
     return (
       <CountryDropdown
         name={fieldName}
@@ -40,6 +43,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   }
   
   if (fieldName === 'is_staff' || fieldName === 'is_active') {
+    // Boolean select for staff/active fields
     return (
       <select
         name={fieldName}
@@ -55,6 +59,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   }
   
   if (availableOptions?.formOptions?.[fieldName]) {
+    // Dynamic select from availableOptions
     return (
       <select
         name={fieldName}
@@ -71,6 +76,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   }
   
   if (!isEditing && fieldConfig.type === 'select' && fieldConfig.options) {
+    // Static select for non-editing mode
     return (
       <select
         name={fieldName}
@@ -86,6 +92,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
     );
   }
   
+  // Infer input type from field name or config
   const inputType = 
     fieldName.includes('time') ? 'time' : 
     fieldName.includes('date') ? 'date' : 
@@ -105,6 +112,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   );
 };
 
+// Edit actions for table rows
 const EditingActions = ({ onSaveEdit, onDelete, itemId }) => (
   <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2 justify-end" onClick={(e) => e.stopPropagation()}>
     <Button onClick={onSaveEdit} className="bg-green-500 hover:bg-green-600 text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2">Save</Button>
@@ -145,6 +153,7 @@ const ResponsiveTable = ({
   tableStyles = {},
   containerStyles = {},
 }) => {
+  // Use provided action buttons or default edit button
   const renderActionButtons = actionButtons || ((itemId) => (
     <Button 
       onClick={(e) => { e.stopPropagation(); onEdit(itemId); }} 
@@ -154,6 +163,7 @@ const ResponsiveTable = ({
     </Button>
   ));
 
+  // Mobile card rendering for each row
   const renderMobileCard = (item) => {
     const titleColumn = titleField 
       ? columns.find(col => col.accessor === titleField) || columns[0]
@@ -172,7 +182,9 @@ const ResponsiveTable = ({
         onClick={rowClickable ? () => onRowClick(item[idField]) : undefined}
       >
         {editingId === item[idField] ? (
+          // Edit mode: show form fields
           <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+            {/* Render form fields for editing */}
             {columns.map((col) => (
               <div key={col.accessor} className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700">{col.header}</label>
@@ -187,9 +199,11 @@ const ResponsiveTable = ({
           </div>
         ) : (
           <>
+            {/* Card title */}
             <h3 className="font-bold text-lg mb-2">{itemTitle}</h3>
             <div className="grid grid-cols-2 gap-2">
               <div>
+                {/* First half of columns */}
                 {contentColumns.slice(0, halfLength).map((col) => (
                   <p key={col.accessor} className="text-sm mb-1">
                     <span className="font-medium">{col.header}:</span>{' '}
@@ -198,6 +212,7 @@ const ResponsiveTable = ({
                 ))}
               </div>
               <div>
+                {/* Second half of columns */}
                 {contentColumns.slice(halfLength).map((col) => (
                   <p key={col.accessor} className="text-sm mb-1">
                     <span className="font-medium">{col.header}:</span>{' '}
@@ -218,18 +233,18 @@ const ResponsiveTable = ({
     );
   };
 
-  // Check if any row is being edited
+  // True if any row is in edit mode
   const isAnyRowInEditMode = editingId !== null;
 
-  // Get column classes based on current edit state
+  // Returns column classes based on config
   const getColumnClasses = (col) => {
     let columnClass = '';
     
-    // Check if column has a width specified and apply it
+    // Use fixed width if specified
     if (col.width) {
       columnClass += ` w-[${col.width}]`;
     } else if (!showActionColumn) {
-      // Distribute width more evenly when no action column
+      // Distribute width evenly if no action column
       columnClass += ` flex-1`;
     }
     
@@ -262,6 +277,7 @@ const ResponsiveTable = ({
           <div className="mt-1 bg-white p-3 rounded-lg shadow border border-gray-200">
             <h3 className="font-medium text-lg mb-2">Add New</h3>
             <div className="space-y-2">
+              {/* Render add fields */}
               {addFields.map((field) => (
                 <div key={field.name} className="flex flex-col">
                   <label className="text-sm font-medium text-gray-700">{field.label}</label>
@@ -278,7 +294,7 @@ const ResponsiveTable = ({
       <div
         className="hidden xl:block xl:flex flex-col w-full"
         style={{
-          // Entferne height/minHeight/maxHeight, damit der Container sich der Tabelle anpasst
+          // Removed height/minHeight/maxHeight for auto-sizing
         }}
       >
         <div className="flex-grow overflow-hidden rounded-lg border border-gray-200 shadow-md bg-white">
@@ -318,6 +334,7 @@ const ResponsiveTable = ({
                   >
                     {editingId === item[idField] ? (
                       <>
+                        {/* Edit mode: show form fields */}
                         {columns.map((col) => (
                           <td key={col.accessor} 
                               className={`py-1 px-2 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`} 
@@ -340,6 +357,7 @@ const ResponsiveTable = ({
                       </>
                     ) : (
                       <>
+                        {/* Normal mode: show cell values */}
                         {columns.map((col) => (
                           <td key={col.accessor} className={`py-2 px-3 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`}>
                             <div className="truncate">
@@ -360,6 +378,7 @@ const ResponsiveTable = ({
             {showAddRow && addFields && (
               <tfoot className="bg-white border-t sticky bottom-0 z-10">
                 <tr>
+                  {/* Render add fields in footer */}
                   {addFields.map((field) => (
                     <td key={field.name} className="py-2 px-3">
                       <FormField fieldConfig={field} data={newItem} onChange={onNewItemChange} availableOptions={availableOptions} />

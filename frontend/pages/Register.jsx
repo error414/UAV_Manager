@@ -20,6 +20,7 @@ const Register = () => {
   const { fetchData } = useApi(API_URL, setError);
 
   useEffect(() => {
+    // Redirect if already authenticated
     if (localStorage.getItem('access_token')) {
       navigate('/flightlog', { replace: true });
     }
@@ -51,13 +52,16 @@ const Register = () => {
       const registerData = await registerResponse.json();
 
       if (registerResponse.ok) {
+        // Store user_id if returned by API
         if (registerData.user_id) {
           localStorage.setItem('user_id', registerData.user_id);
         }
 
+        // Store access token if returned, otherwise login
         if (registerData.access) {
           localStorage.setItem('access_token', registerData.access);
         } else {
+          // Login after registration if access token not returned
           const loginResponse = await fetch(`${API_URL}/auth/jwt/create/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

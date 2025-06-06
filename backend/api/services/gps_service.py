@@ -3,20 +3,18 @@ from django.db import transaction
 class GPSService:
     @staticmethod
     def get_gps_logs(flight_log):
-        """Retrieve GPS logs for a flight"""
+        # Return all GPS logs for the given flight log
         from ..models import FlightGPSLog
         return FlightGPSLog.objects.filter(flight_log=flight_log)
     
     @staticmethod
     @transaction.atomic
     def save_gps_data(flight_log, gps_data):
-        """Save GPS data for a flight, replacing any existing data"""
+        # Replace existing GPS data for this flight log
         from ..models import FlightGPSLog
         
-        # Clear existing GPS data for this flight
         FlightGPSLog.objects.filter(flight_log=flight_log).delete()
         
-        # Process and save new GPS data
         gps_logs = []
         
         for point in gps_data:
@@ -55,7 +53,7 @@ class GPSService:
     @staticmethod
     @transaction.atomic
     def delete_gps_data(flight_log):
-        """Delete all GPS data for a flight"""
+        # Delete all GPS logs for the given flight log
         from ..models import FlightGPSLog
         
         deleted_count, _ = FlightGPSLog.objects.filter(flight_log=flight_log).delete()

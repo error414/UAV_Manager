@@ -1,15 +1,7 @@
 import React from 'react';
 import { Button } from '../index';
 
-/**
- * Modal component for comparing two files side by side
- * @param {boolean} show - Whether to show the modal
- * @param {Function} onClose - Function to call when the modal is closed
- * @param {Object} data - Comparison data containing file information and diff lines
- * @param {Object} data.file1 - First file information with name and content
- * @param {Object} data.file2 - Second file information with name and content
- * @param {Array} data.diffLines - Array of line differences with type, line1, line2, and lineNumber
- */
+// Modal for side-by-side file comparison
 const CompareModal = ({ show, onClose, data }) => {
   if (!show || !data) return null;
   
@@ -37,15 +29,18 @@ const CompareModal = ({ show, onClose, data }) => {
             <div className="grid grid-cols-[auto_1fr_1fr]">
               {data.diffLines.map((diff, index) => (
                 <React.Fragment key={index}>
+                  {/* Line number */}
                   <div className="px-2 py-1 text-gray-500 border-r bg-gray-50 text-right">
                     {diff.lineNumber}
                   </div>
+                  {/* File 1 line, highlight if removed/changed */}
                   <div className={`px-2 py-1 border-r whitespace-pre-wrap ${
                     diff.type === 'removed' ? 'bg-red-100' :
                     diff.type === 'changed' ? 'bg-orange-100' : ''
                   }`}>
                     {diff.line1 ?? ''}
                   </div>
+                  {/* File 2 line, highlight if added/changed */}
                   <div className={`px-2 py-1 whitespace-pre-wrap ${
                     diff.type === 'added' ? 'bg-green-100' :
                     diff.type === 'changed' ? 'bg-orange-100' : ''

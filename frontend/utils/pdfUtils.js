@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// Converts seconds to "Xh Ymin Zsec" format
 const formatSecondsToHMS = (seconds) => {
   if (!seconds || isNaN(seconds)) return "0h 0min 0sec";
   const h = Math.floor(seconds / 3600);
@@ -9,11 +10,13 @@ const formatSecondsToHMS = (seconds) => {
   return `${h}h ${m}min ${s}sec`;
 };
 
+// Returns UAV name or ID as string
 const getUAVName = (uav) => {
   if (!uav) return '';
   return typeof uav === 'string' ? uav : (uav.drone_name || uav.uav_id || '');
 };
 
+// Draws two texts with a vertical separator line
 const drawTextWithSeparator = (doc, leftText, rightText, x1, x2, y, drawLine = true) => {
   doc.text(leftText, x1, y);
   if (drawLine) {
@@ -27,6 +30,7 @@ const drawTextWithSeparator = (doc, leftText, rightText, x1, x2, y, drawLine = t
 export const exportFlightLogToPDF = async (flightLogs, userData) => {
   const doc = new jsPDF({ orientation: 'landscape' });
 
+  // Aggregate statistics
   const stats = {
     totalFlights: flightLogs.length,
     totalLandings: 0,
@@ -52,6 +56,7 @@ export const exportFlightLogToPDF = async (flightLogs, userData) => {
     if (log.light_conditions === 'Day') stats.totalDay += log.flight_duration || 0;
     if (log.light_conditions === 'Night') stats.totalNight += log.flight_duration || 0;
     if (log.uav) {
+      // Add UAV identifier to set
       if (typeof log.uav === 'object' && log.uav.uav_id) {
         stats.uavSet.add(log.uav.uav_id);
       } else if (typeof log.uav === 'string') {
@@ -151,6 +156,7 @@ export const exportFlightLogToPDF = async (flightLogs, userData) => {
 
   doc.addPage('landscape');
 
+  // Table columns for flight log entries
   const columns = [
     { header: 'Date', dataKey: 'departure_date' },
     { header: 'UAV', dataKey: 'uav' },
@@ -167,6 +173,7 @@ export const exportFlightLogToPDF = async (flightLogs, userData) => {
     { header: 'Comments', dataKey: 'comments' }
   ];
 
+  // Prepare table rows
   const rows = flightLogs.map(log => ({
     departure_date: log.departure_date,
     uav: getUAVName(log.uav),

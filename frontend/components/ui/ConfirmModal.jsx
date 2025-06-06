@@ -1,11 +1,11 @@
 const ConfirmModal = ({
   open,
-  title = "Bestätigung",
+  title = "Confirmation",
   message,
   onConfirm,
   onCancel,
-  confirmText = "Bestätigen",
-  cancelText = "Abbrechen"
+  confirmText = "Confirm",
+  cancelText = "Cancel"
 }) => {
   if (!open) return null;
 

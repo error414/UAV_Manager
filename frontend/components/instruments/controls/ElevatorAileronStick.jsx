@@ -5,24 +5,24 @@ const ElevatorAileronStick = ({
   aileron = 0,  // -1024 to 1024 (left/right)
   size = 200
 }) => {
-  // Werte direkt verwenden, keine Umrechnung/Parsing
+  // Use values directly, fallback to 0 if not a number
   const elevatorValue = typeof elevator === 'number' ? elevator : 0;
   const aileronValue = typeof aileron === 'number' ? aileron : 0;
 
-  // Normalize values to ensure they're within range
+  // Clamp values to valid range
   const normalizedElevator = Math.min(1024, Math.max(-1024, elevatorValue));
   const normalizedAileron = Math.min(1024, Math.max(-1024, aileronValue));
   
-  // Calculate dimensions
+  // Calculate geometry
   const center = size / 2;
   const stickBaseRadius = size * 0.45;
   const stickSize = size * 0.12;
   
-  // Calculate stick position ensuring 0 is centered
+  // Map values to stick position
   const stickX = center + (normalizedAileron / 1024) * stickBaseRadius;
   const stickY = center - (normalizedElevator / 1024) * stickBaseRadius;
   
-  // Ensure stick stays within the base circle
+  // Keep stick inside base circle
   const distance = Math.sqrt(Math.pow(stickX - center, 2) + Math.pow(stickY - center, 2));
   let adjustedX = stickX;
   let adjustedY = stickY;
@@ -33,7 +33,7 @@ const ElevatorAileronStick = ({
     adjustedY = center + Math.sin(angle) * stickBaseRadius;
   }
   
-  // Format values to consistent width
+  // Pad value for display
   const formatValue = (value) => {
     return value.toString().padStart(5, ' ');
   };
@@ -41,7 +41,7 @@ const ElevatorAileronStick = ({
   return (
     <div className="flex flex-col items-center" style={{ width: size, maxWidth: size }}>
       <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, maxHeight: size }}>
-        {/* Outer casing */}
+        {/* Outer circle */}
         <circle cx={center} cy={center} r={size / 2} fill="#333" />
         
         {/* Stick base */}
@@ -53,10 +53,10 @@ const ElevatorAileronStick = ({
         <line x1={center - stickBaseRadius} y1={center} x2={center + stickBaseRadius} y2={center} 
               stroke="#444" strokeWidth="1" strokeDasharray="5,5" />
         
-        {/* Connection line */}
+        {/* Stick connection */}
         <line x1={center} y1={center} x2={adjustedX} y2={adjustedY} stroke="#666" strokeWidth="3" />
         
-        {/* Joystick handle */}
+        {/* Stick handle */}
         <circle cx={adjustedX} cy={adjustedY} r={stickSize} fill="#555" stroke="#888" strokeWidth="2" />
       </svg>
       <div className="text-xs text-gray-600 mt-1 font-mono w-full text-center whitespace-pre" style={{ height: '1.5rem' }}>

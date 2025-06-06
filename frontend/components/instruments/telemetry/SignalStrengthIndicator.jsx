@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 
 /**
- * Zeigt die Signalstärke für Empfänger- und Senderqualität als Balkenanzeige.
- * @param {number} receiver_quality - 0 bis 100
- * @param {number} transmitter_quality - 0 bis 100
- * @param {string} direction - 'horizontal' (nebeneinander) oder 'vertical' (übereinander)
- * @param {number} transmitter_power - Transmitter Power in mW
+ * Displays receiver and transmitter signal quality as bar indicators.
+ * @param {number} receiver_quality - 0 to 100
+ * @param {number} transmitter_quality - 0 to 100
+ * @param {string} direction - 'horizontal' or 'vertical'
+ * @param {number} transmitter_power - Transmitter power in mW
  */
 const SignalStrengthIndicator = ({
   receiver_quality = 0,
@@ -20,7 +20,7 @@ const SignalStrengthIndicator = ({
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   
-  // Berechne die optimale Größe basierend auf Container-Dimensionen
+  // Update container size on mount and window resize
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
@@ -34,28 +34,28 @@ const SignalStrengthIndicator = ({
     return () => window.removeEventListener('resize', updateSize);
   }, []);
   
-  // Bestimme die optimale Größe basierend auf Containerabmessungen und Richtung
+  // Calculate optimal indicator size based on container and direction
   const calcEffectiveSize = () => {
     if (!containerSize.width || !containerSize.height) return Math.min(size, maxSize);
     
     if (direction === 'vertical') {
-      // Bei vertikaler Ausrichtung ist die Breite begrenzt
-      const availableHeight = containerSize.height - 20; // Platz für Labels
+      // Limit width for vertical layout
+      const availableHeight = containerSize.height - 20; // Reserve space for labels
       const availableWidth = containerSize.width - 10;
-      const heightPerItem = availableHeight / 2; // Zwei Elemente (RX, TX)
+      const heightPerItem = availableHeight / 2; // Two items (RX, TX)
       const minDim = Math.min(availableWidth, heightPerItem);
       return Math.min(minDim, maxSize);
     } else {
-      // Bei horizontaler Ausrichtung ist die Höhe begrenzt
+      // Limit height for horizontal layout
       const availableWidth = containerSize.width - 10;
-      const widthPerItem = availableWidth / 2; // Zwei Elemente (RX, TX) 
+      const widthPerItem = availableWidth / 2; // Two items (RX, TX) 
       return Math.min(widthPerItem, maxSize);
     }
   };
   
   const effectiveSize = calcEffectiveSize();
   
-  // Hilfsfunktion: Wert auf Balkenanzahl mappen
+  // Map value (0-100) to number of bars
   const getBars = (value) => {
     if (typeof value !== 'number' || isNaN(value)) return 0;
     const v = Math.max(0, Math.min(100, value));
@@ -65,13 +65,13 @@ const SignalStrengthIndicator = ({
   const rxBars = getBars(receiver_quality);
   const txBars = getBars(transmitter_quality);
 
-  // Optimiertes Balken-Layout
+  // Bar layout calculations
   const barWidth = effectiveSize / (bars * 2.2);
   const barSpacing = barWidth * 0.8;
   const barMaxHeight = effectiveSize * 0.75;
   const barMinHeight = effectiveSize * 0.15;
 
-  // Hilfsfunktion: Farbe basierend auf Balkenindex und aktivierten Balken bestimmen
+  // Get bar color based on index and active bars
   const getBarColor = (barIndex, activeBars) => {
     if (barIndex >= activeBars) return '#d1d5db';
     
@@ -82,7 +82,7 @@ const SignalStrengthIndicator = ({
     return '#22c55e';
   };
 
-  // Balken für ein Signal (Array von SVG-Rect)
+  // Render SVG bars for a signal
   const renderBars = (activeBars) =>
     Array.from({ length: bars }).map((_, i) => {
       const height = barMinHeight + ((barMaxHeight - barMinHeight) * (i + 1) / bars);
@@ -99,7 +99,7 @@ const SignalStrengthIndicator = ({
       );
     });
 
-  // Festlegen der Container-Stile basierend auf Ausrichtung
+  // Set container styles based on direction
   const containerClass = 
     direction === 'vertical' ? 'flex flex-col' : 'flex flex-row';
   
@@ -112,7 +112,7 @@ const SignalStrengthIndicator = ({
     gap: direction === 'vertical' ? '2px' : '4px'
   };
 
-  // Stil für die einzelnen Anzeigeboxen
+  // Styles for each indicator box
   const boxStyle = {
     display: 'flex',
     flexDirection: 'column',

@@ -1,5 +1,5 @@
 /**
- * Generates a line-by-line diff between two text files
+ * Returns line-by-line diff between two texts
  * @param {string} text1 - Content of the first file
  * @param {string} text2 - Content of the second file
  * @returns {Array} Array of difference objects with line information
@@ -31,7 +31,7 @@ export const generateDiff = (text1, text2) => {
 };
 
 /**
- * Prepares file comparison data
+ * Prepares comparison data for two files
  * @param {Object} file1 - First file object with name and file URL
  * @param {Object} file2 - Second file object with name and file URL
  * @param {string} text1 - Content of the first file
@@ -55,7 +55,7 @@ export const prepareComparisonData = (file1, file2, text1, text2) => {
 };
 
 /**
- * Compares two configuration files and prepares data for display
+ * Fetches and compares two config files by ID
  * 
  * @param {Array} selectedConfigs - Array of selected config IDs
  * @param {Array} configFiles - Array of all available config files

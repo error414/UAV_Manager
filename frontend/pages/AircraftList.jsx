@@ -4,7 +4,7 @@ import { Layout, Alert, Button, ResponsiveTable, Loading, ConfirmModal, Paginati
 import { uavTableColumns, UAV_INITIAL_FILTERS, extractUavId } from '../utils';
 import { useAuth, useApi, useUAVs } from '../hooks';
 
-// Hilfshook für debounce-Filter
+// Debounced filter hook for input fields
 function useDebouncedFilters(initialFilters, delay = 500) {
   const [filters, setFilters] = useState(initialFilters);
   const [debouncedFilters, setDebouncedFilters] = useState(initialFilters);
@@ -38,9 +38,9 @@ const AircraftList = () => {
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1); // Desktop
-  const [mobilePage, setMobilePage] = useState(1);   // Mobile
-  const [pageSize, setPageSize] = useState(17); // Dynamisch für Desktop
+  const [currentPage, setCurrentPage] = useState(1); // Desktop pagination
+  const [mobilePage, setMobilePage] = useState(1);   // Mobile pagination
+  const [pageSize, setPageSize] = useState(17); // Dynamic for desktop
   const [pageSizeInitialized, setPageSizeInitialized] = useState(false);
   const [pageSizeCalculationAttempted, setPageSizeCalculationAttempted] = useState(false);
   const tableContainerRef = useRef(null);
@@ -52,7 +52,7 @@ const AircraftList = () => {
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
 
-  // Debounced Filter Hook
+  // Debounced filter hook
   const {
     filters,
     setFilters,
@@ -60,7 +60,7 @@ const AircraftList = () => {
     handleFilterChange
   } = useDebouncedFilters(UAV_INITIAL_FILTERS);
 
-  // UAVs laden (nutzt useUAVs, aber hier für die Tabelle)
+  // UAV fetch logic for table
   const { fetchUAVs } = useUAVs(
     async (cb) => {
       const auth = checkAuthAndGetUser();
@@ -71,7 +71,7 @@ const AircraftList = () => {
     setAircrafts
   );
 
-  // Dynamische Berechnung der Desktop-PageSize wie bei Flightlog.jsx
+  // Dynamically calculate optimal desktop page size
   const calculateOptimalPageSize = useCallback(() => {
     if (!tableContainerRef.current) {
       if (!pageSizeCalculationAttempted) {
@@ -80,13 +80,10 @@ const AircraftList = () => {
       }
       return;
     }
-    // Ermittle die Höhe der Tabelle (ohne Scrollen)
     const container = tableContainerRef.current;
-    // Ermittle die Höhe des sichtbaren Bereichs (Viewport)
     const viewportHeight = window.innerHeight;
-    // Ermittle die Position der Tabelle relativ zum Viewport
     const rect = container.getBoundingClientRect();
-    // Ziehe Abstand nach unten (z.B. für Pagination, Buttons) ab
+    // Reserve space for pagination/buttons at the bottom
     const bottomMargin = 120;
     const availableHeight = Math.max(100, viewportHeight - rect.top - bottomMargin);
     const estimatedRowHeight = 53;
@@ -101,6 +98,7 @@ const AircraftList = () => {
     const timer = setTimeout(() => {
       calculateOptimalPageSize();
     }, 250);
+    // Fallback in case calculation fails
     const safetyTimer = setTimeout(() => {
       if (!pageSizeInitialized) {
         setPageSizeInitialized(true);
@@ -123,7 +121,7 @@ const AircraftList = () => {
     };
   }, [calculateOptimalPageSize]);
 
-  // Daten laden (nutze pageSize)
+  // Fetch aircraft data using current filters and pagination
   const fetchAircrafts = useCallback(async () => {
     const auth = checkAuthAndGetUser();
     if (!auth) return;
@@ -229,15 +227,15 @@ const AircraftList = () => {
 
   const toggleMobileFilters = () => setMobileFiltersVisible(prev => !prev);
 
-  const MOBILE_PAGE_SIZE = 7; // Fester Wert für mobile Pagination
+  const MOBILE_PAGE_SIZE = 7; // Fixed value for mobile pagination
 
-  // Hilfsfunktion für mobile Pagination
+  // Returns paged data for mobile view
   const getMobilePagedData = () => {
     const start = (mobilePage - 1) * MOBILE_PAGE_SIZE;
     return modifiedAircrafts.slice(start, start + MOBILE_PAGE_SIZE);
   };
 
-  // Setze mobilePage auf 1 zurück, wenn sich Filter oder Daten ändern
+  // Reset mobile page when data or filters change
   useEffect(() => {
     setMobilePage(1);
   }, [aircrafts, filters]);
@@ -268,7 +266,7 @@ const AircraftList = () => {
               {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
             </Button>
           </div>
-          {/* Desktop Table Container für flexiblen weißen Hintergrund und dynamische Höhe */}
+          {/* Desktop table container with dynamic height and white background */}
           <div className="hidden md:block md:flex flex-col w-full">
             <div
               className="overflow-hidden rounded-lg border border-gray-200 shadow-md bg-white inline-block align-top"
@@ -295,7 +293,7 @@ const AircraftList = () => {
               />
             </div>
           </div>
-          {/* Mobile Table mit fester Pagination wie bei Flightlog */}
+          {/* Mobile table with fixed pagination */}
           <div className="md:hidden">
             <ResponsiveTable
               columns={uavTableColumns}
@@ -325,7 +323,7 @@ const AircraftList = () => {
           </div>
         </>
       )}
-      {/* Desktop Pagination */}
+      {/* Desktop pagination */}
       <div className="hidden md:flex justify-center gap-4 p-4 mt-4">
         <Pagination 
           currentPage={currentPage} 

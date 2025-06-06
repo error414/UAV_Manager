@@ -7,35 +7,30 @@ from ..models import UAV, FlightLog, MaintenanceReminder
 class UAVService:
     @staticmethod
     def get_uav_queryset(user, query_params=None):
-        """Filter UAV queryset based on user and query parameters"""
+        """Return UAV queryset filtered by user and optional query parameters."""
         queryset = UAV.objects.filter(user=user)
 
-        # Annotate *before* filtering on aggregated values
-        # Use Coalesce to handle cases where there are no flight logs (Sum would be None)
+        # Annotate with aggregated takeoffs and landings, defaulting to 0 if no logs exist
         queryset = queryset.annotate(
             total_takeoffs_agg=Coalesce(Sum('flightlogs__takeoffs'), Value(0), output_field=IntegerField()),
             total_landings_agg=Coalesce(Sum('flightlogs__landings'), Value(0), output_field=IntegerField())
         )
 
-        # Add filtering if needed
+        # Apply filters based on query_params
         if query_params:
             if 'is_active' in query_params:
                 is_active = query_params.get('is_active').lower() == 'true'
                 queryset = queryset.filter(is_active=is_active)
             
-            # Filter by drone name (partial match)
             if query_params.get('drone_name'):
                 queryset = queryset.filter(drone_name__icontains=query_params['drone_name'])
             
-            # Filter by manufacturer (partial match)
             if query_params.get('manufacturer'):
                 queryset = queryset.filter(manufacturer__icontains=query_params['manufacturer'])
             
-            # Filter by type (partial match)
             if query_params.get('type'):
                 queryset = queryset.filter(type__icontains=query_params['type'])
             
-            # Filter by motors (exact match)
             if query_params.get('motors'):
                 try:
                     motors = int(query_params['motors'])
@@ -43,51 +38,39 @@ class UAVService:
                 except (ValueError, TypeError):
                     pass
             
-            # Filter by motor type (partial match)
             if query_params.get('motor_type'):
                 queryset = queryset.filter(motor_type__icontains=query_params['motor_type'])
             
-            # Filter by video system (partial match)
             if query_params.get('video_system'):
                 queryset = queryset.filter(video_system__icontains=query_params['video_system'])
             
-            # Filter by firmware (partial match)
             if query_params.get('firmware'):
                 queryset = queryset.filter(firmware__icontains=query_params['firmware'])
             
-            # Filter by firmware version (partial match)
             if query_params.get('firmware_version'):
                 queryset = queryset.filter(firmware_version__icontains=query_params['firmware_version'])
             
-            # Filter by GPS (partial match)
             if query_params.get('gps'):
                 queryset = queryset.filter(gps__icontains=query_params['gps'])
             
-            # Filter by MAG (partial match)
             if query_params.get('mag'):
                 queryset = queryset.filter(mag__icontains=query_params['mag'])
             
-            # Filter by BARO (partial match)
             if query_params.get('baro'):
                 queryset = queryset.filter(baro__icontains=query_params['baro'])
             
-            # Filter by GYRO (partial match)
             if query_params.get('gyro'):
                 queryset = queryset.filter(gyro__icontains=query_params['gyro'])
             
-            # Filter by ACC (partial match)
             if query_params.get('acc'):
                 queryset = queryset.filter(acc__icontains=query_params['acc'])
 
-            # Filter by registration number (partial match)
             if query_params.get('registration_number'):
                 queryset = queryset.filter(registration_number__icontains=query_params['registration_number'])
             
-            # Filter by serial number (partial match)
             if query_params.get('serial_number'):
                 queryset = queryset.filter(serial_number__icontains=query_params['serial_number'])
 
-            # Filter by total_takeoffs (exact match on annotated value)
             if query_params.get('total_takeoffs'):
                 try:
                     takeoffs_val = int(query_params['total_takeoffs'])
@@ -95,7 +78,6 @@ class UAVService:
                 except (ValueError, TypeError):
                     pass # Ignore if not a valid integer
 
-            # Filter by total_landings (exact match on annotated value)
             if query_params.get('total_landings'):
                 try:
                     landings_val = int(query_params['total_landings'])
@@ -116,7 +98,7 @@ class UAVService:
             active_key = f'{component}_reminder_active'
             
             if maint_date_key in data and data[maint_date_key]:
-                # Update or create die Wartungserinnerung
+                # Update or create maintenance reminder
                 MaintenanceReminder.objects.update_or_create(
                     uav=uav,
                     component=component,
@@ -235,7 +217,7 @@ class FlightLogService:
     @staticmethod
     def get_flightlog_queryset(user, query_params=None):
         """Filter FlightLog queryset based on user and query parameters"""
-        # Admin-Override: Wenn user.is_staff und 'user' in query_params, dann nach dieser User-ID filtern
+        # Admin-Override: If user is staff and 'user' is in query_params, filter by this user ID
         if query_params and hasattr(user, 'is_staff') and user.is_staff and query_params.get('user'):
             queryset = FlightLog.objects.filter(user_id=query_params['user'])
         else:

@@ -1,6 +1,6 @@
 import L from 'leaflet';
 
-// Create custom map icons with different colors
+// Create a custom Leaflet icon with a given color
 export const createIcon = (color) => new L.Icon({
   iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -10,27 +10,27 @@ export const createIcon = (color) => new L.Icon({
   shadowSize: [41, 41]
 });
 
-// Predefined icons
+// Predefined icons for takeoff and landing
 export const takeoffIcon = createIcon('green');
 export const landingIcon = createIcon('red');
 
-// Calculate bearing between two coordinates for rotation
+// Returns bearing in degrees from start to end coordinates
 export const calculateBearing = (start, end) => {
-  // Erwartetes Format: [lat, lng]
+  // Expects [lat, lng] arrays
   if (!Array.isArray(start) || !Array.isArray(end) || start.length !== 2 || end.length !== 2) { 
     return 0;
   }
   let [startLat, startLng] = start; 
   let [endLat, endLng] = end;
 
-  // Validate coordinates
+  // Validate input types
   if (typeof startLat !== 'number' || typeof startLng !== 'number' || 
       typeof endLat !== 'number' || typeof endLng !== 'number' ||
       isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) {
-    return 0; // Default heading
+    return 0;
   }
   
-  // Convert to radians
+  // Convert degrees to radians
   startLat = startLat * Math.PI / 180;
   startLng = startLng * Math.PI / 180;
   endLat = endLat * Math.PI / 180;
@@ -47,13 +47,13 @@ export const calculateBearing = (start, end) => {
   return bearing;
 };
 
-// Extract coordinates from string format like "12.345, 67.890"
+// Parses coordinates from string format "lat, lng"
 export const extractCoordinates = (str) => {
   const match = str?.match(/(\d+\.\d+)\s*,\s*(\d+\.\d+)/);
   return match ? { lat: +match[1], lon: +match[2] } : null;
 };
 
-// Get coordinates for a flight, handling different data formats
+// Returns departure and landing coordinates from flight object
 export const getFlightCoordinates = (flight) => {
   if (!flight) return { departureCoords: null, landingCoords: null };
   
@@ -68,7 +68,7 @@ export const getFlightCoordinates = (flight) => {
   return { departureCoords: dep || null, landingCoords: land || null };
 };
 
-// Calculate map bounds based on available coordinates
+// Returns map bounds based on available coordinates or GPS track
 export const getMapBounds = (flight, gpsTrack) => {
   if (gpsTrack?.length > 0) return gpsTrack;
   

@@ -41,6 +41,7 @@ const AircraftSettings = () => {
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
 
+  // Extract filename from URL
   const getFilenameFromUrl = (url) => {
     if (!url) return '';
     return url.split('/').pop();
@@ -56,6 +57,7 @@ const AircraftSettings = () => {
     setSelectedConfigs([]);
   }, [configFiles]);
 
+  // Validate maintenance log form
   const validateForm = (log, setErrors) => {
     const errors = {};
     if (!log.event_date) errors.event_date = 'Date is required';
@@ -64,6 +66,7 @@ const AircraftSettings = () => {
     return Object.keys(errors).length === 0;
   };
 
+  // Fetch aircraft and related data
   const fetchAircraft = async () => {
     try {
       const auth = checkAuthAndGetUser();
@@ -84,6 +87,7 @@ const AircraftSettings = () => {
         
         if (!remindersResult.error) {
           const remindersData = remindersResult.data;
+          // Map reminders to aircraft fields
           remindersData.filter(r => r.uav === uavId).forEach(reminder => {
             if (reminder.component === 'props') data.next_props_maint_date = reminder.next_maintenance;
             else if (reminder.component === 'motor') data.next_motor_maint_date = reminder.next_maintenance;
@@ -98,6 +102,7 @@ const AircraftSettings = () => {
     }
   };
 
+  // Fetch configuration files for this UAV
   const fetchConfigFiles = async () => {
     try {
       const auth = checkAuthAndGetUser();
@@ -113,6 +118,7 @@ const AircraftSettings = () => {
     }
   };
 
+  // Fetch min/max UAV IDs for navigation
   const fetchUavMeta = async () => {
     try {
       const result = await fetchData(`/api/uavs/meta/`);
@@ -120,9 +126,10 @@ const AircraftSettings = () => {
         setMinUavId(result.data?.minId);
         setMaxUavId(result.data?.maxId);
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { /* ignore errors */ }
   };
 
+  // Submit maintenance log (add or update)
   const submitMaintenanceLog = async (logData, file, method, logId = null, keepExistingFile = false) => {
     const auth = checkAuthAndGetUser();
     if (!auth) return false;
@@ -176,11 +183,13 @@ const AircraftSettings = () => {
     }
   };
 
+  // Handle config file input changes
   const handleConfigChange = e => {
     const { name, value, files } = e.target;
     setConfigFile(cf => ({ ...cf, [name]: name === 'file' ? files[0] : value }));
   };
   
+  // Add new configuration file
   const handleAddConfig = async () => {
     const errors = {};
     if (!configFile.name?.trim()) errors.name = 'Name is required';
@@ -193,7 +202,7 @@ const AircraftSettings = () => {
       const formData = new FormData();
       formData.append('name', configFile.name);
       formData.append('file', configFile.file);
-      // Always use current date when uploading
+      // Always use current date for upload
       formData.append('upload_date', new Date().toISOString().split('T')[0]);
       formData.append('uav', uavId);
       
@@ -220,11 +229,13 @@ const AircraftSettings = () => {
     }
   };
 
+  // Show delete config confirmation modal
   const handleDeleteConfig = configId => {
     setDeleteConfigId(configId);
     setShowDeleteConfigModal(true);
   };
 
+  // Confirm and delete configuration file
   const confirmDeleteConfig = async () => {
     try {
       const result = await fetchData(`/api/uav-configs/${deleteConfigId}/`, {}, 'DELETE');
@@ -240,16 +251,19 @@ const AircraftSettings = () => {
     }
   };
 
+  // Handle new maintenance log input changes
   const handleLogChange = e => {
     const { name, value, files } = e.target;
     setNewLog(l => ({ ...l, [name]: name === 'file' ? files[0] : value }));
   };
   
+  // Handle editing maintenance log input changes
   const handleEditLogChange = e => {
     const { name, value, files } = e.target;
     setEditingLog(l => ({ ...l, [name]: name === 'file' ? files[0] : value }));
   };
 
+  // Start editing a maintenance log
   const handleEditLog = logId => {
     const logToEdit = aircraft.maintenance_logs.find(log => log.maintenance_id === logId);
     if (logToEdit) {
@@ -259,6 +273,7 @@ const AircraftSettings = () => {
     }
   };
 
+  // Save edited maintenance log
   const handleSaveEdit = async () => {
     if (!validateForm(editingLog, setEditFormErrors)) return;
     const hasNewFile = editingLog.file !== null;
@@ -277,12 +292,14 @@ const AircraftSettings = () => {
     }
   };
 
+  // Cancel editing maintenance log
   const handleCancelEdit = () => {
     setEditingLogId(null);
     setEditingLog(null);
     setEditFormErrors({});
   };
 
+  // Add new maintenance log
   const handleAddLog = async () => {
     if (!validateForm(newLog, setFormErrors)) return;
     const success = await submitMaintenanceLog(newLog, newLog.file, 'POST');
@@ -294,11 +311,13 @@ const AircraftSettings = () => {
     }
   };
 
+  // Show delete log confirmation modal
   const handleDeleteLog = logId => {
     setDeleteLogId(logId);
     setShowDeleteModal(true);
   };
 
+  // Confirm and delete maintenance log
   const confirmDeleteLog = async () => {
     try {
       const result = await fetchData(`/api/maintenance/${deleteLogId}/`, {}, 'DELETE');
@@ -316,6 +335,7 @@ const AircraftSettings = () => {
     }
   };
 
+  // Toggle config selection for comparison
   const handleConfigSelection = (configId) => {
     setSelectedConfigs(prev => {
       if (prev.includes(configId)) {
@@ -326,6 +346,7 @@ const AircraftSettings = () => {
     });
   };
 
+  // Compare selected configuration files
   const compareFiles = async () => {
     const comparisonResult = await compareConfigFiles(selectedConfigs, configFiles, setError);
     if (comparisonResult) {
@@ -334,22 +355,26 @@ const AircraftSettings = () => {
     }
   };
 
+  // Navigate to specific UAV by ID
   const navigateToUav = (id) => {
     navigate(`/aircraftsettings/${id}`);
   };
   
+  // Navigate to previous UAV
   const navigateToPreviousUav = () => {
     if (minUavId !== null && uavId > minUavId) {
       navigateToUav(uavId - 1);
     }
   };
   
+  // Navigate to next UAV
   const navigateToNextUav = () => {
     if (maxUavId !== null && uavId < maxUavId) {
       navigateToUav(uavId + 1);
     }
   };
 
+  // Go to aircraft edit page
   const handleModifyClick = () => {
     navigate(`/editaircraft/${uavId}`);
   };

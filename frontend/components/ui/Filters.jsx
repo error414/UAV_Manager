@@ -1,6 +1,6 @@
 const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = false, mobileFiltersVisible = true }) => {
   if (asTable) {
-    // Desktop view - render as table row
+    // Render filters as a table row (desktop)
     return (
       <tr className="table-row bg-gray-50">
         {fields.map(field => (
@@ -14,6 +14,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
               >
                 <option value="">{field.placeholder}</option>
                 {field.name === 'uav' ? (
+                  // UAV select: populate from availableUAVs if present
                   Array.isArray(availableOptions?.availableUAVs) ? 
                     availableOptions.availableUAVs.map((uav) => (
                       <option key={uav.uav_id} value={uav.uav_id}>
@@ -46,7 +47,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
     );
   }
 
-  // Mobile view - render as block with visibility controlled by mobileFiltersVisible
+  // Render filters as blocks (mobile), visibility controlled by mobileFiltersVisible
   return (
     <div className={`p-3 bg-gray-50 space-y-2 ${mobileFiltersVisible ? 'block' : 'hidden'}`}>
       {fields.map(field => (
@@ -61,6 +62,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
             >
               <option value="">{field.placeholder}</option>
               {field.name === 'uav' ? (
+                // UAV select: populate from availableUAVs if present
                 Array.isArray(availableOptions?.availableUAVs) ? 
                   availableOptions.availableUAVs.map((uav) => (
                     <option key={uav.uav_id} value={uav.uav_id}>

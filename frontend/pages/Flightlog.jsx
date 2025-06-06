@@ -66,6 +66,7 @@ const Flightlog = () => {
         ordering: sortField
       };
       
+      // Convert UAV object to ID if necessary
       if (queryParams.uav && typeof queryParams.uav === 'object' && queryParams.uav.uav_id) {
         queryParams.uav = queryParams.uav.uav_id;
       }
@@ -73,7 +74,6 @@ const Flightlog = () => {
       const result = await fetchData('/api/flightlogs/', queryParams);
       
       if (!result.error) {
-        const resultCount = result.data.results?.length || 0;
         setLogs(result.data.results || []);
         setTotalPages(Math.ceil((result.data.count || 0) / pageSize));
       }
@@ -106,12 +106,14 @@ const Flightlog = () => {
     return allLogs;
   }, [debouncedFilters, sortField, fetchData]);
 
+  // Fetch UAVs only once on mount
   const { fetchUAVs } = useUAVs(runAuthenticatedOperation, fetchData, setAvailableUAVs);
 
   const handleFormChange = useCallback((setter, e, isEditMode = false) => {
     const { name, value } = e.target;
     setter(prev => {
       const newState = { ...prev };
+      // Handle UAV as object or ID
       if (name === 'uav') {
         newState.uav = typeof value === 'object' && value !== null && 'uav_id' in value
           ? value.uav_id
@@ -122,6 +124,7 @@ const Flightlog = () => {
       if ((name === 'departure_time' || name === 'landing_time') && name !== 'flight_duration') {
         const deptTime = name === 'departure_time' ? value : prev.departure_time;
         const landTime = name === 'landing_time' ? value : prev.landing_time;
+        // Auto-calculate duration if both times are set
         const duration = calculateFlightDuration(deptTime, landTime);
         if (duration !== '') newState.flight_duration = duration;
       }
@@ -136,7 +139,7 @@ const Flightlog = () => {
     filterTimer.current = setTimeout(() => {
       setCurrentPage(1);
       setDebouncedFilters(f => ({ ...f, [name]: value }));
-      // Query-String wird durch useEffect aktualisiert
+      // Query string is updated by useEffect
     }, 500);
   }, []);
 
@@ -189,7 +192,7 @@ const Flightlog = () => {
   }, [runAuthenticatedOperation, prepareFlightPayload, fetchData, fetchFlightLogs, newFlight]);
 
   const handleRowClick = useCallback((id) => {
-    // Query-String bleibt erhalten, daher bleibt Zustand beim Zurückgehen erhalten
+    // Preserve query string for back navigation
     navigate(`/flightdetails/${id}${location.search}`);
   }, [navigate, location.search]);
 
@@ -313,7 +316,7 @@ const Flightlog = () => {
         const res = await fetch(`${API_URL}/api/users/`, { headers });
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) setUserData(data[0]);
-      } catch (e) { /* ignore */ }
+      } catch (e) { /* ignore errors */ }
     };
     fetchUser();
   }, [API_URL, getAuthHeaders]);
@@ -345,7 +348,7 @@ const Flightlog = () => {
 
   const calculateOptimalPageSize = useCallback(() => {
     if (!tableContainerRef.current) {
-      // If table container isn't available, use default
+      // Fallback if table container is not available
       if (!pageSizeCalculationAttempted) {
         setPageSizeCalculationAttempted(true);
         setPageSizeInitialized(true);
@@ -355,7 +358,7 @@ const Flightlog = () => {
     
     const containerHeight = tableContainerRef.current.clientHeight;
     
-    // If container height is too small, use default
+    // Fallback if container height is too small
     if (containerHeight < 100) {
       if (!pageSizeCalculationAttempted) {
         setPageSizeCalculationAttempted(true);
@@ -368,7 +371,7 @@ const Flightlog = () => {
     const nonDataHeight = 150;
     const availableHeight = containerHeight - nonDataHeight;
     let optimalRows = Math.floor(availableHeight / estimatedRowHeight);
-    optimalRows = Math.max(1, Math.min(optimalRows, 50)); // Increase min to 10, max to 50
+    optimalRows = Math.max(1, Math.min(optimalRows, 50));
     
     setPageSize(optimalRows);
     setPageSizeInitialized(true);
@@ -377,12 +380,12 @@ const Flightlog = () => {
 
   // Make the timeout longer to ensure DOM is fully rendered
   useEffect(() => {
-    // Longer timeout (250ms) to ensure DOM is fully rendered
+    // Delay to ensure DOM is rendered before calculating page size
     const timer = setTimeout(() => {
       calculateOptimalPageSize();
     }, 250);
     
-    // Safety timer to prevent infinite loading
+    // Safety timeout to prevent infinite loading
     const safetyTimer = setTimeout(() => {
       if (!pageSizeInitialized) {
         setPageSizeInitialized(true);
@@ -427,13 +430,13 @@ const Flightlog = () => {
     setSortField(sort);
     setFilters(prev => ({ ...prev, ...parsedFilters }));
     setDebouncedFilters(parsedFilters);
-    // eslint-disable-next-line
+    // Only run on initial mount
   }, []); // nur beim ersten Mount
 
   // --- Query-String aktualisieren, wenn Filter/Seite/Sortierung sich ändern ---
   useEffect(() => {
     setQueryState(currentPage, sortField, debouncedFilters);
-    // eslint-disable-next-line
+    // Sync query string on change
   }, [currentPage, sortField, debouncedFilters]);
 
   useEffect(() => {

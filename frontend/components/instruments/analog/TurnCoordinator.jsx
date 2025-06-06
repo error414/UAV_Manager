@@ -5,19 +5,16 @@ const TurnCoordinator = ({
   turnRate = 0, // degrees per second
   size = 300
 }) => {
-  // Constants for instrument rendering
+  // Instrument geometry
   const center = size / 2;
   const radius = size * 0.45;
   
-  // Calculate aircraft rotation based on turn rate
-  // Standard rate turn is 3 degrees per second
-  // Maximum display is typically ±6 degrees per second (showing ±60° on the instrument)
-  const MAX_TURN_DISPLAY = 6; // ±6 degrees/second
-  const MAX_ROTATION = 60;    // ±60 degrees display angle
-  
+  // Clamp aircraft rotation to ±MAX_ROTATION
+  const MAX_TURN_DISPLAY = 6; // max turn rate shown (deg/s)
+  const MAX_ROTATION = 60;    // max rotation angle (deg)
   const aircraftRotation = Math.min(Math.max(turnRate / MAX_TURN_DISPLAY * MAX_ROTATION, -MAX_ROTATION), MAX_ROTATION);
   
-  // Flugzeug-Design
+  // Aircraft silhouette dimensions
   const fuselageRadius = size * 0.06;
   const wingLength = size * 0.48;
   const wingWidth = size * 0.025;
@@ -26,40 +23,39 @@ const TurnCoordinator = ({
   const gearLength = size * 0.08;
   const gearWidth = size * 0.018;
 
-  // Positionen für L und R (schräg, wie im Bild)
-  // labelOffset etwas kleiner für "mehr nach innen"
+  // L/R label positioning (angled)
   const labelOffset = radius * 0.72;
-  const labelAngle = 25; // Grad von der Horizontalen
+  const labelAngle = 25; // degrees from horizontal
   const fontSize = size / 13;
 
-  // Position für L
+  // Left label position
   const lAngleRad = ((180 - labelAngle) * Math.PI) / 180;
   const lX = center + labelOffset * Math.cos(lAngleRad);
   const lY = center + labelOffset * Math.sin(lAngleRad);
 
-  // Position für R
+  // Right label position
   const rAngleRad = (labelAngle * Math.PI) / 180;
   const rX = center + labelOffset * Math.cos(rAngleRad);
   const rY = center + labelOffset * Math.sin(rAngleRad);
 
-  // Strich-Längen
+  // Mark dimensions
   const diagMarkLen = size * 0.09;
   const diagMarkWidth = size * 0.012;
   const horzMarkLen = size * 0.13;
   const horzMarkWidth = size * 0.012;
 
-  // Schrägstriche bei L/R
+  // Diagonal marks at L/R
   const diagAngle = 25;
-  // Offset für Striche etwas mehr nach innen
+  // Slightly more inward offset for marks
   const diagOffset = radius * 0.92;
-  // Links
+  // Left mark position
   const lMarkX = center + diagOffset * Math.cos(lAngleRad);
   const lMarkY = center + diagOffset * Math.sin(lAngleRad);
-  // Rechts
+  // Right mark position
   const rMarkX = center + diagOffset * Math.cos(rAngleRad);
   const rMarkY = center + diagOffset * Math.sin(rAngleRad);
 
-  // Waagrechte Striche außen auf Flügelebene
+  // Horizontal marks at wing level (outer)
   const horzOffset = wingLength / 2 + size * 0.13;
   const horzY = center;
   const leftHorzX = center - horzOffset;
@@ -67,12 +63,11 @@ const TurnCoordinator = ({
   
   return (
     <BaseInstrument size={size}>
-      {/* Center point reference */}
+      {/* Center reference point */}
       <circle cx={center} cy={center} r={2} fill="white" />
       
-      {/* Turn rate indicator markings */}
+      {/* Turn rate indicator label */}
       <g>
-        {/* Minutenmarke (2 min turn = standard rate) */}
         <text 
           x={center} 
           y={center - radius * 0.55} 
@@ -84,7 +79,7 @@ const TurnCoordinator = ({
         </text>
       </g>
 
-      {/* Schrägstriche bei L/R */}
+      {/* Diagonal marks at L/R */}
       <rect
         x={lMarkX - diagMarkLen / 2}
         y={lMarkY - diagMarkWidth / 2}
@@ -104,7 +99,7 @@ const TurnCoordinator = ({
         transform={`rotate(${diagAngle},${rMarkX},${rMarkY})`}
       />
 
-      {/* Waagrechte Striche außen auf Flügelebene */}
+      {/* Horizontal marks at wing level */}
       <rect
         x={leftHorzX - horzMarkLen / 2}
         y={horzY - horzMarkWidth / 2}
@@ -122,9 +117,9 @@ const TurnCoordinator = ({
         rx={horzMarkWidth / 2}
       />
       
-      {/* Flugzeug-Silhouette */}
+      {/* Aircraft silhouette */}
       <g transform={`rotate(${aircraftRotation}, ${center}, ${center})`}>
-        {/* Tragflächen */}
+        {/* Wings */}
         <rect
           x={center - wingLength / 2}
           y={center - wingWidth / 2}
@@ -133,7 +128,7 @@ const TurnCoordinator = ({
           fill="white"
           rx={wingWidth / 2}
         />
-        {/* Rumpf-Kreis */}
+        {/* Fuselage */}
         <circle
           cx={center}
           cy={center}
@@ -142,7 +137,7 @@ const TurnCoordinator = ({
           stroke="black"
           strokeWidth={size * 0.01}
         />
-        {/* Seitenleitwerk */}
+        {/* Vertical stabilizer */}
         <rect
           x={center - tailWidth / 2}
           y={center - fuselageRadius - tailHeight}
@@ -151,7 +146,7 @@ const TurnCoordinator = ({
           fill="white"
           rx={tailWidth / 2}
         />
-        {/* Fahrwerk */}
+        {/* Landing gear */}
         <rect
           x={center - gearLength / 2}
           y={center + fuselageRadius + size * 0.01}
@@ -162,7 +157,7 @@ const TurnCoordinator = ({
         />
       </g>
 
-      {/* L und R schräg außen */}
+      {/* L and R labels (angled) */}
       <text
         x={lX}
         y={lY}

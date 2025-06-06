@@ -7,18 +7,15 @@ const AltitudeIndicator = ({
   minAltitude = 0,  
   maxAltitude = 200,
 }) => {
-  // Calculate needle angle - clamped between min and max values
+  // Returns needle angle (clamped to min/max altitude)
   const calculateNeedleAngle = (alt) => {
-    // Clamp altitude to valid range
     const clampedAlt = Math.max(minAltitude, Math.min(alt, maxAltitude));
-    // When altitude is 0, angle should be 0 (top)
-    // As altitude increases, angle increases clockwise
-    return ((clampedAlt / maxAltitude) * 300) + 0;
+    return ((clampedAlt / maxAltitude) * 300);
   };
   
-  // Separate function for scale markings
+  // Returns angle for dial markings
   const calculateDialAngle = (alt) => {
-    // 0m = -135 degrees (top), maxAltitude = +135 degrees
+    // 0m = -90deg (top), maxAltitude = +210deg
     return ((alt / maxAltitude) * 300) - 90;
   };
 
@@ -38,12 +35,10 @@ const AltitudeIndicator = ({
     const majorTickInterval = 20;
     const minorTickInterval = 10;
 
-    // Generate tick marks from 0 to maxAltitude
+    // Draw ticks from 0 to maxAltitude
     for (let displayAlt = 0; displayAlt <= maxAltitude; displayAlt += minorTickInterval) {
-      // Use the dial-specific calculation for tick positions
       const angle = calculateDialAngle(displayAlt);
       const angleRad = angle * (Math.PI / 180);
-      // Calculate position using standard trig
       const cosAngle = Math.cos(angleRad);
       const sinAngle = Math.sin(angleRad);
       

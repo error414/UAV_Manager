@@ -2,7 +2,7 @@ import Button from './Button';
 
 const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", asTable }) => {
   if (asTable) {
-    // Desktop view: render as a table row.
+    // Render as table row for desktop
     return (
       <tr className="hidden xl:table-row">
         {fields.map(field => (
@@ -45,7 +45,7 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
     );
   }
 
-  // Mobile view: render as a block.
+  // Mobile form layout
   return (
     <div className="xl:hidden p-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
       <h3 className="font-medium text-gray-700 mb-3">Add New Item</h3>

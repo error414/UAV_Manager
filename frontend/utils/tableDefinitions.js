@@ -7,8 +7,8 @@ export const userTableColumns = [
   { header: 'ZIP', accessor: 'zip' },
   { header: 'City', accessor: 'city' },
   { header: 'Country', accessor: 'country' },
-  { header: 'Staff Status', accessor: 'is_staff', render: (value) => value ? 'Yes' : 'No' },
-  { header: 'Active', accessor: 'is_active', render: (value) => value ? 'Yes' : 'No' }
+  { header: 'Staff Status', accessor: 'is_staff', render: (value) => value ? 'Yes' : 'No' }, // Display 'Yes'/'No' for boolean
+  { header: 'Active', accessor: 'is_active', render: (value) => value ? 'Yes' : 'No' } // Display 'Yes'/'No' for boolean
 ];
 
 export const uavTableColumns = [
@@ -44,6 +44,7 @@ export const flightLogTableColumns = [
     header: 'UAV', 
     accessor: 'uav', 
     render: (value) => {
+      // Prefer drone_name if available, otherwise fallback to uav_id or value
       if (value && typeof value === 'object' && value.drone_name) {
         return value.drone_name;
       }
@@ -65,6 +66,7 @@ export const getEnhancedFlightLogColumns = (availableUAVs) => {
       return {
         ...col,
         render: (value) => {
+          // Map UAV id to drone_name if possible, fallback to id
           if (value && typeof value === 'object' && value.drone_name) {
             return value.drone_name;
           }
@@ -86,11 +88,11 @@ export const getEnhancedFlightLogColumns = (availableUAVs) => {
 export const maintenanceLogTableColumns = [
   { header: 'Date', accessor: 'event_date' },
   { header: 'Log', accessor: 'description' },
-  { header: 'File', accessor: 'file', render: (file) => file ? '' : 'N/A' }
+  { header: 'File', accessor: 'file', render: (file) => file ? '' : 'N/A' } // Show 'N/A' if no file
 ];
 
 export const uavConfigTableColumns = [
   { header: 'Date', accessor: 'upload_date' },
   { header: 'Name', accessor: 'name' },
-  { header: 'File', accessor: 'file', render: (file) => file ? '' : 'N/A' }
+  { header: 'File', accessor: 'file', render: (file) => file ? '' : 'N/A' } // Show 'N/A' if no file
 ];

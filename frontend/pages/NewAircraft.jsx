@@ -70,7 +70,7 @@ const useAircraftForm = (isEditMode, uavId) => {
     setFormData(prev => {
       const newData = { ...prev, [name]: val };
 
-      // Datum gesetzt ⇒ nächsten Jahrestermin berechnen
+      // If a maintenance date is set, calculate next year's reminder date
       if (type !== 'checkbox' && name.endsWith('_maint_date')) {
         if (val) {
           newData[name.replace('_maint_date', '_reminder_date')] = getNextYearDate(val);
@@ -79,7 +79,7 @@ const useAircraftForm = (isEditMode, uavId) => {
         }
       }
 
-      // Reminder‐Date manuell geändert ⇒ Flag zurücksetzen
+      // Reset reminder flag if reminder date is changed manually
       if (type !== 'checkbox' && name.endsWith('_reminder_date')) {
         newData[name.replace('_reminder_date', '_reminder_active')] = false;
       }
@@ -131,7 +131,7 @@ const useAircraftForm = (isEditMode, uavId) => {
         if (filteredFormData[field] && filteredFormData[field].trim() !== '') {
           maintenanceData[field] = filteredFormData[field];
         }
-        // Remove from initial payload if not in edit mode
+        // Remove from payload if not in edit mode
         if (!isEditMode) {
           delete filteredFormData[field];
         }
@@ -149,7 +149,7 @@ const useAircraftForm = (isEditMode, uavId) => {
       };
 
       if (isEditMode) {
-        // In edit mode, update everything in one request
+        // PUT: Update all fields in edit mode
         const endpoint = `/api/uavs/${uavId}/`;
         const result = await fetchData(endpoint, {}, 'PUT', basicPayload);
         
@@ -157,7 +157,7 @@ const useAircraftForm = (isEditMode, uavId) => {
           setSuccess('Aircraft successfully updated!');
           setTimeout(() => navigate('/AircraftList'), 1500);
         } else {
-          // display field errors
+          // Show field errors if present
           const data = result.data || {};
           const msgs = Object.entries(data)
             .map(([f, arr]) => `${f}: ${arr.join(', ')}`)
@@ -165,31 +165,29 @@ const useAircraftForm = (isEditMode, uavId) => {
           setError(msgs || 'Update failed. You already have a UAV with this name.');
         }
       } else {
-        // For new aircraft: first create the UAV, then add maintenance data
+        // POST: Create UAV, then PATCH maintenance data if present
         const createResult = await fetchData('/api/uavs/', {}, 'POST', basicPayload);
 
         if (!createResult.error) {
           const newUavId = createResult.data.uav_id;
 
-          // Collect reminder‐flags too
+          // Add reminder flags to maintenance data if present
           const activeFields = [
             'props_reminder_active', 
             'motor_reminder_active', 
             'frame_reminder_active'
           ];
 
-          // Merge active‐flag fields into maintenanceData if set
           activeFields.forEach(flag => {
             if (flag in filteredFormData) {
               maintenanceData[flag] = filteredFormData[flag];
             }
           });
           
-          // Check if we have any maintenance data or flags
+          // Only PATCH if there is maintenance data or flags
           const hasMaintData = Object.keys(maintenanceData).length > 0;
 
           if (hasMaintData && newUavId) {
-            // Update the newly created UAV with maintenance dates and flags
             const updateResult = await fetchData(
               `/api/uavs/${newUavId}/`,
               {},
@@ -207,7 +205,7 @@ const useAircraftForm = (isEditMode, uavId) => {
           }
           
           setFormData(DEFAULT_FORM_DATA);
-          // Add redirection to AircraftList after successful creation
+          // Redirect after successful creation
           setTimeout(() => navigate('/AircraftList'), 1500);
         } else {
           const data = createResult.data || {};
@@ -248,6 +246,7 @@ const useAircraftForm = (isEditMode, uavId) => {
       setFormData(prev => ({ ...prev, is_active: newActiveState }));
       setSuccess(`Aircraft successfully ${newActiveState ? 'reactivated' : 'deactivated'}`);
       
+      // Redirect if deactivated and cannot be deleted
       if (!newActiveState && !canDelete) {
         setTimeout(() => navigate('/AircraftList'), 1500);
       }
@@ -287,6 +286,7 @@ const useAircraftForm = (isEditMode, uavId) => {
       const result = await fetchData(`/api/flightlogs/?uav=${uavId}`);
       
       if (!result.error) {
+        // Only allow delete if there are no flight logs
         if (Array.isArray(result.data.results)) {
           setCanDelete(result.data.results.length === 0);
         } else if (Array.isArray(result.data)) {
@@ -298,7 +298,7 @@ const useAircraftForm = (isEditMode, uavId) => {
     checkCanDelete();
   }, [API_URL, isEditMode, uavId, fetchData]);
 
-  // lade UserSettings einmal
+  // Load user settings once
   useEffect(() => {
     (async () => {
       const res = await fetchData('/api/user-settings/');

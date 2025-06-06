@@ -1,12 +1,12 @@
 /**
- * Formats a value or returns 'N/A' if it's falsy
+ * Returns value or 'N/A' if falsy
  * @param {*} value - The value to format
  * @returns {string} The value or 'N/A'
  */
 export const na = value => value || 'N/A';
 
 /**
- * Formats seconds into hours, minutes, and seconds
+ * Converts seconds to "hh h mm min ss s" format
  * @param {number} seconds - Total seconds
  * @returns {string} Formatted time string
  */
@@ -19,14 +19,14 @@ export const formatFlightHours = seconds => {
 };
 
 /**
- * Formats a date string to a localized date
+ * Formats date string to locale date or 'N/A'
  * @param {string} dateString - Date string to format
  * @returns {string} Formatted date string or 'N/A'
  */
 export const formatDate = dateString => dateString ? new Date(dateString).toLocaleDateString() : 'N/A';
 
 /**
- * Calculates flight duration in seconds from departure and landing times
+ * Calculates duration in seconds, handles overnight flights
  * @param {string} deptTime - Departure time in format "HH:MM:SS" or "HH:MM"
  * @param {string} landTime - Landing time in format "HH:MM:SS" or "HH:MM"
  * @returns {number|string} Duration in seconds or empty string if invalid input

@@ -9,10 +9,10 @@ User = get_user_model()
 
 
 class UserAuthenticationTests(APITestCase):
-    """Tests für Benutzerregistrierung und Login"""
+    """User registration and login tests"""
     
     def test_user_registration(self):
-        """Test, ob Benutzerregistrierung funktioniert"""
+        """User registration works"""
         url = reverse('user-list')
         data = {
             'email': 'newuser@example.com',
@@ -23,21 +23,19 @@ class UserAuthenticationTests(APITestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         
-        # Überprüfen, ob der Benutzer erstellt wurde
+        # Ensure user was created
         self.assertEqual(User.objects.count(), 1)
         user = User.objects.first()
         self.assertEqual(user.email, 'newuser@example.com')
     
     def test_user_login(self):
-        """Test, ob Benutzeranmeldung funktioniert"""
-        # Benutzer erstellen
+        """User login works"""
         user = User.objects.create_user(
             email='testuser@example.com',
             password='testpassword123'
         )
         
-        # JWT-Token anfordern
-        url = reverse('jwt-create')  # Passt dies an deine URL-Konfiguration an
+        url = reverse('jwt-create')
         data = {
             'email': 'testuser@example.com',
             'password': 'testpassword123'
@@ -45,20 +43,19 @@ class UserAuthenticationTests(APITestCase):
         
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)  # Prüft, ob ein Access-Token zurückgegeben wird
+        # Access token should be returned
+        self.assertIn('access', response.data)
 
 
 class FlightLogModelTests(TestCase):
-    """Tests für das FlightLog-Modell"""
+    """FlightLog model tests"""
     
     def setUp(self):
-        # Test-Benutzer anlegen
+        # Create test user and UAV
         self.user = User.objects.create_user(
             email='test@example.com',
             password='testpassword'
         )
-        
-        # Test-UAV anlegen
         self.uav = UAV.objects.create(
             user=self.user,
             drone_name='Test Drone',
@@ -69,7 +66,7 @@ class FlightLogModelTests(TestCase):
         )
     
     def test_create_flight_log(self):
-        """Test, ob ein FlightLog-Eintrag erstellt werden kann"""
+        """Can create FlightLog entry"""
         log = FlightLog.objects.create(
             user=self.user,
             uav=self.uav,
@@ -78,7 +75,7 @@ class FlightLogModelTests(TestCase):
             departure_time='10:00:00',
             landing_place='Test Location',
             landing_time='10:30:00',
-            flight_duration=1800,  # 30 Minuten in Sekunden
+            flight_duration=1800,
             takeoffs=1,
             landings=1,
             light_conditions='Day',
@@ -93,7 +90,7 @@ class FlightLogModelTests(TestCase):
         self.assertEqual(log.uav, self.uav)
         
     def test_flight_log_string_representation(self):
-        """Test der String-Darstellung des FlightLog-Modells"""
+        """FlightLog __str__ returns expected value"""
         log = FlightLog.objects.create(
             user=self.user,
             uav=self.uav,
@@ -116,16 +113,14 @@ class FlightLogModelTests(TestCase):
 
 
 class FlightLogAPITests(APITestCase):
-    """Tests für die FlightLog API-Endpunkte"""
+    """FlightLog API endpoint tests"""
     
     def setUp(self):
-        # Test-Benutzer anlegen
+        # Create test user and UAV, authenticate client
         self.user = User.objects.create_user(
             email='test@example.com',
             password='testpassword'
         )
-        
-        # Test-UAV anlegen
         self.uav = UAV.objects.create(
             user=self.user,
             drone_name='Test Drone',
@@ -134,13 +129,11 @@ class FlightLogAPITests(APITestCase):
             motors=4,
             serial_number='TEST123456'
         )
-        
-        # Authentifizierung einrichten
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
     
     def test_create_flight_log_api(self):
-        """Test, ob über die API ein FlightLog erstellt werden kann"""
+        """Can create FlightLog via API"""
         url = reverse('flightlog-list')
         data = {
             'user': self.user.user_id,
@@ -162,15 +155,14 @@ class FlightLogAPITests(APITestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         
-        # Überprüfen, ob der Fluglog erstellt wurde
+        # Ensure FlightLog was created
         self.assertEqual(FlightLog.objects.count(), 1)
         log = FlightLog.objects.first()
         self.assertEqual(log.departure_place, 'Test Location')
         self.assertEqual(log.flight_duration, 1800)
     
     def test_get_flight_logs_api(self):
-        """Test, ob FlightLogs über die API abgerufen werden können"""
-        # Erstelle einige FlightLogs
+        """Can retrieve FlightLogs via API"""
         FlightLog.objects.create(
             user=self.user,
             uav=self.uav,
@@ -214,7 +206,7 @@ class FlightLogAPITests(APITestCase):
         self.assertEqual(response.data[1]['departure_place'], 'Location 2')
     
     def test_update_flight_log_api(self):
-        """Test, ob ein FlightLog über die API aktualisiert werden kann"""
+        """Can update FlightLog via API"""
         log = FlightLog.objects.create(
             user=self.user,
             uav=self.uav,
@@ -253,13 +245,13 @@ class FlightLogAPITests(APITestCase):
         response = self.client.put(url, update_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
-        # Überprüfen, ob der Fluglog aktualisiert wurde
+        # Ensure FlightLog was updated
         log.refresh_from_db()
         self.assertEqual(log.departure_place, 'Updated Location')
         self.assertEqual(log.comments, 'Updated comment')
     
     def test_delete_flight_log_api(self):
-        """Test, ob ein FlightLog über die API gelöscht werden kann"""
+        """Can delete FlightLog via API"""
         log = FlightLog.objects.create(
             user=self.user,
             uav=self.uav,
@@ -281,21 +273,19 @@ class FlightLogAPITests(APITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         
-        # Überprüfen, ob der Fluglog gelöscht wurde
+        # Ensure FlightLog was deleted
         self.assertEqual(FlightLog.objects.count(), 0)
     
 
 class FlightLogValidationTests(TestCase):
-    """Tests für die Validierung von FlightLog-Feldern"""
+    """FlightLog field validation tests"""
     
     def setUp(self):
-        # Test-Benutzer anlegen
+        # Create test user and UAV
         self.user = User.objects.create_user(
             email='test@example.com',
             password='testpassword'
         )
-        
-        # Test-UAV anlegen
         self.uav = UAV.objects.create(
             user=self.user,
             drone_name='Test Drone',
@@ -304,8 +294,7 @@ class FlightLogValidationTests(TestCase):
             motors=4,
             serial_number='TEST123456'
         )
-        
-        # Gültiges FlightLog-Objekt für Tests
+        # Valid FlightLog data for tests
         self.valid_flight_log_data = {
             'user': self.user,
             'uav': self.uav,
@@ -324,26 +313,25 @@ class FlightLogValidationTests(TestCase):
         }
     
     def test_valid_flight_log(self):
-        """Test, ob ein gültiger FlightLog erstellt werden kann"""
+        """Valid FlightLog can be created"""
         log = FlightLog.objects.create(**self.valid_flight_log_data)
         self.assertEqual(log.departure_place, 'Test Location')
         self.assertEqual(FlightLog.objects.count(), 1)
     
     def test_light_conditions_validation(self):
-        """Test der Validierung für light_conditions"""
+        """light_conditions field validation"""
         from django.core.exceptions import ValidationError
         
-        # Gültigen FlightLog erstellen und validieren
         log = FlightLog(**self.valid_flight_log_data)
         try:
-            log.full_clean()  # Sollte keine Exception auslösen
+            log.full_clean()
             is_valid = True
         except ValidationError:
             is_valid = False
         
         self.assertTrue(is_valid)
         
-        # Ungültiges light_conditions testen
+        # Invalid light_conditions
         invalid_data = self.valid_flight_log_data.copy()
         invalid_data['light_conditions'] = 'Invalid'
         
@@ -357,10 +345,9 @@ class FlightLogValidationTests(TestCase):
         self.assertFalse(is_valid)
     
     def test_ops_conditions_validation(self):
-        """Test der Validierung für ops_conditions"""
+        """ops_conditions field validation"""
         from django.core.exceptions import ValidationError
         
-        # Gültigen FlightLog erstellen und validieren
         log = FlightLog(**self.valid_flight_log_data)
         try:
             log.full_clean()
@@ -370,7 +357,7 @@ class FlightLogValidationTests(TestCase):
         
         self.assertTrue(is_valid)
         
-        # Ungültiges ops_conditions testen
+        # Invalid ops_conditions
         invalid_data = self.valid_flight_log_data.copy()
         invalid_data['ops_conditions'] = 'Invalid'
         
@@ -384,10 +371,9 @@ class FlightLogValidationTests(TestCase):
         self.assertFalse(is_valid)
     
     def test_pilot_type_validation(self):
-        """Test der Validierung für pilot_type"""
+        """pilot_type field validation"""
         from django.core.exceptions import ValidationError
         
-        # Gültigen FlightLog erstellen und validieren
         log = FlightLog(**self.valid_flight_log_data)
         try:
             log.full_clean()
@@ -397,7 +383,7 @@ class FlightLogValidationTests(TestCase):
         
         self.assertTrue(is_valid)
         
-        # Ungültiges pilot_type testen
+        # Invalid pilot_type
         invalid_data = self.valid_flight_log_data.copy()
         invalid_data['pilot_type'] = 'Invalid'
         

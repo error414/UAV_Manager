@@ -10,7 +10,7 @@ import {
 import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState, useQueryState } from '../hooks';
 import { takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics } from '../utils';
 
-// Ensure Leaflet default icons are properly set
+// Set Leaflet default icons for markers
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
@@ -18,7 +18,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
-// Create a reusable FlightMap component to avoid duplication
+// Map component for displaying flight and GPS track
 const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying, currentPointIndex, resetTrigger, fullGpsData }) => {
   return (
     <MapContainer
@@ -65,8 +65,9 @@ const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying
   );
 };
 
-// Reusable component for flight instruments
+// Renders flight instruments (airspeed, attitude, etc.)
 const FlightInstruments = ({ currentGpsPoint, size, fullGpsData, currentPointIndex }) => {
+  // Calculate turn rate based on yaw difference
   const getTurnRate = () => {
     if (!currentGpsPoint?.yaw) return 0;
     const prevYaw = fullGpsData[currentPointIndex-1]?.yaw || currentGpsPoint.yaw;
@@ -91,14 +92,14 @@ const FlightInstruments = ({ currentGpsPoint, size, fullGpsData, currentPointInd
   );
 };
 
-// Flight control sticks component
+// Renders throttle/yaw and elevator/aileron sticks
 const FlightControlSticks = ({ currentGpsPoint, size }) => {
   const throttle = currentGpsPoint?.throttle ?? 0;
   const yaw = currentGpsPoint?.rudder ?? 0;
   const elevator = currentGpsPoint?.elevator ?? 0;
   const aileron = currentGpsPoint?.aileron ?? 0;
   
-  // Calculate actual stick size (prevent oversizing)
+  // Limit stick size to avoid oversizing
   const stickSize = Math.min(size, 200);
   
   return (
@@ -109,7 +110,7 @@ const FlightControlSticks = ({ currentGpsPoint, size }) => {
   );
 };
 
-// Telemetry indicators component
+// Renders telemetry indicators (battery, capacity, current)
 const TelemetryIndicators = ({ currentGpsPoint, size }) => {
   return (
     <div className="flex flex-col items-center justify-center w-full h-full">
@@ -172,7 +173,7 @@ const FlightDetails = () => {
     'instruments', 'signal', 'sticks', 'telemetry'
   ]);
 
-  // Refs for size calculations
+  // Refs for responsive sizing
   const instrumentsContainerRef = useRef(null);
   const signalContainerRef = useRef(null);
   const sticksContainerRef = useRef(null);
@@ -184,7 +185,7 @@ const FlightDetails = () => {
   const controlSize = useResponsiveSize(sticksContainerRef, 200, 120);
   const telemetrySize = useResponsiveSize(telemetryBoxRef, 48, 32);
 
-  // Update telemetryOpen state based on GPS track availability
+  // Show telemetry panel if no GPS track
   useEffect(() => {
     if (!gpsTrack || gpsTrack.length === 0) {
       setTelemetryOpen(true);
@@ -193,16 +194,13 @@ const FlightDetails = () => {
     }
   }, [gpsTrack]);
 
-  // Navigation functions
+  // Navigation helpers for previous/next flight
   const navigateToFlight = (id) => {
-    // Reset animation and data states
     pauseAnimation();
     setCurrentPointIndex(0);
     setGpsTrack(null);
     setFullGpsData(null);
     setAlertMessage(null);
-    
-    // Navigate to the new flight
     navigate(`/flightdetails/${id}`);
   };
 
@@ -218,11 +216,12 @@ const FlightDetails = () => {
     }
   };
 
-  // Handle GPS import/delete
+  // Handle GPS import/delete actions
   const handleImportGPS = () => fileInputRef.current.click();
   const handleDeleteGPS = () => setShowDeleteModal(true);
   const cancelDeleteGPS = () => setShowDeleteModal(false);
 
+  // Confirm GPS track deletion
   const confirmDeleteGPS = async () => {
     setShowDeleteModal(false);
     setIsLoading(true);
@@ -239,6 +238,7 @@ const FlightDetails = () => {
     setIsLoading(false);
   };
 
+  // Handle GPS file upload and parsing
   const handleFileChange = async (event) => {
     event.preventDefault();
     const file = event.target.files[0];
@@ -279,7 +279,7 @@ const FlightDetails = () => {
     }, 50);
   };
 
-  // Fetch flight details and GPS data
+  // Fetch flight and GPS data on mount or flightId change
   useEffect(() => {
     let isActive = true;
     const controller = new AbortController();
@@ -295,7 +295,7 @@ const FlightDetails = () => {
         
         const data = result.data;
         
-        // Get UAV data if available
+        // Fetch UAV details if available
         if (data.uav) {
           const uavId = data.uav?.uav_id || (!isNaN(data.uav) ? Number(data.uav) : null);
           if (uavId) {
@@ -339,7 +339,7 @@ const FlightDetails = () => {
           setMinFlightId(result.data?.minId);
           setMaxFlightId(result.data?.maxId);
         }
-      } catch (e) { /* ignore */ }
+      } catch (e) { /* ignore errors */ }
     };
     fetchMeta();
     return () => { isActive = false; };
@@ -350,12 +350,12 @@ const FlightDetails = () => {
   const { departureCoords, landingCoords } = getFlightCoordinates(flight);
   const hasGpsTrack = gpsTrack?.length > 0;
 
-  // Get the current GPS point based on animation index
+  // Get current GPS point for animation
   const currentGpsPoint = fullGpsData && currentPointIndex < fullGpsData.length 
     ? fullGpsData[currentPointIndex] 
     : null;
 
-  // Prepare telemetry data items for DataPanel
+  // Prepare telemetry/statistics panels
   const statisticsItems = [
     { label: 'Altitude', value: `${gpsStats.minAltitude?.toFixed(1) || 'N/A'} - ${gpsStats.maxAltitude?.toFixed(1) || 'N/A'} m` },
     { label: 'Speed', value: `${gpsStats.minSpeed?.toFixed(1) || 'N/A'} - ${gpsStats.maxSpeed?.toFixed(1) || 'N/A'} km/h` },
@@ -417,13 +417,13 @@ const FlightDetails = () => {
       {isLoading && <Loading message="Processing GPS data..." />}
 
       {hasGpsTrack ? (
-        // Layout: Instruments + Map (top), Live GPS Data, GPS Animation, Telemetry, Flight Info
+        // Main layout: instruments, map, telemetry, info
         <div className="grid grid-cols-1 gap-4">
-          {/* Top row: Instruments + Map (top), responsive */}
+          {/* Top row: instruments and map */}
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             {/* Left column */}
             <div className="md:col-span-3 2xl:col-span-2 flex flex-col">
-              {/* MOBILE: Instruments stacked, each box collapsible individually */}
+              {/* Mobile: collapsible instrument panels */}
               <div className="lg:hidden flex flex-col gap-4">
                 <AccordionPanel 
                   title="Flight Instruments" 
@@ -477,7 +477,7 @@ const FlightDetails = () => {
                 </AccordionPanel>
               </div>
               
-              {/* DESKTOP: Instruments side by side as before */}
+              {/* Desktop: instrument panels side by side */}
               <div className="hidden lg:block">
                 <div
                   className="bg-gray-50 p-4 rounded-lg shadow mb-4 flex justify-center gap-4"

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 
+// Renders a label-value row
 const InfoRow = ({ label, value }) => (
   <div className="flex items-center">
     <span className="font-semibold text-gray-700 w-40">{label}</span>
@@ -7,6 +8,7 @@ const InfoRow = ({ label, value }) => (
   </div>
 );
 
+// Renders a label-value pair in a grid cell
 const GridInfo = ({ label, value }) => (
   <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
     <span className="font-semibold text-gray-700">{label}</span>
@@ -14,6 +16,7 @@ const GridInfo = ({ label, value }) => (
   </div>
 );
 
+// Section container with title
 const InfoSection = ({ title, className = "bg-gray-50 p-4 rounded-lg shadow", children }) => (
   <div className={className}>
     <h3 className="text-lg font-medium text-gray-800 mb-3">{title}</h3>
@@ -23,6 +26,7 @@ const InfoSection = ({ title, className = "bg-gray-50 p-4 rounded-lg shadow", ch
   </div>
 );
 
+// Panel for displaying a list of label-value pairs
 const DataPanel = ({ title, items = [], columns = 1 }) => (
   <div className="bg-white p-3 rounded-md shadow-sm">
     {title && <h4 className="text-md font-medium text-gray-700 mb-2">{title}</h4>}
@@ -36,6 +40,7 @@ const DataPanel = ({ title, items = [], columns = 1 }) => (
   </div>
 );
 
+// Collapsible panel component
 const AccordionPanel = ({ title, isOpen, toggleOpen, children }) => {
   return (
     <div className="bg-gray-50 p-2 rounded-lg shadow mb-2">
@@ -55,7 +60,7 @@ const AccordionPanel = ({ title, isOpen, toggleOpen, children }) => {
   );
 };
 
-// Flight information sections data structure
+// Data structure for flight info sections
 const FLIGHT_INFO_SECTIONS = {
   drone: [
     ['Drone Name', flight => flight.uav?.drone_name],
@@ -74,6 +79,7 @@ const FLIGHT_INFO_SECTIONS = {
     ['Landings', flight => flight.landings],
     ['Total Flight Time', flight => {
       if (!flight.flight_duration) return 'N/A';
+      // Format duration as min:s
       return `${Math.floor(flight.flight_duration / 60)}min ${flight.flight_duration % 60}s`;
     }],
   ],
@@ -87,11 +93,11 @@ const FLIGHT_INFO_SECTIONS = {
   ]
 };
 
-// Refactored FlightInfoCard using the existing DataPanel component
+// Flight info card with collapsible details
 const FlightInfoCard = ({ flight, hasGpsTrack = false }) => {
-  const [open, setOpen] = useState(!hasGpsTrack); // Open by default only if no GPS track
+  const [open, setOpen] = useState(!hasGpsTrack); // Open by default if no GPS track
 
-  // Update open state when hasGpsTrack changes
+  // Sync open state with hasGpsTrack
   useEffect(() => {
     setOpen(!hasGpsTrack);
   }, [hasGpsTrack]);

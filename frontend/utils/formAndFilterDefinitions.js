@@ -1,6 +1,5 @@
 /**
- * Combined form and filter definitions for the application
- * Contains all form fields, filter configurations, and initial states
+ * Form and filter definitions for the app
  */
 
 // === USER MANAGEMENT ===
@@ -44,7 +43,7 @@ export const uavEditFormFields = [
   { name: 'is_active', label: 'Active Status', type: 'select', placeholder: 'Active Status', options: [{ value: true, label: 'Yes' }, { value: false, label: 'No' }] }
 ];
 
-// UAV Filter Initial State
+// Initial filter state for UAVs
 export const UAV_INITIAL_FILTERS = {
   drone_name: '',
   manufacturer: '',
@@ -63,7 +62,8 @@ export const UAV_INITIAL_FILTERS = {
 };
 
 // === FLIGHT LOG MANAGEMENT ===
-// Flight Log Form Options
+
+// Options for flight log select fields
 export const FLIGHT_FORM_OPTIONS = {
   light_conditions: [
     { value: 'Day', label: 'Day' },
@@ -80,7 +80,7 @@ export const FLIGHT_FORM_OPTIONS = {
   ]
 };
 
-// Flight Log Initial State
+// Initial state for flight log form
 export const INITIAL_FLIGHT_STATE = {
   departure_place: '',
   departure_date: '',
@@ -97,7 +97,7 @@ export const INITIAL_FLIGHT_STATE = {
   comments: ''
 };
 
-// Function to get flight log form fields with dynamic UAV options
+// Returns flight log form fields, UAV options are dynamic
 export const getFlightFormFields = (availableUAVs = []) => [
   { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
   { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },

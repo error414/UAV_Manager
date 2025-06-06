@@ -14,7 +14,7 @@ from ..models import User, UAV, FlightLog, MaintenanceLog, MaintenanceReminder, 
 class ImportService:
     @staticmethod
     def _get_new_uav_id(user, old_uav_id, uav_mapping, data):
-        # Hilfsfunktion zur Ermittlung der neuen UAV-ID
+        # Helper to resolve new UAV ID from old ID or drone name
         if old_uav_id is not None and old_uav_id in uav_mapping:
             return uav_mapping[old_uav_id]
         elif 'drone_name' in data:
@@ -30,11 +30,13 @@ class ImportService:
 
     @staticmethod
     def _remove_conflict_fields(data, fields):
+        # Remove fields that may cause conflicts on model creation
         for field in fields:
             data.pop(field, None)
 
     @staticmethod
     def _save_file_to_storage(model_instance, file_name, file_content, path_func):
+        # Save file to storage using model's path function
         new_path = path_func(model_instance, file_name)
         saved_path = default_storage.save(new_path, ContentFile(file_content))
         return saved_path
@@ -48,7 +50,7 @@ class ImportService:
         - user: User object
         - zip_file: Django UploadedFile object
         """
-        # Create temp directory to extract files
+        # Use temp directory for extraction
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 result = {
@@ -63,25 +65,24 @@ class ImportService:
                     }
                 }
                 
-                # Write the uploaded file to a temporary file
+                # Write uploaded file to temp file
                 temp_zip = os.path.join(temp_dir, 'uploaded_data.zip')
                 with open(temp_zip, 'wb') as f:
-                    # If it's a Django UploadedFile object
+                    # Handle Django UploadedFile or file path
                     if hasattr(zip_file, 'read'):
                         f.write(zip_file.read())
-                    # If it's already a file path
                     elif isinstance(zip_file, str) and os.path.exists(zip_file):
                         with open(zip_file, 'rb') as src:
                             f.write(src.read())
                     else:
                         raise ValueError("Invalid zip file provided")
                 
-                # Now extract from the temporary file
+                # Extract ZIP
                 with zipfile.ZipFile(temp_zip, 'r') as z:
                     z.extractall(temp_dir)
                 
-                # Import UAVs
-                uav_mapping = {}  # To store old_id -> new_id mapping
+                # UAV import
+                uav_mapping = {}  # old_id -> new_id
                 uavs_path = os.path.join(temp_dir, 'uavs', 'uavs.json')
                 if os.path.exists(uavs_path):
                     try:
@@ -91,7 +92,7 @@ class ImportService:
                     except Exception as e:
                         result['details']['errors'].append(f"UAVs import error: {str(e)}")
                 
-                # Import UAV configuration files
+                # UAV config import
                 uav_configs_path = os.path.join(temp_dir, 'uav_configs', 'uav_configs.json')
                 if os.path.exists(uav_configs_path):
                     try:
@@ -103,12 +104,12 @@ class ImportService:
                     except Exception as e:
                         result['details']['errors'].append(f"UAV configuration files import error: {str(e)}")
                 
-                # Import flight logs
+                # Flight log import
                 flight_logs_path = os.path.join(temp_dir, 'flight_logs', 'flight_logs.json')
                 if os.path.exists(flight_logs_path):
                     try:
                         with transaction.atomic():
-                            flight_log_mapping = {}  # To store old_id -> new_id mapping
+                            flight_log_mapping = {}  # old_id -> new_id
                             imported_count = ImportService._import_flight_logs(
                                 user, flight_logs_path, uav_mapping, flight_log_mapping
                             )
@@ -121,7 +122,7 @@ class ImportService:
                     except Exception as e:
                         result['details']['errors'].append(f"Flight logs import error: {str(e)}")
                 
-                # Import maintenance logs
+                # Maintenance log import
                 maintenance_logs_path = os.path.join(temp_dir, 'maintenance_logs', 'maintenance_logs.json')
                 if os.path.exists(maintenance_logs_path):
                     try:
@@ -133,7 +134,7 @@ class ImportService:
                     except Exception as e:
                         result['details']['errors'].append(f"Maintenance logs import error: {str(e)}")
                 
-                # Import maintenance reminders
+                # Maintenance reminder import
                 reminders_path = os.path.join(temp_dir, 'maintenance_reminders', 'reminders.json')
                 if os.path.exists(reminders_path):
                     try:
@@ -145,12 +146,12 @@ class ImportService:
                     except Exception as e:
                         result['details']['errors'].append(f"Maintenance reminders import error: {str(e)}")
                 
-                # Check overall success
+                # Compose result message
                 if result['details']['errors']:
                     result['success'] = False
                     result['message'] = "Import completed with errors"
                 else:
-                    # Format import message in the style "Import successful! Imported: X, Y, and Z."
+                    # Compose message like "Import successful! Imported: X, Y, and Z."
                     import_parts = []
                     
                     if result['details']['uavs_imported'] > 0:
@@ -169,7 +170,6 @@ class ImportService:
                         import_parts.append(f"{result['details']['maintenance_reminders_imported']} maintenance reminders")
                     
                     if len(import_parts) > 0:
-                        # Format the message with commas and "and" before the last item
                         if len(import_parts) == 1:
                             result['message'] = f"Import successful! Imported: {import_parts[0]}."
                         else:
@@ -178,7 +178,7 @@ class ImportService:
                     else:
                         result['message'] = "Import successful but no new data was added."
                 
-                # Bereinige leere Verzeichnisse, die während des Imports erstellt wurden
+                # Remove empty directories created during import
                 ImportService._cleanup_empty_directories(settings.MEDIA_ROOT)
                 
                 return result
@@ -192,21 +192,20 @@ class ImportService:
 
     @staticmethod
     def _cleanup_empty_directories(path):
-        """Entferne rekursiv alle leeren Verzeichnisse unter dem angegebenen Pfad"""
+        """Recursively remove all empty directories under the given path."""
         for root, dirs, files in os.walk(path, topdown=False):
             for dir_name in dirs:
                 dir_path = os.path.join(root, dir_name)
-                # Prüfe, ob Verzeichnis leer ist (keine Dateien und keine Unterverzeichnisse)
+                # Remove directory if empty
                 if not os.listdir(dir_path):
                     try:
                         os.rmdir(dir_path)
                     except OSError:
-                        # Ignoriere Fehler, falls das Verzeichnis inzwischen gefüllt wurde
-                        pass
+                        pass  # Ignore if directory is no longer empty
 
     @staticmethod
     def _import_uavs(user, uavs_path, uav_mapping):
-        """Import UAVs from JSON file and return mapping of old->new IDs"""
+        """Import UAVs from JSON and return old->new ID mapping."""
         with open(uavs_path, 'r') as f:
             uavs_data = json.load(f)
         
@@ -216,12 +215,11 @@ class ImportService:
         for uav_data in uavs_data:
             old_id = uav_data.get('uav_id')
             
-            # Check if UAV already exists - use more specific criteria
             drone_name = uav_data.get('drone_name')
             manufacturer = uav_data.get('manufacturer')
             serial_number = uav_data.get('serial_number')
             
-            # First check by serial number if it exists and is not empty
+            # Prefer match by serial number if available
             existing_uav = None
             if serial_number and serial_number.strip():
                 existing_uav = UAV.objects.filter(
@@ -229,7 +227,7 @@ class ImportService:
                     serial_number=serial_number
                 ).first()
             
-            # If no match by serial number, check by drone name and manufacturer
+            # Fallback: match by drone name and manufacturer
             if not existing_uav:
                 existing_uavs = UAV.objects.filter(
                     user=user, 
@@ -242,14 +240,14 @@ class ImportService:
                 existing_uav = existing_uavs.first()
             
             if existing_uav:
-                # Add to mapping so flight logs can still reference it
+                # Add mapping for reference in logs
                 if old_id:
                     uav_mapping[old_id] = existing_uav.uav_id
                     
                 skipped_count += 1
                 continue
             
-            # Extract maintenance reminder data before removing conflict fields
+            # Extract maintenance reminder fields before removing them
             maintenance_data = {}
             maintenance_fields = [
                 'props_maint_date', 'motor_maint_date', 'frame_maint_date',
@@ -261,7 +259,7 @@ class ImportService:
                 if field in uav_data:
                     maintenance_data[field] = uav_data[field]
             
-            # Remove fields that would cause conflicts
+            # Remove fields that may cause conflicts
             ImportService._remove_conflict_fields(uav_data, [
                 'uav_id', 'props_maint_date', 'motor_maint_date', 'frame_maint_date',
                 'props_reminder_date', 'motor_reminder_date', 'frame_reminder_date',
@@ -269,35 +267,28 @@ class ImportService:
             ])
             uav_data['user'] = user
             
-            # Handle any other unexpected fields by getting only valid fields
             try:
-                # Create new UAV
                 new_uav = UAV.objects.create(**uav_data)
                 
-                # Create maintenance reminders if maintenance data exists
+                # Create maintenance reminders if present
                 if maintenance_data:
                     from .uav_service import UAVService
                     UAVService.update_maintenance_reminders(new_uav, maintenance_data)
                 
-                # Add to mapping
                 if old_id:
                     uav_mapping[old_id] = new_uav.uav_id
                 
                 imported_count += 1
             except TypeError as e:
-                # If there are other unexpected fields, log them and try again
                 error_msg = str(e)
                 if "got unexpected keyword" in error_msg:
-                    # Extract the unexpected field name
                     import re
                     match = re.search(r"unexpected keyword '(\w+)'", error_msg)
                     if match:
                         field_name = match.group(1)
                         uav_data.pop(field_name, None)
-                        # Try again with the field removed
                         new_uav = UAV.objects.create(**uav_data)
                         
-                        # Create maintenance reminders if maintenance data exists
                         if maintenance_data:
                             from .uav_service import UAVService
                             UAVService.update_maintenance_reminders(new_uav, maintenance_data)
@@ -307,13 +298,13 @@ class ImportService:
                         
                         imported_count += 1
                 else:
-                    raise  # Re-raise if it's not about unexpected keywords
+                    raise
         
         return imported_count
 
     @staticmethod
     def _import_flight_logs(user, logs_path, uav_mapping, flight_log_mapping):
-        """Import flight logs from JSON file"""
+        """Import flight logs from JSON file."""
         with open(logs_path, 'r') as f:
             logs_data = json.load(f)
         
@@ -331,12 +322,11 @@ class ImportService:
                     errors.append(f"No suitable UAV found for flight log {old_id}")
                     continue
                 
-                # Get necessary fields to check for existing flight logs
                 departure_date = log_data.get('departure_date')
                 departure_time = log_data.get('departure_time')
                 departure_place = log_data.get('departure_place')
                 
-                # Check if a similar flight log already exists
+                # Check for existing log with same UAV, date, and optionally time/place
                 existing_logs = FlightLog.objects.filter(
                     user=user,
                     uav_id=new_uav_id,
@@ -350,24 +340,20 @@ class ImportService:
                     existing_logs = existing_logs.filter(departure_place=departure_place)
                 
                 if existing_logs.exists():
-                    # Add to mapping so GPS data can still reference it
                     if old_id:
                         flight_log_mapping[old_id] = existing_logs.first().flightlog_id
                     
                     skipped_count += 1
                     continue
                 
-                # Prepare data for creation
                 ImportService._remove_conflict_fields(log_data, [
                     'flightlog_id', 'uav', 'created_at', 'gps_logs'
                 ])
                 log_data['uav_id'] = new_uav_id
                 log_data['user'] = user
                 
-                # Create new flight log
                 new_log = FlightLog.objects.create(**log_data)
                 
-                # Add to mapping
                 if old_id:
                     flight_log_mapping[old_id] = new_log.flightlog_id
                 
@@ -379,36 +365,33 @@ class ImportService:
 
     @staticmethod
     def _import_gps_data(gps_dir, flight_log_mapping):
-        """Import GPS data for flight logs"""
+        """Import GPS data for flight logs."""
         for filename in os.listdir(gps_dir):
             if filename.endswith('_gps.json'):
-                # Extract flight log ID from filename (flight_X_gps.json)
                 try:
                     parts = filename.split('_')
                     old_flight_id = int(parts[1])
                 except (IndexError, ValueError):
                     continue
                 
-                # Skip if flight log wasn't imported
+                # Skip if flight log was not imported
                 if old_flight_id not in flight_log_mapping:
                     continue
                 
                 new_flight_id = flight_log_mapping[old_flight_id]
                 flight_log = FlightLog.objects.get(flightlog_id=new_flight_id)
                 
-                # Import GPS points
                 with open(os.path.join(gps_dir, filename), 'r') as f:
                     gps_data = json.load(f)
                 
                 for point in gps_data:
-                    # Remove fields that would cause conflicts
                     point.pop('id', None)
                     point.pop('flight_log', None)
                     FlightGPSLog.objects.create(flight_log=flight_log, **point)
 
     @staticmethod
     def _import_maintenance_logs(user, logs_path, uav_mapping, temp_dir):
-        """Import maintenance logs from JSON file"""
+        """Import maintenance logs from JSON file."""
         with open(logs_path, 'r') as f:
             logs_data = json.load(f)
         
@@ -417,7 +400,6 @@ class ImportService:
         errors = []
         files_dir = os.path.join(temp_dir, 'maintenance_logs', 'files')
         
-        # Import from maintenance_service for consistency
         from .maintenance_service import MaintenanceService
         
         for log_data in logs_data:
@@ -430,11 +412,11 @@ class ImportService:
                     errors.append(f"No suitable UAV found for maintenance log {old_maintenance_id}")
                     continue
                 
-                # Check if a similar maintenance log already exists
                 event_type = log_data.get('event_type')
                 event_date = log_data.get('event_date')
                 description = log_data.get('description')
                 
+                # Check for existing log with same UAV, date, event type, and description
                 existing_logs = MaintenanceLog.objects.filter(
                     user=user,
                     uav_id=new_uav_id,
@@ -449,25 +431,23 @@ class ImportService:
                     skipped_count += 1
                     continue
                 
-                # Remove fields that would cause conflicts
                 ImportService._remove_conflict_fields(log_data, ['maintenance_id', 'uav'])
                 file_path = log_data.pop('file', None)
                 log_data['uav_id'] = new_uav_id
                 log_data['user'] = user
                 
-                # Create maintenance log with no file first
+                # Create log without file first
                 new_log = MaintenanceLog.objects.create(**log_data)
                 
-                # Handle file if present
+                # Attach file if present
                 if file_path and files_dir:
-                    # Extract just the filename from the path, handling both formats
                     file_name = os.path.basename(file_path)
                     
                     # Try multiple possible locations for the file
                     possible_paths = [
-                        os.path.join(files_dir, file_name),  # Direct filename
-                        os.path.join(temp_dir, file_path.lstrip('/')),  # Full path without leading slash
-                        os.path.join(temp_dir, file_path.replace('/media/', '')),  # Path without media prefix
+                        os.path.join(files_dir, file_name),
+                        os.path.join(temp_dir, file_path.lstrip('/')),
+                        os.path.join(temp_dir, file_path.replace('/media/', '')),
                     ]
                     
                     file_found = False
@@ -483,6 +463,7 @@ class ImportService:
                             file_found = True
                             break
                     
+                    # Debug output if file not found
                     if not file_found and ImportService.DEBUG:
                         print(f"Could not find file for maintenance log: {file_name}")
                         print(f"Tried paths: {possible_paths}")
@@ -495,7 +476,7 @@ class ImportService:
 
     @staticmethod
     def _import_maintenance_reminders(user, reminders_path, uav_mapping):
-        """Import maintenance reminders from JSON file"""
+        """Import maintenance reminders from JSON file."""
         with open(reminders_path, 'r') as f:
             reminders_data = json.load(f)
         
@@ -513,10 +494,10 @@ class ImportService:
                     errors.append(f"No suitable UAV found for reminder {old_reminder_id}")
                     continue
                 
-                # Check if a similar reminder already exists
                 component = reminder_data.get('component')
                 next_maintenance = reminder_data.get('next_maintenance')
                 
+                # Check for existing reminder with same UAV, component, and next maintenance
                 existing_reminders = MaintenanceReminder.objects.filter(
                     uav_id=new_uav_id,
                     component=component
@@ -529,11 +510,9 @@ class ImportService:
                     skipped_count += 1
                     continue
                 
-                # Remove fields that would cause conflicts
                 ImportService._remove_conflict_fields(reminder_data, ['reminder_id', 'uav'])
                 reminder_data['uav_id'] = new_uav_id
                 
-                # Create new reminder
                 MaintenanceReminder.objects.create(**reminder_data)
                 imported_count += 1
             except Exception as e:
@@ -543,7 +522,7 @@ class ImportService:
 
     @staticmethod
     def _import_uav_configs(user, configs_path, uav_mapping, temp_dir):
-        """Import UAV configuration files from JSON file"""
+        """Import UAV configuration files from JSON file."""
         with open(configs_path, 'r') as f:
             configs_data = json.load(f)
         
@@ -562,10 +541,10 @@ class ImportService:
                     errors.append(f"No suitable UAV found for configuration {old_config_id}")
                     continue
                 
-                # Check if a similar configuration already exists
                 config_name = config_data.get('name')
                 upload_date = config_data.get('upload_date')
                 
+                # Check for existing config with same UAV, name, and upload date
                 existing_configs = UAVConfig.objects.filter(
                     user=user,
                     uav_id=new_uav_id,
@@ -579,16 +558,14 @@ class ImportService:
                     skipped_count += 1
                     continue
                 
-                # Remove fields that would cause conflicts
                 ImportService._remove_conflict_fields(config_data, ['config_id', 'uav'])
                 file_path = config_data.pop('file', None)
                 config_data['uav_id'] = new_uav_id
                 config_data['user'] = user
                 
-                # Create configuration entry with no file first
                 new_config = UAVConfig.objects.create(**config_data)
                 
-                # Handle file if present
+                # Attach file if present
                 if file_path and files_dir:
                     file_name = os.path.basename(file_path)
                     full_path = os.path.join(files_dir, file_name)
@@ -597,11 +574,9 @@ class ImportService:
                         with open(full_path, 'rb') as f:
                             file_content = f.read()
                             
-                        # Generate appropriate path for the UAV config file
                         from ..models import uav_config_path
                         saved_path = ImportService._save_file_to_storage(new_config, file_name, file_content, uav_config_path)
                         
-                        # Update config with the actual path returned by storage
                         new_config.file = saved_path
                         new_config.save()
                 

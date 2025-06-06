@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 
+// Base SVG instrument layout
 const BaseInstrument = ({ 
   size,
   children,
@@ -17,7 +18,9 @@ const BaseInstrument = ({
         viewBox={`0 0 ${size} ${size}`} 
         style={{ maxWidth: size, maxHeight: size }}
       >
+        {/* Outer case */}
         <circle cx={center} cy={center} r={size / 2} fill={outerColor} /> 
+        {/* Instrument background */}
         <circle cx={center} cy={center} r={radius + 5} fill={backgroundColor} /> 
         {children}
       </svg>

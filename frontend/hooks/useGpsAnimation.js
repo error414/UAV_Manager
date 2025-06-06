@@ -1,10 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-/**
- * Hook for handling GPS track animation/playback logic.
- * @param {Array} gpsTrack - Array of GPS points (can be null/empty)
- * @returns {Object} Animation state and control functions
- */
+// Handles GPS track animation state and controls
 const useGpsAnimation = (gpsTrack) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPointIndex, setCurrentPointIndex] = useState(0);
@@ -12,7 +8,7 @@ const useGpsAnimation = (gpsTrack) => {
   const [resetTrigger, setResetTrigger] = useState(false);
   const intervalRef = useRef(null);
 
-  // Start animation
+  // Start playback from current or reset if at end
   const startAnimation = useCallback(() => {
     if (!gpsTrack?.length) return;
     if (currentPointIndex >= gpsTrack.length - 1) setCurrentPointIndex(0);
@@ -32,20 +28,20 @@ const useGpsAnimation = (gpsTrack) => {
     }, 1000 / animationSpeed);
   }, [gpsTrack, animationSpeed, currentPointIndex]);
 
-  // Pause animation
+  // Pause playback
   const pauseAnimation = useCallback(() => {
     setIsPlaying(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
   }, []);
 
-  // Reset animation
+  // Reset to start and trigger rerender
   const resetAnimation = useCallback(() => {
     pauseAnimation();
     setCurrentPointIndex(0);
     setResetTrigger(prev => !prev);
   }, [pauseAnimation]);
 
-  // Change speed
+  // Update speed and restart if playing
   const changeSpeed = useCallback((newSpeed) => {
     setAnimationSpeed(newSpeed);
     if (isPlaying) {
@@ -54,20 +50,20 @@ const useGpsAnimation = (gpsTrack) => {
     }
   }, [isPlaying, pauseAnimation, startAnimation]);
 
-  // Set position manually
+  // Set position manually, pause if playing
   const handlePositionChange = useCallback((newPosition) => {
     if (isPlaying) pauseAnimation();
     setCurrentPointIndex(newPosition);
   }, [isPlaying, pauseAnimation]);
 
-  // Cleanup on unmount
+  // Cleanup interval on unmount
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
-  // Reset index if gpsTrack changes
+  // Reset state when track changes
   useEffect(() => {
     setCurrentPointIndex(0);
     setIsPlaying(false);

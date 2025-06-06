@@ -10,12 +10,13 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [status, setStatus] = useState({ error: null, success: null, loading: false });
   
-  // We use useApi but we'll only use it after successful login
+  // useApi is only used after successful login
   const { fetchData } = useApi(API_URL, error => 
     setStatus(prev => ({ ...prev, error, loading: false }))
   );
 
   useEffect(() => {
+    // Redirect if already authenticated
     if (localStorage.getItem('access_token')) {
       navigate('/flightlog', { replace: true });
     }
@@ -30,7 +31,7 @@ const Login = () => {
     setStatus({ error: null, success: null, loading: true });
 
     try {
-      // Authentication request - can't use fetchData yet as we don't have a token
+      // Can't use fetchData here, no token yet
       const response = await fetch(`${API_URL}/auth/jwt/create/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,10 +48,10 @@ const Login = () => {
         throw new Error('No access token received.');
       }
       
-      // Store the token - this enables authUtils to work for subsequent requests
+      // Store token for authenticated requests
       localStorage.setItem('access_token', data.access);
       
-      // Now we can use fetchData to get user info
+      // Fetch user info with token
       const userResult = await fetchData('/auth/users/me/');
       
       if (!userResult.error && userResult.data) {

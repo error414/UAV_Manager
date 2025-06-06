@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from './Button';
 
-// Ändere den Namen der Komponente von Sidebar zu Layout
+// Component name changed from Sidebar to Layout
 const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: externalToggleSidebar }) => {
   const [userName, setUserName] = useState('');
   const [activePath, setActivePath] = useState('');
@@ -13,11 +13,12 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
 
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Verwende externe Steuerung, wenn vorhanden
+  // Use external control if provided
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : sidebarOpen;
   const toggleSidebar = externalToggleSidebar || (() => setSidebarOpen(!sidebarOpen));
 
   useEffect(() => {
+    // Auto-toggle sidebar on window resize (desktop/mobile)
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
         setSidebarOpen(true);
@@ -31,12 +32,14 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
   }, []);
 
   useEffect(() => {
+    // Persist active path in localStorage
     const currentPath = location.pathname;
     localStorage.setItem('activePath', currentPath);
     setActivePath(currentPath);
   }, [location.pathname]);
 
   useEffect(() => {
+    // Restore active path from localStorage on mount
     const savedPath = localStorage.getItem('activePath');
     if (savedPath) {
       setActivePath(savedPath);
@@ -46,6 +49,7 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
   }, []);
 
   useEffect(() => {
+    // Fetch user data for display and permissions
     const fetchUserData = async () => {
       const token = localStorage.getItem('access_token');
       const user_id = localStorage.getItem('user_id');
@@ -81,6 +85,7 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
     navigate('/login');
   };
 
+  // Highlight menu for dynamic routes
   const isFlightDetailsActive = activePath.includes('/flightdetails/');
   const isAircraftSettingsActive = activePath.startsWith('/aircraftsettings/') || 
                                   activePath.startsWith('/editaircraft/') || 
@@ -103,7 +108,7 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
     { path: '/aircraftlist', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', label: 'Aircraft List' }
   );
   
-  // Add Aircraft Settings between Aircraft List and User Settings if active
+  // Insert Aircraft Settings if active
   if (isAircraftSettingsActive) {
     menuItems.push({
       path: activePath,
@@ -127,7 +132,7 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
 
   return (
     <div className="flex h-screen relative">
-      {/* Sidebar Toggle Button - Mobile */}
+      {/* Sidebar toggle button (mobile) */}
       <button
         onClick={toggleSidebar}
         className="lg:hidden fixed top-2 left-2 z-20 bg-gray-800 text-white p-2 rounded-md"
@@ -138,7 +143,7 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
         </svg>
       </button>
       
-      {/* Sidebar Toggle Button - Desktop */}
+      {/* Sidebar toggle button (desktop) */}
       <button
         onClick={toggleSidebar}
         className={`hidden lg:block fixed top-2 z-30 bg-gray-800 text-white p-2 rounded-md transition-all duration-300 ${
@@ -161,6 +166,7 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
         </div>     
         <nav className="flex-1 py-1">
           {menuItems.map((item) => {
+            // Highlight active menu item
             const isActive = 
               activePath === item.path || 
               activePath === `${item.path}/` ||
@@ -207,7 +213,7 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
         )}
       </aside>
       
-      {/* Main Content Container */}
+      {/* Main content container */}
       <div 
         className={`flex-1 flex flex-col w-full p-4 pt-2 transition-all duration-300 overflow-auto ${
           isOpen ? 'lg:ml-48' : ''

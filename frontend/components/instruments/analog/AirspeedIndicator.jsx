@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { BaseInstrument } from '../../../components';
 
@@ -9,15 +8,14 @@ const AirspeedIndicator = ({
   maxSpeed = 200,
   redLineSpeed = 160,
 }) => {
-  useEffect(() => {
-  }, [airspeed]);
-
   const calculateNeedleAngle = (speed) => {
+    // Clamp speed and map to needle angle (30° to 330°)
     const clampedSpeed = Math.max(0, Math.min(speed, maxSpeed));
     return ((clampedSpeed / maxSpeed) * 300) + 30;
   };
   
   const calculateDialAngle = (speed) => {
+    // Map speed to dial angle (-60° to 240°)
     return ((speed / maxSpeed) * 300) - 60;
   };
 

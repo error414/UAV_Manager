@@ -2,7 +2,7 @@ import { Button } from '../index';
 
 const ConfigFileTable = ({
   // Common props
-  tableType = 'config', // Can be 'config' or 'logs'
+  tableType = 'config', // 'config' for configuration files, 'logs' for maintenance logs
   getFilenameFromUrl,
   
   // Config file specific props
@@ -34,10 +34,10 @@ const ConfigFileTable = ({
   onAddLog,
   fileInputRef
 }) => {
-  // Config files table specific logic
+  // Show compare button only when two configs are selected
   const showCompareButton = selectedConfigs.length === 2;
   
-  // Helper for rendering form inputs (extracted from MaintenanceLogTable)
+  // Renders a form input with error display
   const renderInput = ({ type, name, value, onChange, placeholder, error, ...rest }) => (
     <>
       <input
@@ -54,7 +54,7 @@ const ConfigFileTable = ({
     </>
   );
 
-  // CONFIGURATION FILES TABLE
+  // Configuration files table
   if (tableType === 'config') {
     return (
       <>
@@ -134,7 +134,7 @@ const ConfigFileTable = ({
     );
   }
   
-  // MAINTENANCE LOGS TABLE
+  // Maintenance logs table
   return (
     <>
       <h3 className="text-lg font-medium text-gray-800 mb-3">Maintenance Logs</h3>
@@ -173,6 +173,7 @@ const ConfigFileTable = ({
                   <td className="px-4 py-2">
                     {editingLog.originalFile && (
                       <div className="mb-2 text-sm">
+                        {/* Show current file if exists */}
                         <span>Current file: </span>
                         <a href={editingLog.originalFile} download className="text-blue-500 hover:underline">
                           {getFilenameFromUrl(editingLog.originalFile)}

@@ -8,25 +8,24 @@ const VerticalSpeedIndicator = ({
   minSpeed = -15,  
   maxSpeed = 15,
 }) => {
-  // State to track if any extreme value has been detected
+  // Tracks if an out-of-range value was detected
   const [dataInvalid, setDataInvalid] = useState(false);
   
-  // Check if vertical speed exceeds reasonable limits
+  // Mark data as invalid if vertical speed exceeds plausible limits
   useEffect(() => {
     if (Math.abs(verticalSpeed) > 180) {
       setDataInvalid(true);
     }
   }, [verticalSpeed]);
   
-  // Use 0 if data has been marked invalid at any point
+  // Use 0 if data is invalid
   const validVerticalSpeed = dataInvalid ? 0 : verticalSpeed;
   
-  // Calculate needle angle - 0 m/s is at 0 deg (top), negative down, positive up
+  // Maps speed to angle: 0 m/s = 0 deg (top), minSpeed = +90 deg (down), maxSpeed = -90 deg (up)
   const calculateNeedleAngle = (speed) => {
-    // Clamp speed to valid range
+    // Clamp speed to min/max
     const clampedSpeed = Math.max(minSpeed, Math.min(speed, maxSpeed));
-    // Map speed to angle: 0 m/s = 0 deg (top), minSpeed = +90 deg (down), maxSpeed = -90 deg (up)
-    // Korrigiert: minSpeed -> +90deg, 0 -> 0deg, maxSpeed -> -90deg
+    // Angle mapping logic
     return (clampedSpeed / (maxSpeed - minSpeed)) * 180 * 2;
   };
   
@@ -44,10 +43,10 @@ const VerticalSpeedIndicator = ({
     const majorTickInterval = 5;
     const minorTickInterval = 1;
 
-    // Generate tick marks from minSpeed to maxSpeed
+    // Generate tick marks for the scale
     for (let speed = minSpeed; speed <= maxSpeed; speed += minorTickInterval) {
       const angle = calculateNeedleAngle(speed);
-      const angleRad = (angle - 180) * (Math.PI / 180); // -90 to rotate 0deg to top
+      const angleRad = (angle - 180) * (Math.PI / 180); // Rotate so 0 deg is top
       const cosAngle = Math.cos(angleRad);
       const sinAngle = Math.sin(angleRad);
       
@@ -75,10 +74,9 @@ const VerticalSpeedIndicator = ({
         const textX = center + tickTextRadius * cosAngle;
         const textY = center + tickTextRadius * sinAngle;
 
-        // Korrektur: Kein Tausch mehr von -5 und 5
         let displayValue = speed;
 
-        // Skip -15 and 15 labels
+        // Skip labels for -15 and 15
         if (speed !== -15 && speed !== 15) {
           ticks.push(
             <text
@@ -135,7 +133,7 @@ const VerticalSpeedIndicator = ({
         M/S
       </text>
       
-      {/* Climb indicator */}
+      {/* Climb label */}
       <text
         x={center}
         y={center - radius * 0.65}
@@ -146,7 +144,7 @@ const VerticalSpeedIndicator = ({
         UP
       </text>
       
-      {/* Descent indicator */}
+      {/* Descent label */}
       <text
         x={center}
         y={center + radius * 0.65}

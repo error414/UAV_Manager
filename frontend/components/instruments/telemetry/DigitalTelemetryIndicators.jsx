@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 
-// Einzelne Indikatoren (unverändert)
+// Individual indicators (unchanged)
 export const ReceiverBatteryIndicator = ({ value = 0 }) => (
   <div className="flex flex-col items-center">
     <span className="text-xs text-gray-500">RX Batt</span>
@@ -40,7 +40,7 @@ CurrentIndicator.propTypes = {
   value: PropTypes.number
 };
 
-// Gruppierter Kasten im exakt gleichen Design wie SignalStrengthIndicator
+// Grouped box styled like SignalStrengthIndicator
 export const DigitalTelemetryIndicatorsGroup = ({
   receiverBattery,
   capacity,

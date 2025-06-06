@@ -1,10 +1,10 @@
 /**
- * Parse GPS data from a CSV file
+ * Parses GPS data from a CSV file and returns track points and detailed data
  * @param {File} file - The CSV file containing GPS data
  * @returns {Promise<Object>} Object containing trackPoints array and gpsData array
  */
 export const parseGPSFile = async (file) => {
-  // Read the file as text
+  // Read file as text using FileReader
   const csvText = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => resolve(e.target.result);
@@ -14,18 +14,18 @@ export const parseGPSFile = async (file) => {
   
   if (!csvText?.trim()) throw new Error('The file is empty.');
   
-  // Split into rows
+  // Split file into non-empty rows
   const rows = csvText.split('\n').filter(r => r.trim());
   if (rows.length < 2) throw new Error('The file contains no data rows.');
   
-  // Validate header
+  // Check header matches expected format
   const header = rows[0].trim();
   const expectedHeader = 'time,GPS_numSat,GPS_coord[0],GPS_coord[1],GPS_altitude,GPS_speed,GPS_ground_course,VSpd,Pitch,Roll,Yaw,RxBt,Curr,Capa,RQly,TQly,TPWR,Ail,Ele,Thr,Rud';
   if (header !== expectedHeader) {
     throw new Error('The file header does not match the expected format:\n' + `"${expectedHeader}"`);
   }
   
-  // Create index map for columns
+  // Build column index map for fast lookup
   const headerColumns = header.split(',').map(col => col.trim().toLowerCase());
   const idx = name => headerColumns.findIndex(col => col === name);
   const indexMap = {
@@ -46,7 +46,6 @@ export const parseGPSFile = async (file) => {
     rqly: idx('rqly'),
     tqly: idx('tqly'),
     tpwr: idx('tpwr'),
-    // Add new control input indices
     ail: idx('ail'),
     ele: idx('ele'),
     thr: idx('thr'),
@@ -57,7 +56,6 @@ export const parseGPSFile = async (file) => {
     throw new Error('No valid GPS coordinates found.');
   }
   
-  // Process data rows
   const trackPoints = [], gpsData = [];
   rows.slice(1).forEach(row => {
     const columns = row.trim().split(',').map(col => col.trim());
@@ -161,7 +159,7 @@ export const parseGPSFile = async (file) => {
 };
 
 /**
- * Calculate statistics from GPS data points
+ * Computes min/max statistics for altitude, speed, vertical speed, and satellites
  * @param {Array} gpsData - Array of GPS data points
  * @returns {Object} Object containing min/max values for altitude, speed, satellites
  */

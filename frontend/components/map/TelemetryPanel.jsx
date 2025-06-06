@@ -1,12 +1,12 @@
 /**
- * Displays flight telemetry data including control surfaces and system information
- * @param {Object} gpsPoint - Current GPS data point with telemetry information
+ * Flight telemetry panel displaying control surfaces and system data
+ * @param {Object} gpsPoint - GPS data point with telemetry
  * @returns {JSX.Element}
  */
 const TelemetryPanel = ({ gpsPoint }) => {
   if (!gpsPoint) return null;
   
-  // Helper function to normalize flight control values to percentages
+  // Convert control values from -1024/+1024 range to percentage
   const normalizeControlValue = (value) => {
     if (value == null) return 0;
     return (Math.abs(value) / 1024) * 100;
@@ -17,7 +17,6 @@ const TelemetryPanel = ({ gpsPoint }) => {
       <h3 className="text-xl font-semibold text-gray-800 mb-4">Flight Telemetry</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Flight controls section */}
         <div className="space-y-3 md:border-r md:pr-4">
           <h4 className="font-medium text-gray-700">Flight Controls</h4>
           
@@ -76,7 +75,6 @@ const TelemetryPanel = ({ gpsPoint }) => {
           </div>
         </div>
         
-        {/* System data section */}
         <div className="space-y-3">
           <h4 className="font-medium text-gray-700">System Data</h4>
           

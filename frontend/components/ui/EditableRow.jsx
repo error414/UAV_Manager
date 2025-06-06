@@ -37,7 +37,7 @@ const EditableRow = React.memo(({
       );
     }
     
-    // Special case handling for selects
+    // Render select for UAV field
     if (col.accessor === 'uav') {
       return (
         <td key={col.accessor} className="py-3 px-4">
@@ -58,6 +58,7 @@ const EditableRow = React.memo(({
       );
     }
     
+    // Render select for enum fields
     if (['light_conditions', 'ops_conditions', 'pilot_type'].includes(col.accessor)) {
       return (
         <td key={col.accessor} className="py-3 px-4">
@@ -76,7 +77,7 @@ const EditableRow = React.memo(({
       );
     }
     
-    // Determine input type based on the field
+    // Set input type and props based on field
     let inputType = 'text';
     let inputProps = {};
     
@@ -105,7 +106,7 @@ const EditableRow = React.memo(({
     );
   };
 
-  // Render edit cell logic extracted from main component
+  // Renders action buttons or edit button
   const renderEditCell = () => {
     return (
       <td className="py-3 px-4">

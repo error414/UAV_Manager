@@ -6,7 +6,7 @@ const ArrowButton = ({
   className = '',
   ...props
 }) => {
-  // left: zeigt nach links (vorheriger), right: zeigt nach rechts (nächster)
+  // Show left arrow for 'left', right arrow otherwise
   const isLeft = direction === 'left';
   return (
     <button

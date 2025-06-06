@@ -120,12 +120,12 @@ const GpsAnimationControls = ({
             onChange={e => changeSpeed(Number(e.target.value))}
             className="border rounded px-3 py-2"
           >
-            <option value={0.5}>0.5 Einträge pro Sekunde</option>
-            <option value={1}>1 Eintrag pro Sekunde</option>
-            <option value={2}>2 Einträge pro Sekunde</option>
-            <option value={5}>5 Einträge pro Sekunde</option>
-            <option value={10}>10 Einträge pro Sekunde</option>
-            <option value={20}>20 Einträge pro Sekunde</option>
+            <option value={0.5}>0.5 entries per second</option>
+            <option value={1}>1 entry per second</option>
+            <option value={2}>2 entries per second</option>
+            <option value={5}>5 entries per second</option>
+            <option value={10}>10 entries per second</option>
+            <option value={20}>20 entries per second</option>
           </select>
         </div>
       </div>
@@ -139,6 +139,7 @@ const GpsAnimationControls = ({
             value={currentPointIndex}
             onChange={(e) => onPositionChange(parseInt(e.target.value, 10))}
             className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer"
+            // Dynamic progress bar styling based on current position
             style={{
               background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${trackLength ? (currentPointIndex / (trackLength - 1)) * 100 : 0}%, #e5e7eb ${trackLength ? (currentPointIndex / (trackLength - 1)) * 100 : 0}%, #e5e7eb 100%)`,
               accentColor: '#3b82f6'
@@ -155,11 +156,6 @@ const GpsAnimationControls = ({
   );
 };
 
-/*
-  WICHTIG:
-  Die Animationslogik muss so implementiert sein, dass pro Sekunde maximal `animationSpeed` Einträge abgespielt werden.
-  Beispiel: setInterval(() => { ...nächster Punkt... }, 1000 / animationSpeed)
-  Aktuell wird vermutlich einfach zu schnell iteriert!
-*/
-
+// Animation should process max `animationSpeed` entries per second
+// Implementation: setInterval(() => { ...next point... }, 1000 / animationSpeed)
 export default GpsAnimationControls;

@@ -50,7 +50,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
-# Benutzereinstellungen (USERSETTINGS)
+# User settings
 class UserSettings(models.Model):
     settings_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='settings')
@@ -68,7 +68,7 @@ class UserSettings(models.Model):
         return f"Settings for {self.user}"
 
 
-# UAVs (UAVS)
+# UAVs
 class UAV(models.Model):
     uav_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uavs')
@@ -107,11 +107,10 @@ class UAV(models.Model):
         return f"{self.drone_name} ({self.serial_number})"
 
 
-# UAV Configuration Files
+# UAV configuration file upload path
 def uav_config_path(instance, filename):
-    # Generate path uav_configs/userid/filename
-    user_id = instance.user.user_id  # Use user ID
-    # Django adds media root automatically (yourmediaroot/)
+    # Store files under uav_configs/user<user_id>/
+    user_id = instance.user.user_id
     return f'uav_configs/user{user_id}/{filename}'
 
 class UAVConfig(models.Model):
@@ -124,7 +123,7 @@ class UAVConfig(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     def save(self, *args, **kwargs):
-        # Check if a new file is being uploaded
+        # Handle file replacement on update
         if self.pk:
             from .services.file_service import FileService
             old_instance = UAVConfig.objects.filter(pk=self.pk).first()
@@ -132,7 +131,7 @@ class UAVConfig(models.Model):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        # Handle file deletion
+        # Delete file from storage
         from .services.file_service import FileService
         if self.file:
             FileService.handle_file_deletion(self.file.path)
@@ -141,7 +140,7 @@ class UAVConfig(models.Model):
     def __str__(self):
         return f"Configuration '{self.name}' for UAV {self.uav}"
 
-# Optional: Use a signal to ensure file deletion when using bulk delete
+# Ensure file deletion on bulk delete
 @receiver(post_delete, sender=UAVConfig)
 def delete_file_on_config_delete(sender, instance, **kwargs):
     from .services.file_service import FileService
@@ -149,9 +148,9 @@ def delete_file_on_config_delete(sender, instance, **kwargs):
         FileService.handle_file_deletion(instance.file.path)
 
 
-# Fluglogs (FLIGHTLOGS)
+# Flight logs
 class FlightLog(models.Model):
-    # Definiere Choices für die Dropdown-Felder
+    # Choices for dropdown fields
     LIGHT_CONDITIONS = [
         ('Day', 'Day'),
         ('Night', 'Night'),
@@ -176,7 +175,7 @@ class FlightLog(models.Model):
     departure_time = models.TimeField(db_index=True)
     landing_place = models.CharField(max_length=255, db_index=True)
     landing_time = models.TimeField()
-    flight_duration = models.IntegerField(db_index=True)  # z.B. in Secounds
+    flight_duration = models.IntegerField(db_index=True)  
     takeoffs = models.IntegerField() 
     landings = models.IntegerField()
     light_conditions = models.CharField(max_length=255, choices=LIGHT_CONDITIONS, db_index=True)
@@ -197,39 +196,36 @@ class FlightLog(models.Model):
 
 class FlightGPSLog(models.Model):
     flight_log = models.ForeignKey('FlightLog', on_delete=models.CASCADE, related_name='gps_logs')
-    timestamp = models.BigIntegerField()  # time (us)
+    timestamp = models.BigIntegerField()
     latitude = models.FloatField()
     longitude = models.FloatField()
     altitude = models.FloatField(null=True, blank=True)
     num_sat = models.IntegerField(null=True, blank=True)
-    speed = models.FloatField(null=True, blank=True)  # GPS_speed (m/s)
+    speed = models.FloatField(null=True, blank=True) 
     ground_course = models.FloatField(null=True, blank=True)
-    # Add new telemetry fields
-    vertical_speed = models.FloatField(null=True, blank=True)  # VSpd
+    vertical_speed = models.FloatField(null=True, blank=True) 
     pitch = models.FloatField(null=True, blank=True)
     roll = models.FloatField(null=True, blank=True)
     yaw = models.FloatField(null=True, blank=True)
-    receiver_battery = models.FloatField(null=True, blank=True)  # RxBt
-    current = models.FloatField(null=True, blank=True)  # Curr
-    capacity = models.FloatField(null=True, blank=True)  # Capa
-    receiver_quality = models.IntegerField(null=True, blank=True)  # RQly
-    transmitter_quality = models.IntegerField(null=True, blank=True)  # TQly
-    transmitter_power = models.IntegerField(null=True, blank=True)  # TPWR
-    # New flight control input fields
-    aileron = models.FloatField(null=True, blank=True)  # Ail
-    elevator = models.FloatField(null=True, blank=True)  # Ele
-    throttle = models.FloatField(null=True, blank=True)  # Thr
-    rudder = models.FloatField(null=True, blank=True)  # Rud
+    receiver_battery = models.FloatField(null=True, blank=True)
+    current = models.FloatField(null=True, blank=True)  
+    capacity = models.FloatField(null=True, blank=True) 
+    receiver_quality = models.IntegerField(null=True, blank=True)  
+    transmitter_quality = models.IntegerField(null=True, blank=True)  
+    transmitter_power = models.IntegerField(null=True, blank=True) 
+    aileron = models.FloatField(null=True, blank=True) 
+    elevator = models.FloatField(null=True, blank=True)  
+    throttle = models.FloatField(null=True, blank=True)  
+    rudder = models.FloatField(null=True, blank=True)  
 
     class Meta:
         ordering = ['timestamp']
 
 
-# Wartungsprotokolle (MAINTENANCELOGS)
+# Maintenance log file upload path
 def maintenance_log_path(instance, filename):
-    # Generate path uploads/maint_logs/userid/filename
+    # Store files under maint_logs/user<user_id>/
     user_id = instance.user.user_id
-    # Django adds media root automatically
     return f'maint_logs/user{user_id}/{filename}'
 
 class MaintenanceLog(models.Model):
@@ -243,7 +239,7 @@ class MaintenanceLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     def save(self, *args, **kwargs):
-        # Check if a new file is being uploaded
+        # Handle file replacement on update
         if self.pk:
             from .services.maintenance_service import MaintenanceService
             old_instance = MaintenanceLog.objects.filter(pk=self.pk).first()
@@ -251,7 +247,7 @@ class MaintenanceLog(models.Model):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        # Use maintenance service to handle file deletion
+        # Delete file from storage
         from .services.maintenance_service import MaintenanceService
         if self.file:
             MaintenanceService.handle_file_deletion(self.file.path)
@@ -260,7 +256,7 @@ class MaintenanceLog(models.Model):
     def __str__(self):
         return f"Maintenance {self.event_type} on {self.event_date} for UAV {self.uav}"
 
-# Optional: Use a signal to ensure file deletion when using bulk delete
+# Ensure file deletion on bulk delete
 @receiver(post_delete, sender=MaintenanceLog)
 def delete_file_on_log_delete(sender, instance, **kwargs):
     from .services.maintenance_service import MaintenanceService
@@ -268,14 +264,14 @@ def delete_file_on_log_delete(sender, instance, **kwargs):
         MaintenanceService.handle_file_deletion(instance.file.path)
 
 
-# Komponentenwahl für Wartungserinnerungen
+# Component choices for maintenance reminders
 COMPONENT_CHOICES = [
     ('MOTOR', 'Motor'),
     ('PROPELLER', 'Propeller'),
     ('FRAME', 'Frame'),
 ]
 
-# Wartungserinnerungen (MAINTENANCE_REMINDERS)
+# Maintenance reminders
 class MaintenanceReminder(models.Model):
     reminder_id = models.AutoField(primary_key=True)
     uav = models.ForeignKey(UAV, on_delete=models.CASCADE, related_name='reminders')
@@ -287,7 +283,7 @@ class MaintenanceReminder(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        # verhindert ab jetzt doppelte (uav, component)-Paare
+        # Prevent duplicate (uav, component) pairs
         constraints = [
             models.UniqueConstraint(
                 fields=['uav', 'component'],
@@ -299,7 +295,7 @@ class MaintenanceReminder(models.Model):
         return f"Reminder for {self.component} on UAV {self.uav}"
 
 
-# Dateien (FILES)
+# Files
 class File(models.Model):
     file_id = models.AutoField(primary_key=True)
     uav = models.ForeignKey(UAV, on_delete=models.CASCADE, related_name='files')

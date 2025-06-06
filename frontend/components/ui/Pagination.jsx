@@ -1,20 +1,22 @@
 export const getVisiblePageNumbers = (currentPage, totalPages, siblingsCount = 1) => {
+  // Show all pages if total is small
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
 
   const pages = [1];
   
+  // Calculate start and end for sibling pages
   const startSibling = Math.max(2, currentPage - siblingsCount);
   const endSibling = Math.min(totalPages - 1, currentPage + siblingsCount);
   
-  if (startSibling > 2) pages.push(null);
+  if (startSibling > 2) pages.push(null); // Insert leading ellipsis
   
   for (let i = startSibling; i <= endSibling; i++) {
     pages.push(i);
   }
   
-  if (endSibling < totalPages - 1) pages.push(null);
+  if (endSibling < totalPages - 1) pages.push(null); // Insert trailing ellipsis
   
   if (totalPages > 1) pages.push(totalPages);
   
@@ -36,6 +38,7 @@ const Pagination = ({
   
   const visiblePages = getVisiblePageNumbers(currentPage, totalPages, siblingsCount);
   
+  // Navigation button for previous/next
   const NavButton = ({ direction, disabled, onClick }) => (
     <button 
       onClick={onClick}
@@ -57,6 +60,7 @@ const Pagination = ({
       <div className="flex items-center gap-1">
         {visiblePages.map((page, index) => 
           page === null ? (
+            // Ellipsis for skipped pages
             <span key={`ellipsis-${index}`} className="px-1">...</span>
           ) : (
             <button
