@@ -6,6 +6,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.parsers import MultiPartParser
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.exceptions import PermissionDenied
+import re
 
 from .models import (
     UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, User, UserSettings, FlightGPSLog, UAVConfig
@@ -25,6 +27,7 @@ from .services.file_service import FileService
 from .services.gps_service import GPSService
 from .services.export_service import ExportService
 from .services.import_service import ImportService
+from .services.pagination_service import PaginationService
 
 # Pagination for UAVs
 class UAVPagination(PageNumberPagination):
@@ -48,29 +51,13 @@ class UAVListCreateView(generics.ListCreateAPIView):
         uav = serializer.save(user=self.request.user)
         UAVService.update_maintenance_reminders(uav, serializer.validated_data)
     
-    # Modify the list method to correctly handle paginated responses
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Check if pagination is needed
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            response_data = serializer.data
-            
-            # Add flight statistics to each UAV using the service
-            response_data = UAVService.enrich_uav_data(response_data)
-            
-            return self.get_paginated_response(response_data)
-        
-        # If no pagination, use the original implementation
-        serializer = self.get_serializer(queryset, many=True)
-        response_data = serializer.data
-        
-        # Add flight statistics to each UAV using the service
-        response_data = UAVService.enrich_uav_data(response_data)
-        
-        return Response(response_data)
+        # Use PaginationService for consistent pagination with UAV enrichment
+        return PaginationService.paginate_with_enrichment(
+            self, queryset, request, UAVService.enrich_uav_data
+        )
 
 class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UAVSerializer
@@ -85,10 +72,7 @@ class UAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
-        
-        # Add flight statistics to the response
         response.data = UAVService.enrich_uav_data(response.data)
-        
         return response
 
 # UAV metadata endpoint
@@ -124,6 +108,21 @@ class FlightLogListCreateView(generics.ListCreateAPIView):
     
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Use PaginationService for consistent error handling
+        page, error_response = PaginationService.paginate_queryset_safely(self, queryset, request)
+        if error_response:
+            return error_response
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 class FlightLogDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = FlightLogWithGPSSerializer  # Includes GPS logs
@@ -138,7 +137,11 @@ class FlightGPSDataUploadView(APIView):
     
     def post(self, request, flightlog_id):
         try:
-            flight_log = FlightLog.objects.get(flightlog_id=flightlog_id, user=request.user)
+            flight_log = AdminService.get_object_if_owner(
+                user=request.user,
+                model_class=FlightLog,
+                object_id=flightlog_id
+            )
         except FlightLog.DoesNotExist:
             return Response({"detail": "Flight log not found"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -154,7 +157,11 @@ class FlightGPSDataUploadView(APIView):
     
     def get(self, request, flightlog_id):
         try:
-            flight_log = FlightLog.objects.get(flightlog_id=flightlog_id, user=request.user)
+            flight_log = AdminService.get_object_if_owner(
+                user=request.user,
+                model_class=FlightLog,
+                object_id=flightlog_id
+            )
         except FlightLog.DoesNotExist:
             return Response({"detail": "Flight log not found"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -165,7 +172,11 @@ class FlightGPSDataUploadView(APIView):
     
     def delete(self, request, flightlog_id):
         try:
-            flight_log = FlightLog.objects.get(flightlog_id=flightlog_id, user=request.user)
+            flight_log = AdminService.get_object_if_owner(
+                user=request.user,
+                model_class=FlightLog,
+                object_id=flightlog_id
+            )
         except FlightLog.DoesNotExist:
             return Response({"detail": "Flight log not found"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -295,31 +306,31 @@ class AdminUserListView(generics.ListAPIView):
         )
     
     def list(self, request, *args, **kwargs):
-        # Only staff users can access this endpoint
-        if not request.user.is_staff:
-            return Response(
-                {"detail": "You do not have permission to perform this action."}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-        return super().list(request, *args, **kwargs)
+        try:
+            AdminService.ensure_staff_user(request.user)
+            return super().list(request, *args, **kwargs)
+        except PermissionDenied as e:
+            return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
 
 class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        # Only staff users can access this endpoint
-        if not self.request.user.is_staff:
+        try:
+            AdminService.ensure_staff_user(self.request.user)
+            return User.objects.all()
+        except PermissionDenied:
             return User.objects.none()
-        return User.objects.all()
     
     def check_permissions(self, request):
         super().check_permissions(request)
-        # Additional staff check
-        if not request.user.is_staff:
+        try:
+            AdminService.ensure_staff_user(request.user)
+        except PermissionDenied as e:
             self.permission_denied(
                 request,
-                message="You do not have permission to perform this action.",
+                message=str(e),
                 code=status.HTTP_403_FORBIDDEN
             )
 
@@ -341,50 +352,37 @@ class AdminUAVListView(generics.ListAPIView):
         )
     
     def list(self, request, *args, **kwargs):
-        # Only staff users can access this endpoint
-        if not request.user.is_staff:
-            return Response(
-                {"detail": "You do not have permission to perform this action."}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
+        try:
+            AdminService.ensure_staff_user(request.user)
+        except PermissionDenied as e:
+            return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
         
         queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
         
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            response_data = serializer.data
-            
-            # Add flight statistics to each UAV
-            response_data = UAVService.enrich_uav_data(response_data)
-            
-            return self.get_paginated_response(response_data)
-        
-        serializer = self.get_serializer(queryset, many=True)
-        response_data = serializer.data
-        
-        # Add flight statistics to each UAV
-        response_data = UAVService.enrich_uav_data(response_data)
-        
-        return Response(response_data)
+        # Use PaginationService for consistent pagination with UAV enrichment
+        return PaginationService.paginate_with_enrichment(
+            self, queryset, request, UAVService.enrich_uav_data
+        )
 
 class AdminUAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UAVSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        # Only staff users can access this endpoint
-        if not self.request.user.is_staff:
+        try:
+            AdminService.ensure_staff_user(self.request.user)
+            return UAV.objects.all()
+        except PermissionDenied:
             return UAV.objects.none()
-        return UAV.objects.all()
     
     def check_permissions(self, request):
         super().check_permissions(request)
-        # Additional staff check
-        if not request.user.is_staff:
+        try:
+            AdminService.ensure_staff_user(request.user)
+        except PermissionDenied as e:
             self.permission_denied(
                 request,
-                message="You do not have permission to perform this action.",
+                message=str(e),
                 code=status.HTTP_403_FORBIDDEN
             )
     
@@ -394,10 +392,7 @@ class AdminUAVDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
-        
-        # Add flight statistics to the response
         response.data = UAVService.enrich_uav_data(response.data)
-        
         return response
 
 class UAVImportView(APIView):

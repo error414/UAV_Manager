@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { Layout, Alert, ResponsiveTable, Loading, ConfirmModal, Pagination, Button } from '../components';
-import { userTableColumns, uavTableColumns, flightLogTableColumns, getEnhancedFlightLogColumns, userFilterFormFields, uavEditFormFields } from '../utils';
+import { userTableColumns, uavTableColumns, getEnhancedFlightLogColumns, userFilterFormFields } from '../utils';
 import { useAuth, useApi } from '../hooks';
 
-const Spinner = ({ message = "Loading..." }) => <Loading message={message} />;
-
 const AdminPage = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const API_URL = import.meta.env.VITE_API_URL;
   
@@ -22,7 +19,6 @@ const AdminPage = () => {
   
   const [filters, setFilters] = useState({});
   const [debouncedFilters, setDebouncedFilters] = useState({});
-  // Debounce filter changes to avoid excessive API calls
   const filterTimer = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -39,10 +35,6 @@ const AdminPage = () => {
   const [uavCurrentPage, setUavCurrentPage] = useState(1);
   const [uavTotalPages, setUavTotalPages] = useState(0);
   const [uavPageSize] = useState(10);
-  const [editingUavId, setEditingUavId] = useState(null);
-  const [editingUav, setEditingUav] = useState(null);
-  const [uavError, setUavError] = useState(null);
-  const [confirmDeleteUavId, setConfirmDeleteUavId] = useState(null);
   
   const [userFlightLogs, setUserFlightLogs] = useState([]);
   const [loadingFlightLogs, setLoadingFlightLogs] = useState(false);
@@ -50,11 +42,8 @@ const AdminPage = () => {
   const [flightLogCurrentPage, setFlightLogCurrentPage] = useState(1);
   const [flightLogTotalPages, setFlightLogTotalPages] = useState(0);
   const [flightLogPageSize] = useState(10);
-  const [editingFlightLogId, setEditingFlightLogId] = useState(null);
-  const [editingFlightLog, setEditingFlightLog] = useState(null);
-  const [confirmDeleteFlightLogId, setConfirmDeleteFlightLogId] = useState(null);
 
-  const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
+  const { checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
 
   const fetchUsers = useCallback(async () => {
@@ -257,130 +246,8 @@ const AdminPage = () => {
       setSelectedUserId(id);
       setSelectedUserName(`${selectedUser.first_name || ''} ${selectedUser.last_name || ''} (${selectedUser.email})`);
       setUavCurrentPage(1);
-      setEditingUavId(null);
-      setEditingUav(null);
     }
   }, [users]);
-
-  const handleUavEdit = useCallback((id) => {
-    const uavToEdit = userUAVs.find(uav => uav.uav_id === id);
-    if (uavToEdit) {
-      setEditingUav({ ...uavToEdit });
-      setEditingUavId(id);
-      setUavError(null);
-    }
-  }, [userUAVs]);
-
-  const handleUavEditChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setEditingUav(prev => {
-      if (name === 'motors') {
-        return { ...prev, [name]: parseInt(value) || 0 };
-      }
-      if (name === 'is_active') {
-        return { ...prev, [name]: value === 'true' || value === true };
-      }
-      return { ...prev, [name]: value };
-    });
-  }, []);
-
-  const handleUavSaveEdit = useCallback(async () => {
-    if (!editingUav) return;
-    
-    const result = await fetchData(
-      `/api/admin/uavs/${editingUavId}/`, 
-      {}, 
-      'PUT', 
-      editingUav
-    );
-    
-    if (!result.error) {
-      fetchUserUAVs(selectedUserId);
-      setEditingUavId(null);
-      setEditingUav(null);
-      setUavError(null);
-    }
-  }, [fetchData, editingUav, editingUavId, fetchUserUAVs, selectedUserId]);
-
-  const handleUavCancelEdit = useCallback(() => {
-    setEditingUavId(null);
-    setEditingUav(null);
-    setUavError(null);
-  }, []);
-
-  const handleDeleteUav = useCallback((id) => {
-    setConfirmDeleteUavId(id);
-  }, []);
-
-  const performDeleteUav = useCallback(async (id) => {
-    const result = await fetchData(`/api/admin/uavs/${id}/`, {}, 'DELETE');
-    
-    if (!result.error) {
-      fetchUserUAVs(selectedUserId);
-      setEditingUavId(null);
-      setEditingUav(null);
-      setUavError(null);
-    } else {
-      setUavError('An error occurred while deleting the UAV.');
-    }
-  }, [fetchData, fetchUserUAVs, selectedUserId]);
-
-  const handleFlightLogEdit = (id) => {
-    const logToEdit = userFlightLogs.find(log => log.flightlog_id === id);
-    if (logToEdit) {
-      setEditingUav(null);
-      setEditingUavId(null);
-      setEditingUser(null);
-      setEditingUserId(null);
-      setEditingFlightLog({ ...logToEdit });
-      setEditingFlightLogId(id);
-    }
-  };
-
-  const handleFlightLogEditChange = (e) => {
-    const { name, value } = e.target;
-    setEditingFlightLog(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleFlightLogSaveEdit = async () => {
-    if (!editingFlightLog) return;
-    
-    const result = await fetchData(
-      `/api/flightlogs/${editingFlightLogId}/`, 
-      {}, 
-      'PUT', 
-      editingFlightLog
-    );
-    
-    if (!result.error) {
-      fetchUserFlightLogs(selectedUserId);
-      setEditingFlightLogId(null);
-      setEditingFlightLog(null);
-      setFlightLogsError(null);
-    }
-  };
-
-  const handleFlightLogCancelEdit = () => {
-    setEditingFlightLogId(null);
-    setEditingFlightLog(null);
-  };
-
-  const handleFlightLogDelete = useCallback((id) => {
-    setConfirmDeleteFlightLogId(id);
-  }, []);
-
-  const performDeleteFlightLog = useCallback(async (id) => {
-    const result = await fetchData(`/api/flightlogs/${id}/`, {}, 'DELETE');
-    
-    if (!result.error) {
-      fetchUserFlightLogs(selectedUserId);
-      setEditingFlightLogId(null);
-      setEditingFlightLog(null);
-      setFlightLogsError(null);
-    } else {
-      setFlightLogsError('An error occurred while deleting the flight log.');
-    }
-  }, [fetchData, fetchUserFlightLogs, selectedUserId]);
 
   const toggleMobileFilters = useCallback(() => {
     setMobileFiltersVisible(prev => !prev);
@@ -470,7 +337,6 @@ const AdminPage = () => {
               <h2 className="text-lg font-semibold mb-1 text-center">Aircraft for {selectedUserName}</h2>
               {loadingUAVs ? <Loading /> : userUAVs.length > 0 ? (
                 <>
-                  <Alert type="error" message={uavError} />
                   <div className="mb-1">
                     <ResponsiveTable 
                       columns={uavTableColumns}
@@ -531,30 +397,6 @@ const AdminPage = () => {
           setConfirmDeleteUserId(null);
         }}
         onCancel={() => setConfirmDeleteUserId(null)}
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
-      <ConfirmModal
-        open={!!confirmDeleteUavId}
-        title="Delete UAV"
-        message="Are you sure you want to delete this UAV? All flight logs associated with this UAV will also be deleted. This action cannot be undone."
-        onConfirm={() => {
-          performDeleteUav(confirmDeleteUavId);
-          setConfirmDeleteUavId(null);
-        }}
-        onCancel={() => setConfirmDeleteUavId(null)}
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
-      <ConfirmModal
-        open={!!confirmDeleteFlightLogId}
-        title="Delete Flight Log"
-        message="Are you sure you want to delete this flight log?"
-        onConfirm={() => {
-          performDeleteFlightLog(confirmDeleteFlightLogId);
-          setConfirmDeleteFlightLogId(null);
-        }}
-        onCancel={() => setConfirmDeleteFlightLogId(null)}
         confirmText="Delete"
         cancelText="Cancel"
       />

@@ -14,7 +14,6 @@ const BaseInstrument = ({
     <div className="instrument-container flex flex-col items-center">
       <svg 
         width="100%" 
-        height="auto" 
         viewBox={`0 0 ${size} ${size}`} 
         style={{ maxWidth: size, maxHeight: size }}
       >

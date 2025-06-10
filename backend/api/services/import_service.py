@@ -585,3 +585,17 @@ class ImportService:
                 errors.append(f"Error importing UAV configuration: {str(e)}")
         
         return imported_count
+
+    @staticmethod
+    def validate_upload_file(file, required_extension):
+        """
+        Validates an uploaded file
+        Returns (is_valid, error_message)
+        """
+        if not file:
+            return False, "No file provided"
+        
+        if not file.name.lower().endswith(required_extension.lower()):
+            return False, f"File must be a {required_extension.upper()} file"
+        
+        return True, None

@@ -118,14 +118,13 @@ const AircraftForm = ({
   handleSubmit, 
   formatDateForInput, 
   isEditMode, 
-  isLoading,
   canDelete,
   handleDelete,
   handleSetInactive,
   handleToggleActive,
   handleSetTodayMaintDates,
-  reminderMonthsBefore,     // Passed as prop
-  handleBackToSettings // New prop
+  reminderMonthsBefore,     
+  handleBackToSettings 
 }) => {
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">

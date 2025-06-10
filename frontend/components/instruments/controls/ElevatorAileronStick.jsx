@@ -40,7 +40,7 @@ const ElevatorAileronStick = ({
   
   return (
     <div className="flex flex-col items-center" style={{ width: size, maxWidth: size }}>
-      <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, maxHeight: size }}>
+      <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, maxHeight: size }}>
         {/* Outer circle */}
         <circle cx={center} cy={center} r={size / 2} fill="#333" />
         

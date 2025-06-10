@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout, Button, Alert, FormInput, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
 import { useAuth, useApi } from '../hooks';
+import { getAllUserFormFields } from '../utils/tableDefinitions';
 
 const LicenseField = ({
   label, dateName, dateValue, onChange, reminderName, reminderChecked, onReminderChange
@@ -52,22 +53,16 @@ const UserSettings = () => {
   const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL;
 
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    company: '',
-    drone_ops_nb: '',
-    pilot_license_nb: '',
-    phone: '',
-    street: '',
-    zip: '',
-    city: '',
-    country: '',
-    a1_a3: '',
-    a2: '',
-    sts: ''
-  });
+  // Create initial form data based on all user form fields
+  const getInitialFormData = () => {
+    const initialData = {};
+    getAllUserFormFields().forEach(column => {
+      initialData[column.accessor] = '';
+    });
+    return initialData;
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData());
   const [userSettings, setUserSettings] = useState({
     notifications_enabled: true,
     a1_a3_reminder: false,
@@ -116,12 +111,23 @@ const UserSettings = () => {
         const a1_a3 = userData.a1_a3 ? formatDateForInput(userData.a1_a3) : '';
         const a2 = userData.a2 ? formatDateForInput(userData.a2) : '';
         const sts = userData.sts ? formatDateForInput(userData.sts) : '';
-        setFormData({
-          ...userData,
-          a1_a3,
-          a2,
-          sts
+        
+        // Create safe form data using initial structure
+        const safeFormData = getInitialFormData();
+        
+        // Override with actual data, ensuring no null/undefined values
+        Object.keys(safeFormData).forEach(key => {
+          if (userData[key] !== null && userData[key] !== undefined) {
+            safeFormData[key] = userData[key];
+          }
         });
+        
+        // Set formatted dates
+        safeFormData.a1_a3 = a1_a3;
+        safeFormData.a2 = a2;
+        safeFormData.sts = sts;
+        
+        setFormData(safeFormData);
 
         const settingsResult = await fetchData('/api/user-settings/');
 

@@ -431,8 +431,7 @@ const Flightlog = () => {
     setFilters(prev => ({ ...prev, ...parsedFilters }));
     setDebouncedFilters(parsedFilters);
     // Only run on initial mount
-  }, []); // nur beim ersten Mount
-
+  }, []); 
   // --- Query-String aktualisieren, wenn Filter/Seite/Sortierung sich ändern ---
   useEffect(() => {
     setQueryState(currentPage, sortField, debouncedFilters);

@@ -7,9 +7,23 @@ export const userTableColumns = [
   { header: 'ZIP', accessor: 'zip' },
   { header: 'City', accessor: 'city' },
   { header: 'Country', accessor: 'country' },
-  { header: 'Staff Status', accessor: 'is_staff', render: (value) => value ? 'Yes' : 'No' }, // Display 'Yes'/'No' for boolean
-  { header: 'Active', accessor: 'is_active', render: (value) => value ? 'Yes' : 'No' } // Display 'Yes'/'No' for boolean
+  { header: 'Staff Status', accessor: 'is_staff', render: (value) => value ? 'Yes' : 'No' }, 
+  { header: 'Active', accessor: 'is_active', render: (value) => value ? 'Yes' : 'No' } 
 ];
+
+export const additionalUserFormFields = [
+  { accessor: 'company' },
+  { accessor: 'drone_ops_nb' },
+  { accessor: 'pilot_license_nb' },
+  { accessor: 'a1_a3' },
+  { accessor: 'a2' },
+  { accessor: 'sts' }
+];
+
+// Combined user form fields for initialization
+export const getAllUserFormFields = () => {
+  return [...userTableColumns, ...additionalUserFormFields];
+};
 
 export const uavTableColumns = [
   { header: 'Aircraft', accessor: 'drone_name' },

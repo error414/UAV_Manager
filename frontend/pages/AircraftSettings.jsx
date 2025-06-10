@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout, Alert, Button, Loading, ConfirmModal, CompareModal, ArrowButton, ConfigFileTable, InfoRow, GridInfo, InfoSection } from '../components';
+import { Layout, Button, Loading, ConfirmModal, CompareModal, ArrowButton, ConfigFileTable, InfoRow, GridInfo, InfoSection } from '../components';
 import { maintenanceLogTableColumns, compareConfigFiles, na, formatFlightHours, formatDate, extractUavId } from '../utils';
 import { useAuth, useApi } from '../hooks';
 

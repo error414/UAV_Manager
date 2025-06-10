@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
-import { useAuth, useApi } from '../hooks';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -16,9 +15,6 @@ const Register = () => {
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { checkAuthAndGetUser } = useAuth();
-  const { fetchData } = useApi(API_URL, setError);
-
   useEffect(() => {
     // Redirect if already authenticated
     if (localStorage.getItem('access_token')) {

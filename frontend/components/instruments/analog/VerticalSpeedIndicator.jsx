@@ -32,7 +32,6 @@ const VerticalSpeedIndicator = ({
   const needleAngle = calculateNeedleAngle(validVerticalSpeed);
   const center = size / 2;
   const radius = size * 0.45;
-  const textRadius = radius * 0.75;
   const tickTextRadius = radius * 0.65;
   const tickOuterRadius = radius;
   const majorTickInnerRadius = radius * 0.8;

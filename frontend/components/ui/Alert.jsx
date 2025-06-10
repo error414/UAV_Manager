@@ -29,16 +29,19 @@ const Alert = ({ type, message }) => {
   if (!message || !visible) return null;
 
   return (
-    <div className={styles[type] || styles.error} style={{ transition: 'opacity 0.3s' }}>
+    <div 
+      className={styles[type] || styles.error} 
+      style={{ 
+        transition: 'opacity 0.3s',
+        animation: 'fadeIn 0.4s'
+      }}
+    >
       {icons[type] || icons.error}
       <span className="flex-1">{message}</span>
       <button className={closeBtnStyle} aria-label="Close" onClick={() => setVisible(false)}>
         &times;
       </button>
-      <style jsx>{`
-        .animate-fade-in {
-          animation: fadeIn 0.4s;
-        }
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(-10px);}
           to { opacity: 1; transform: translateY(0);}

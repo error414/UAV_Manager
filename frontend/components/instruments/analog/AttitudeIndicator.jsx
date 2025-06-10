@@ -7,11 +7,6 @@ export const AttitudeIndicator = ({ pitch = 0, roll = 0, size = 300 }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Use parent width if available for responsive sizing
-    const container = canvas.parentElement;
-    const containerWidth = container ? container.clientWidth : size;
-    const canvasSize = Math.min(containerWidth, size);
-    
     // Set canvas size for crisp rendering
     canvas.width = size;
     canvas.height = size;

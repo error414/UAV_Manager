@@ -4,9 +4,7 @@ import { BaseInstrument } from '../../../components';
 const AirspeedIndicator = ({ 
   airspeed = 0, 
   size = 300, 
-  minSpeed = 0,  
   maxSpeed = 200,
-  redLineSpeed = 160,
 }) => {
   const calculateNeedleAngle = (speed) => {
     // Clamp speed and map to needle angle (30° to 330°)
@@ -22,10 +20,7 @@ const AirspeedIndicator = ({
   const needleAngle = calculateNeedleAngle(airspeed);
   const center = size / 2;
   const radius = size * 0.45;
-  const textRadius = radius * 0.75;
   const tickTextRadius = radius * 0.65;
-  const arcRadius = radius * 0.9;
-  const arcWidth = radius * 0.18;
   const tickOuterRadius = radius;
   const majorTickInnerRadius = radius * 0.8;
   const minorTickInnerRadius = radius * 0.85;
@@ -144,9 +139,7 @@ const AirspeedIndicator = ({
 AirspeedIndicator.propTypes = {
   airspeed: PropTypes.number,
   size: PropTypes.number,
-  minSpeed: PropTypes.number,
   maxSpeed: PropTypes.number,
-  redLineSpeed: PropTypes.number,
 };
 
 export default AirspeedIndicator;

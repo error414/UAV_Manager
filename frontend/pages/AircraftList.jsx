@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout, Alert, Button, ResponsiveTable, Loading, ConfirmModal, Pagination } from '../components';
 import { uavTableColumns, UAV_INITIAL_FILTERS, extractUavId } from '../utils';
-import { useAuth, useApi, useUAVs } from '../hooks';
+import { useAuth, useApi } from '../hooks';
 
 // Debounced filter hook for input fields
 function useDebouncedFilters(initialFilters, delay = 500) {
@@ -45,7 +45,7 @@ const AircraftList = () => {
   const [pageSizeCalculationAttempted, setPageSizeCalculationAttempted] = useState(false);
   const tableContainerRef = useRef(null);
   const [totalPages, setTotalPages] = useState(0);
-  const [sortField, setSortField] = useState('drone_name');
+  const [sortField] = useState('drone_name');
   const [importResult, setImportResult] = useState(null);
   const [mobileFiltersVisible, setMobileFiltersVisible] = useState(false);
 
@@ -55,21 +55,9 @@ const AircraftList = () => {
   // Debounced filter hook
   const {
     filters,
-    setFilters,
     debouncedFilters,
     handleFilterChange
   } = useDebouncedFilters(UAV_INITIAL_FILTERS);
-
-  // UAV fetch logic for table
-  const { fetchUAVs } = useUAVs(
-    async (cb) => {
-      const auth = checkAuthAndGetUser();
-      if (!auth) return null;
-      return await cb();
-    },
-    fetchData,
-    setAircrafts
-  );
 
   // Dynamically calculate optimal desktop page size
   const calculateOptimalPageSize = useCallback(() => {
@@ -185,7 +173,6 @@ const AircraftList = () => {
   const handleNewAircraft = () => navigate('/newaircraft');
   const handleImportCSV = () => fileInputRef.current.click();
   const handleAircraftClick = (uav) => navigate(`/aircraftsettings/${extractUavId(uav)}`);
-  const handlePageChange = useCallback((page) => setCurrentPage(page), []);
 
   const handleExportCSV = () => {
     if (aircrafts.length === 0) {
