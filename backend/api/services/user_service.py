@@ -1,5 +1,5 @@
 from ..models import User, UserSettings
-from datetime import datetime, timedelta
+from datetime import datetime
 from django.conf import settings
 from django.core.mail import send_mail
 

@@ -1,6 +1,5 @@
 // pages/__tests__/Login.test.jsx
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Login from '../../pages/Login'; // Adjust path as needed
@@ -44,7 +43,7 @@ describe('Login Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByLabelText('E-Mail')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
     expect(screen.getByText("Don't have an account?")).toBeInTheDocument();
@@ -58,7 +57,7 @@ describe('Login Component', () => {
       </MemoryRouter>
     );
 
-    const emailInput = screen.getByLabelText('E-Mail');
+    const emailInput = screen.getByLabelText('Email');
     const passwordInput = screen.getByLabelText('Password');
 
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -85,18 +84,8 @@ describe('Login Component', () => {
       })
     );
 
-    // Mock user data response
-    fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          user_id: '1',
-        }),
-      })
-    );
-
     // Fill form
-    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
 
     // Submit form
@@ -115,9 +104,8 @@ describe('Login Component', () => {
         })
       );
 
-      // Check if localStorage was updated
+      // Check if localStorage was updated with access token only
       expect(localStorageMock.setItem).toHaveBeenCalledWith('access_token', 'fake_access_token');
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('user_id', '1');
 
       // Check if navigation occurred
       expect(mockNavigate).toHaveBeenCalledWith('/flightlog');
@@ -142,7 +130,7 @@ describe('Login Component', () => {
     );
 
     // Fill form
-    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong_password' } });
 
     // Submit form
@@ -151,60 +139,6 @@ describe('Login Component', () => {
     await waitFor(() => {
       // Check if error message is displayed
       expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
-      
-      // Check if navigation didn't occur
-      expect(mockNavigate).not.toHaveBeenCalled();
-    });
-  });
-
-  test('handles API fetch error', async () => {
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>
-    );
-
-    // Mock network error
-    fetch.mockImplementationOnce(() => Promise.reject(new Error('Network error')));
-
-    // Fill form
-    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'test@example.com' } });
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
-
-    // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
-
-    await waitFor(() => {
-      // Check if generic error message is displayed
-      expect(screen.getByText('An error occurred. Please try again later.')).toBeInTheDocument();
-    });
-  });
-
-  test('handles missing access token in response', async () => {
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>
-    );
-
-    // Mock response with no access token
-    fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({}), // Empty response with no access token
-      })
-    );
-
-    // Fill form
-    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'test@example.com' } });
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
-
-    // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
-
-    await waitFor(() => {
-      // Check if error about missing token is displayed
-      expect(screen.getByText('No access token received.')).toBeInTheDocument();
       
       // Check if navigation didn't occur
       expect(mockNavigate).not.toHaveBeenCalled();

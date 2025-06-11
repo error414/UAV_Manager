@@ -1,6 +1,5 @@
 // pages/__tests__/Register.test.jsx
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Register from '../../pages/Register'; // Adjust path as needed
@@ -231,7 +230,7 @@ describe('Register Component', () => {
 
     await waitFor(() => {
       // Check if error JSON is displayed
-      expect(screen.getByText('{"email":["Email already exists."]}')).toBeInTheDocument();
+      expect(screen.getByText('Email already exists.')).toBeInTheDocument();
       
       // Check if navigation didn't occur
       expect(mockNavigate).not.toHaveBeenCalled();
@@ -276,7 +275,7 @@ describe('Register Component', () => {
 
     await waitFor(() => {
       // Check if error message is displayed
-      expect(screen.getByText('Login failed after registration. Please try again.')).toBeInTheDocument();
+      expect(screen.getByText('Login failed after registration')).toBeInTheDocument();
       
       // Check if navigation didn't occur
       expect(mockNavigate).not.toHaveBeenCalled();
@@ -303,7 +302,7 @@ describe('Register Component', () => {
 
     await waitFor(() => {
       // Check if generic error message is displayed
-      expect(screen.getByText('An error occurred. Please try again later.')).toBeInTheDocument();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
     });
   });
 });

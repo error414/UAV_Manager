@@ -3,51 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout, Button, Alert, FormInput, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
 import { useAuth, useApi } from '../hooks';
-import { getAllUserFormFields } from '../utils/tableDefinitions';
-
-const LicenseField = ({
-  label, dateName, dateValue, onChange, reminderName, reminderChecked, onReminderChange
-}) => {
-  // Only enable reminder if date is in the future
-  const isDateValid = dateValue && new Date(dateValue) > new Date();
-  return (
-    <div className="grid grid-cols-4 gap-2 items-center">
-      {/* License label */}
-      <div className="col-span-1">
-        <label>{label}</label>
-      </div>
-      <div className="col-span-1">
-        <label>Valid until:</label>
-      </div>
-      <div className="col-span-2">
-        <FormInput
-          type="date"
-          name={dateName}
-          id={dateName}
-          value={dateValue}
-          onChange={onChange}
-        />
-      </div>
-      <div className="col-span-4 flex items-center mt-1">
-        <input
-          type="checkbox"
-          name={reminderName}
-          id={reminderName}
-          checked={reminderChecked}
-          onChange={onReminderChange}
-          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          disabled={!isDateValid}
-        />
-        <label htmlFor={reminderName} className={`ml-2 text-sm text-gray-700 ${!isDateValid ? 'text-gray-400' : ''}`}>
-          Send me a reminder before expiry
-        </label>
-        {!isDateValid && (
-          <span className="ml-2 text-xs text-gray-400">(Set a future date to enable)</span>
-        )}
-      </div>
-    </div>
-  );
-};
+import { getAllUserFormFields, validateForm, useFieldValidation, processBackendErrors } from '../utils';
 
 const UserSettings = () => {
   const navigate = useNavigate();
@@ -77,6 +33,7 @@ const UserSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   const fileInputRef = useRef(null);
 
   const { checkAuthAndGetUser, getAuthHeaders, handleAuthError } = useAuth();
@@ -160,10 +117,15 @@ const UserSettings = () => {
     }
   };
 
+  const handleFieldValidation = useFieldValidation(validationErrors, setValidationErrors, formData);
+
   const handleChange = (e) => {
     // Update form data on input change
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Use centralized validation
+    handleFieldValidation(name, value);
   };
 
   const handleSettingsChange = (e) => {
@@ -326,13 +288,19 @@ const UserSettings = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setValidationErrors({});
 
     try {
       const auth = checkAuthAndGetUser();
       if (!auth) return;
 
-      if (!formData.first_name || !formData.last_name || !formData.email) {
-        setError('Please fill in all required fields: First Name, Last Name, and Email');
+      // Use centralized form validation for all required fields
+      const fieldsToValidate = ['first_name', 'last_name', 'email', 'phone', 'zip'];
+      const errors = validateForm(formData, fieldsToValidate);
+
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        setError('Please fix the validation errors before submitting');
         return;
       }
 
@@ -349,35 +317,54 @@ const UserSettings = () => {
         cleanedData
       );
 
-      if (!userResult.error) {
-        // Use PUT for update, POST for create
-        const settingsMethod = userSettings.settings_id ? 'PUT' : 'POST';
-        const settingsEndpoint = userSettings.settings_id
-          ? `/api/user-settings/${userSettings.settings_id}/`
-          : '/api/user-settings/';
-
-        const settingsData = {
-          user: auth.user_id,
-          notifications_enabled: userSettings.notifications_enabled,
-          a1_a3_reminder: userSettings.a1_a3_reminder,
-          a2_reminder: userSettings.a2_reminder,
-          sts_reminder: userSettings.sts_reminder,
-          reminder_months_before: userSettings.reminder_months_before,
-          theme: userSettings.theme,
-          preferred_units: userSettings.preferred_units
-        };
-
-        const settingsResult = await fetchData(
-          settingsEndpoint,
-          {},
-          settingsMethod,
-          settingsData
-        );
-
-        if (!settingsResult.error) {
-          setSuccess('Settings saved successfully!');
+      if (userResult.error) {
+        const backendErrors = processBackendErrors(userResult.data);
+        if (Object.keys(backendErrors).length > 0) {
+          setValidationErrors(backendErrors);
+          const firstError = Object.values(backendErrors)[0];
+          setError(firstError);
+          return;
         }
+        setError(userResult.data || 'Failed to update user profile');
+        return;
       }
+
+      // Settings update logic
+      const settingsMethod = userSettings.settings_id ? 'PUT' : 'POST';
+      const settingsEndpoint = userSettings.settings_id
+        ? `/api/user-settings/${userSettings.settings_id}/`
+        : '/api/user-settings/';
+
+      const settingsData = {
+        user: auth.user_id,
+        notifications_enabled: userSettings.notifications_enabled,
+        a1_a3_reminder: userSettings.a1_a3_reminder,
+        a2_reminder: userSettings.a2_reminder,
+        sts_reminder: userSettings.sts_reminder,
+        reminder_months_before: userSettings.reminder_months_before,
+        theme: userSettings.theme,
+        preferred_units: userSettings.preferred_units
+      };
+
+      const settingsResult = await fetchData(
+        settingsEndpoint,
+        {},
+        settingsMethod,
+        settingsData
+      );
+
+      if (settingsResult.error) {
+        const backendErrors = processBackendErrors(settingsResult.data);
+        if (Object.keys(backendErrors).length > 0) {
+          setValidationErrors(prevErrors => ({ ...prevErrors, ...backendErrors }));
+          setError('Please fix the validation errors before submitting');
+          return;
+        }
+        setError(settingsResult.data || 'Failed to update settings');
+        return;
+      }
+
+      setSuccess('Settings saved successfully!');
     } catch (err) {
       setError(err.message || 'An error occurred while saving settings.');
     }
@@ -386,6 +373,50 @@ const UserSettings = () => {
   if (isLoading) {
     return <Loading message="Loading user data..." />;
   }
+
+  const LicenseField = ({
+    label, dateName, dateValue, onChange, reminderName, reminderChecked, onReminderChange
+  }) => {
+    // Only enable reminder if date is in the future
+    const isDateValid = dateValue && new Date(dateValue) > new Date();
+    return (
+      <div className="grid grid-cols-4 gap-2 items-center">
+        {/* License label */}
+        <div className="col-span-1">
+          <label>{label}</label>
+        </div>
+        <div className="col-span-1">
+          <label>Valid until:</label>
+        </div>
+        <div className="col-span-2">
+          <FormInput
+            type="date"
+            name={dateName}
+            id={dateName}
+            value={dateValue}
+            onChange={onChange}
+          />
+        </div>
+        <div className="col-span-4 flex items-center mt-1">
+          <input
+            type="checkbox"
+            name={reminderName}
+            id={reminderName}
+            checked={reminderChecked}
+            onChange={onReminderChange}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            disabled={!isDateValid}
+          />
+          <label htmlFor={reminderName} className={`ml-2 text-sm text-gray-700 ${!isDateValid ? 'text-gray-400' : ''}`}>
+            Send me a reminder before expiry
+          </label>
+          {!isDateValid && (
+            <span className="ml-2 text-xs text-gray-400">(Set a future date to enable)</span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Layout title="User Settings">
@@ -476,7 +507,11 @@ const UserSettings = () => {
               onChange={handleChange}
               placeholder="John"
               required
+              className={validationErrors.first_name ? 'border-red-500' : ''}
             />
+            {validationErrors.first_name && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.first_name}</p>
+            )}
           </div>
           
           <div>
@@ -489,7 +524,11 @@ const UserSettings = () => {
               onChange={handleChange}
               placeholder="Doe"
               required
+              className={validationErrors.last_name ? 'border-red-500' : ''}
             />
+            {validationErrors.last_name && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.last_name}</p>
+            )}
           </div>
           
           <div>
@@ -515,7 +554,11 @@ const UserSettings = () => {
               placeholder="john.doe@example.com"
               required
               disabled
+              className={validationErrors.email ? 'border-red-500' : ''}
             />
+            {validationErrors.email && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+            )}
           </div>
           
           <div>
@@ -526,8 +569,12 @@ const UserSettings = () => {
               id="phone"
               value={formData.phone}
               onChange={handleChange}
-              placeholder="+1 234 567 8901"
+              placeholder="+41785678901"
+              className={validationErrors.phone ? 'border-red-500' : ''}
             />
+            {validationErrors.phone && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.phone}</p>
+            )}
           </div>
           
           <div>
@@ -538,7 +585,7 @@ const UserSettings = () => {
               id="street"
               value={formData.street}
               onChange={handleChange}
-              placeholder="123 Drone Street"
+              placeholder="Drone Street 12"
             />
           </div>
           
@@ -551,8 +598,12 @@ const UserSettings = () => {
                 id="zip"
                 value={formData.zip}
                 onChange={handleChange}
-                placeholder="12345"
+                placeholder="8008"
+                className={validationErrors.zip ? 'border-red-500' : ''}
               />
+              {validationErrors.zip && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.zip}</p>
+              )}
             </div>
             <div>
               <label>City</label>

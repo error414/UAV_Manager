@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
 import { useAuth, useApi } from '../hooks';
+import { validateForm, useFieldValidation } from '../utils';
 
 const AdditionalDetails = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -20,6 +21,7 @@ const AdditionalDetails = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [validationErrors, setValidationErrors] = useState({});
   
   const { checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
@@ -50,21 +52,17 @@ const AdditionalDetails = () => {
       });
   }, [checkAuthAndGetUser, fetchData]);
 
-  const handleChange = (e) => {
-    setDetails({
-      ...details,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const handleFieldValidation = useFieldValidation(validationErrors, setValidationErrors);
 
-  const handleNumericInput = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    const numericValue = value.replace(/\D/g, '');
-    
     setDetails({
       ...details,
-      [name]: numericValue,
+      [name]: value,
     });
+    
+    // Use centralized validation
+    handleFieldValidation(name, value);
   };
 
   const selectCountry = (val) => {
@@ -78,6 +76,17 @@ const AdditionalDetails = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setValidationErrors({});
+
+    // Use centralized form validation
+    const fieldsToValidate = ['first_name', 'last_name', 'phone', 'zip'];
+    const errors = validateForm(details, fieldsToValidate);
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      setError('Please fix the validation errors before submitting');
+      return;
+    }
 
     const auth = checkAuthAndGetUser();
     if (!auth) return;
@@ -109,7 +118,11 @@ const AdditionalDetails = () => {
           onChange={handleChange}
           required
           labelClassName="text-white"
+          className={validationErrors.first_name ? 'border-red-500' : ''}
         />
+        {validationErrors.first_name && (
+          <p className="mt-1 text-sm text-red-400">{validationErrors.first_name}</p>
+        )}
 
         <FormInput
           label="Last Name*"
@@ -120,19 +133,25 @@ const AdditionalDetails = () => {
           onChange={handleChange}
           required
           labelClassName="text-white"
+          className={validationErrors.last_name ? 'border-red-500' : ''}
         />
+        {validationErrors.last_name && (
+          <p className="mt-1 text-sm text-red-400">{validationErrors.last_name}</p>
+        )}
 
         <FormInput
           label="Phone"
-          type="tel"
+          type="text"
           name="phone"
           id="phone"
           value={details.phone}
-          onChange={handleNumericInput}
-          inputMode="numeric"
-          pattern="[0-9]*"
+          onChange={handleChange}
           labelClassName="text-white"
+          className={validationErrors.phone ? 'border-red-500' : ''}
         />
+        {validationErrors.phone && (
+          <p className="mt-1 text-sm text-red-400">{validationErrors.phone}</p>
+        )}
 
         <FormInput
           label="Street"
@@ -150,11 +169,13 @@ const AdditionalDetails = () => {
           name="zip"
           id="zip"
           value={details.zip}
-          onChange={handleNumericInput}
-          inputMode="numeric"
-          pattern="[0-9]*"
+          onChange={handleChange}
           labelClassName="text-white"
+          className={validationErrors.zip ? 'border-red-500' : ''}
         />
+        {validationErrors.zip && (
+          <p className="mt-1 text-sm text-red-400">{validationErrors.zip}</p>
+        )}
 
         <FormInput
           label="City"

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthLayout, FormInput, Alert, Button, Loading } from '../components';
+import { validateForm, useFieldValidation, processBackendErrors } from '../utils';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const Register = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   
   useEffect(() => {
     // Redirect if already authenticated
@@ -22,18 +24,38 @@ const Register = () => {
     }
   }, [navigate]);
 
+  const handleFieldValidation = useFieldValidation(validationErrors, setValidationErrors, formData);
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Use centralized validation
+    handleFieldValidation(name, value);
+    
+    // Special handling for password confirmation
+    if (name === 'password' && formData.re_password) {
+      handleFieldValidation('re_password', formData.re_password);
+    }
+    if (name === 're_password' && value) {
+      handleFieldValidation('re_password', value);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setValidationErrors({});
     setIsLoading(true);
 
-    if (formData.password !== formData.re_password) {
-      setError('Passwords do not match');
+    // Use centralized form validation
+    const fieldsToValidate = ['email', 'password', 're_password'];
+    const errors = validateForm(formData, fieldsToValidate);
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      setError('Please fix the validation errors before submitting');
       setIsLoading(false);
       return;
     }
@@ -79,7 +101,18 @@ const Register = () => {
         setSuccess('Registration successful!');
         navigate('/AdditionalDetails');
       } else {
-        setError(typeof registerData === 'object' ? JSON.stringify(registerData) : registerData);
+        // Process backend validation errors
+        const backendErrors = processBackendErrors(registerData);
+        
+        // Check if it's the specific "user already exists" error
+        if (backendErrors.email === 'An account with this email address already exists') {
+          setError('An account with this email address already exists');
+        } else if (Object.keys(backendErrors).length > 0) {
+          setValidationErrors(backendErrors);
+          setError('Please fix the validation errors');
+        } else {
+          setError('Registration failed. Please try again.');
+        }
       }
     } catch (err) {
       setError(err.message || 'An error occurred. Please try again later.');
@@ -98,21 +131,53 @@ const Register = () => {
       <Alert type="success" message={success} />
 
       <form onSubmit={handleSubmit}>
-        {['email', 'password', 're_password'].map((field) => (
-          <FormInput
-            key={field}
-            label={field === 'email' ? 'E-Mail' : 
-                  field === 'password' ? 'Password' : 'Repeat Password'}
-            type={field === 'email' ? 'email' : 'password'}
-            name={field}
-            id={field}
-            value={formData[field]}
-            onChange={handleChange}
-            required
-            className={field === 're_password' ? 'mb-6' : ''}
-            labelClassName="text-white"
-          />
-        ))}
+        <FormInput
+          label="E-Mail"
+          type="email"
+          name="email"
+          id="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          labelClassName="text-white"
+          className={validationErrors.email ? 'border-red-500' : ''}
+          autoComplete="email"
+        />
+        {validationErrors.email && (
+          <p className="mt-1 mb-4 text-sm text-red-400">{validationErrors.email}</p>
+        )}
+
+        <FormInput
+          label="Password"
+          type="password"
+          name="password"
+          id="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+          labelClassName="text-white"
+          className={validationErrors.password ? 'border-red-500' : ''}
+          autoComplete="new-password"
+        />
+        {validationErrors.password && (
+          <p className="mt-1 mb-4 text-sm text-red-400">{validationErrors.password}</p>
+        )}
+
+        <FormInput
+          label="Repeat Password"
+          type="password"
+          name="re_password"
+          id="re_password"
+          value={formData.re_password}
+          onChange={handleChange}
+          required
+          className={`mb-6 ${validationErrors.re_password ? 'border-red-500' : ''}`}
+          labelClassName="text-white"
+          autoComplete="new-password"
+        />
+        {validationErrors.re_password && (
+          <p className="mt-1 mb-4 text-sm text-red-400">{validationErrors.re_password}</p>
+        )}
 
         <Button type="submit" variant="primary" fullWidth>Register</Button>
       </form>

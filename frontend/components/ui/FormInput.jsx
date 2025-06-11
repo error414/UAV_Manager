@@ -11,6 +11,7 @@ const FormInput = ({
   placeholder = '',
   min,
   options = [],
+  autoComplete,
 }) => {
   if (type !== 'select') {
     return (
@@ -33,6 +34,7 @@ const FormInput = ({
           required={required}
           placeholder={placeholder}
           min={min}
+          autoComplete={autoComplete}
         />
       </div>
     );

@@ -1,5 +1,4 @@
 import csv
-from datetime import datetime
 from django.db.models import Q, Sum, Count, Value, IntegerField
 from django.db.models.functions import Coalesce
 from ..models import UAV, FlightLog, MaintenanceReminder

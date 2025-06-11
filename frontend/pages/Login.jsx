@@ -89,6 +89,7 @@ const Login = () => {
           onChange={handleChange}
           required
           labelClassName="text-white"
+          autoComplete="email"
         />
 
         <FormInput
@@ -101,6 +102,7 @@ const Login = () => {
           required
           className="mb-6"
           labelClassName="text-white"
+          autoComplete="current-password"
         />
 
         <Button type="submit" variant="primary" fullWidth>Login</Button>

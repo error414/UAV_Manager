@@ -8,8 +8,7 @@ from django.db import transaction
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.conf import settings
-from datetime import datetime
-from ..models import User, UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, FlightGPSLog, UAVConfig
+from ..models import UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, FlightGPSLog, UAVConfig
 
 class ImportService:
     @staticmethod
@@ -447,7 +446,6 @@ class ImportService:
                     possible_paths = [
                         os.path.join(files_dir, file_name),
                         os.path.join(temp_dir, file_path.lstrip('/')),
-                        os.path.join(temp_dir, file_path.replace('/media/', '')),
                     ]
                     
                     file_found = False

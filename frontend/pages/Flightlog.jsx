@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Alert, Button, ResponsiveTable, ConfirmModal, Pagination } from '../components';
 import { getEnhancedFlightLogColumns, getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS, exportFlightLogToPDF, calculateFlightDuration, extractUavId } from '../utils';
-import { useAuth, useApi, useUAVs } from '../hooks';
-import { useQueryState } from '../hooks/useQueryState';
+import { useAuth, useApi, useUAVs, useQueryState } from '../hooks';
 
 const Flightlog = () => {
   const navigate = useNavigate();

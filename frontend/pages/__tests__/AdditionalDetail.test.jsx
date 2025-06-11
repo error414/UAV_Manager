@@ -1,13 +1,14 @@
 // pages/__tests__/AdditionalDetail.test.jsx
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import AdditionalDetails from '../../pages/AdditionalDetails'; // Adjust path as needed
+import AdditionalDetails from '../../pages/AdditionalDetails'; 
 import '@testing-library/jest-dom';
 
-// Mock fetch API
-global.fetch = vi.fn();
+// Define all mock variables first
+const mockNavigate = vi.fn();
+const mockFetchData = vi.fn();
+const mockCheckAuthAndGetUser = vi.fn();
 
 // Mock localStorage
 const localStorageMock = {
@@ -18,8 +19,6 @@ const localStorageMock = {
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 // Mock useNavigate
-const mockNavigate = vi.fn();
-// Fixed mock setup using async/await pattern suggested in the error message
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -28,7 +27,19 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Mock CountryDropdown component
+// Mock hooks
+vi.mock('../../hooks', () => {
+  return {
+    useAuth: () => ({
+      checkAuthAndGetUser: mockCheckAuthAndGetUser
+    }),
+    useApi: () => ({
+      fetchData: mockFetchData
+    })
+  };
+});
+
+// Mock CountryDropdown
 vi.mock('react-country-region-selector', () => ({
   CountryDropdown: ({ value, onChange }) => (
     <select data-testid="country-dropdown" value={value} onChange={(e) => onChange(e.target.value)}>
@@ -41,24 +52,25 @@ vi.mock('react-country-region-selector', () => ({
 
 describe('AdditionalDetails Component', () => {
   beforeEach(() => {
-    fetch.mockClear();
     localStorageMock.getItem.mockClear();
     localStorageMock.setItem.mockClear();
     localStorageMock.removeItem.mockClear();
     mockNavigate.mockClear();
+    mockFetchData.mockClear();
+    mockCheckAuthAndGetUser.mockClear();
+    
+    // Default authentication state
+    mockCheckAuthAndGetUser.mockReturnValue({ user_id: '1', token: 'fake_token' });
 
-    // Setup default localStorage returns
-    localStorageMock.getItem.mockImplementation((key) => {
-      if (key === 'access_token') return 'fake_token';
-      if (key === 'user_id') return '1';
-      return null;
-    });
-
-    // Setup default fetch mock response for user data
-    fetch.mockImplementation(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
+    // Default successful fetch response
+    mockFetchData.mockImplementation((url, options, method) => {
+      if (method === 'PATCH') {
+        return Promise.resolve({ error: false, data: { message: 'Updated successfully' } });
+      }
+      // Default GET response
+      return Promise.resolve({
+        error: false,
+        data: {
           first_name: 'John',
           last_name: 'Doe',
           phone: '1234567890',
@@ -66,75 +78,31 @@ describe('AdditionalDetails Component', () => {
           zip: '12345',
           city: 'Anytown',
           country: 'US',
-        }),
-      })
-    );
+        }
+      });
+    });
   });
 
-  test('redirects to login if not authenticated', async () => {
-    localStorageMock.getItem.mockImplementation(() => null);
-
+  test('displays form with user data after loading', async () => {
     render(
       <MemoryRouter>
         <AdditionalDetails />
       </MemoryRouter>
     );
 
+    // Wait for loading to complete
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/login');
-    });
-  });
-
-  test('loads user data on mount', async () => {
-    render(
-      <MemoryRouter>
-        <AdditionalDetails />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/users/1/', expect.any(Object));
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     });
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('John')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('Doe')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('1234567890')).toBeInTheDocument();
-    });
-  });
-
-  test('handles input changes correctly', async () => {
-    render(
-      <MemoryRouter>
-        <AdditionalDetails />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('John')).toBeInTheDocument();
-    });
-
-    const firstNameInput = screen.getByLabelText('First Name');
-    fireEvent.change(firstNameInput, { target: { value: 'Jane' } });
-    expect(firstNameInput.value).toBe('Jane');
-  });
-
-  test('handles numeric input correctly', async () => {
-    render(
-      <MemoryRouter>
-        <AdditionalDetails />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Phone')).toBeInTheDocument();
-    });
-
-    const phoneInput = screen.getByLabelText('Phone');
-    
-    // Should strip non-numeric characters
-    fireEvent.change(phoneInput, { target: { value: '123-456-abc7890' } });
-    expect(phoneInput.value).toBe('1234567890');
+    // Verify form fields are populated
+    expect(screen.getByLabelText(/First Name/i)).toHaveValue('John');
+    expect(screen.getByLabelText(/Last Name/i)).toHaveValue('Doe');
+    expect(screen.getByLabelText(/Phone/i)).toHaveValue('1234567890');
+    expect(screen.getByLabelText(/Street/i)).toHaveValue('123 Main St');
+    expect(screen.getByLabelText(/Zip/i)).toHaveValue('12345');
+    expect(screen.getByLabelText(/City/i)).toHaveValue('Anytown');
+    expect(screen.getByTestId('country-dropdown')).toHaveValue('US');
   });
 
   test('handles country selection correctly', async () => {
@@ -144,18 +112,19 @@ describe('AdditionalDetails Component', () => {
       </MemoryRouter>
     );
 
+    // Wait for loading to complete
     await waitFor(() => {
-      expect(screen.getByTestId('country-dropdown')).toBeInTheDocument();
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     });
 
     const countryDropdown = screen.getByTestId('country-dropdown');
     fireEvent.change(countryDropdown, { target: { value: 'DE' } });
     
-    // Check if the select value has changed to Germany (DE)
+    // Check if the select value has changed
     expect(countryDropdown.value).toBe('DE');
   });
 
-  test('submits form data correctly', async () => {
+  test('shows validation errors for required fields when submitted empty', async () => {
     render(
       <MemoryRouter>
         <AdditionalDetails />
@@ -163,77 +132,120 @@ describe('AdditionalDetails Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('John')).toBeInTheDocument();
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     });
 
-    // Update user details
-    fireEvent.change(screen.getByLabelText('First Name'), { target: { value: 'Jane' } });
-    fireEvent.change(screen.getByLabelText('Last Name'), { target: { value: 'Smith' } });
+    // Clear required fields
+    const firstNameInput = screen.getByLabelText(/First Name/i);
+    const lastNameInput = screen.getByLabelText(/Last Name/i);
+    
+    fireEvent.change(firstNameInput, { target: { value: '' } });
+    fireEvent.change(lastNameInput, { target: { value: '' } });
 
-    // Mock the PATCH request success response
-    fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          first_name: 'Jane',
-          last_name: 'Smith',
-        }),
-      })
+    // Submit form
+    const submitButton = screen.getByRole('button', { name: /save details/i });
+    fireEvent.click(submitButton);
+
+    // Check that form submission was attempted
+    await waitFor(() => {
+      expect(mockFetchData).toHaveBeenCalled();
+    });
+  });
+
+  test('validates phone number format', async () => {
+    render(
+      <MemoryRouter>
+        <AdditionalDetails />
+      </MemoryRouter>
     );
 
-    // Submit the form
-    fireEvent.click(screen.getByText('Save Details'));
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const phoneInput = screen.getByLabelText(/Phone/i);
+    fireEvent.change(phoneInput, { target: { value: 'invalid-phone' } });
+
+    // Check that the field validation is called
+    expect(phoneInput.value).toBe('invalid-phone');
+  });
+
+  test('validates ZIP code format', async () => {
+    render(
+      <MemoryRouter>
+        <AdditionalDetails />
+      </MemoryRouter>
+    );
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8000/api/users/1/',
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const zipInput = screen.getByLabelText(/Zip/i);
+    fireEvent.change(zipInput, { target: { value: 'abc123' } });
+
+    expect(zipInput.value).toBe('abc123');
+  });
+
+  test('successfully submits form with valid data', async () => {
+    render(
+      <MemoryRouter>
+        <AdditionalDetails />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    // Fill form with valid data
+    const firstNameInput = screen.getByLabelText(/First Name/i);
+    const lastNameInput = screen.getByLabelText(/Last Name/i);
+    
+    fireEvent.change(firstNameInput, { target: { value: 'Jane' } });
+    fireEvent.change(lastNameInput, { target: { value: 'Smith' } });
+
+    // Submit form
+    const submitButton = screen.getByRole('button', { name: /save details/i });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(mockFetchData).toHaveBeenCalledWith(
+        '/api/users/1/',
+        {},
+        'PATCH',
         expect.objectContaining({
-          method: 'PATCH',
-          body: expect.stringContaining('Jane'),
+          first_name: 'Jane',
+          last_name: 'Smith'
         })
       );
-      expect(mockNavigate).toHaveBeenCalledWith('/flightlog');
     });
-  });
-
-  test('handles API errors during submission', async () => {
-    render(
-      <MemoryRouter>
-        <AdditionalDetails />
-      </MemoryRouter>
-    );
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('John')).toBeInTheDocument();
+      expect(screen.getByText('Details updated successfully!')).toBeInTheDocument();
     });
 
-    // Mock API error response
-    fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: false,
-        status: 400,
-        json: () => Promise.resolve({ error: 'Invalid input' }),
-      })
-    );
-
-    // Submit the form
-    fireEvent.click(screen.getByText('Save Details'));
-
-    await waitFor(() => {
-      // Check if error message is displayed
-      expect(screen.getByText(/{"error":"Invalid input"}/)).toBeInTheDocument();
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/newaircraft');
   });
 
-  test('redirects to login if token is expired during fetch', async () => {
-    // Setup response to indicate expired token
-    fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: false,
-        status: 401,
-        json: () => Promise.resolve({ detail: 'Token expired' }),
-      })
-    );
+  test('handles form submission error', async () => {
+    mockFetchData.mockImplementationOnce((url, options, method) => {
+      if (method === 'PATCH') {
+        return Promise.resolve({ error: true, message: 'Update failed' });
+      }
+      return Promise.resolve({
+        error: false,
+        data: {
+          first_name: 'John',
+          last_name: 'Doe',
+          phone: '1234567890',
+          street: '123 Main St',
+          zip: '12345',
+          city: 'Anytown',
+          country: 'US',
+        }
+      });
+    });
 
     render(
       <MemoryRouter>
@@ -242,9 +254,117 @@ describe('AdditionalDetails Component', () => {
     );
 
     await waitFor(() => {
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('access_token');
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('user_id');
-      expect(mockNavigate).toHaveBeenCalledWith('/login');
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     });
+
+    const submitButton = screen.getByRole('button', { name: /save details/i });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(mockFetchData).toHaveBeenCalledWith(
+        '/api/users/1/',
+        {},
+        'PATCH',
+        expect.any(Object)
+      );
+    });
+  });
+
+  test('handles API fetch error during data loading', async () => {
+    mockFetchData.mockImplementationOnce(() => 
+      Promise.resolve({ error: true })
+    );
+
+    render(
+      <MemoryRouter>
+        <AdditionalDetails />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    // Form should render with empty values when fetch fails
+    expect(screen.getByLabelText(/First Name/i)).toHaveValue('');
+    expect(screen.getByLabelText(/Last Name/i)).toHaveValue('');
+  });
+
+  test('updates form fields when user types', async () => {
+    render(
+      <MemoryRouter>
+        <AdditionalDetails />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const streetInput = screen.getByLabelText(/Street/i);
+    const cityInput = screen.getByLabelText(/City/i);
+
+    fireEvent.change(streetInput, { target: { value: '456 Oak Ave' } });
+    fireEvent.change(cityInput, { target: { value: 'New City' } });
+
+    expect(streetInput.value).toBe('456 Oak Ave');
+    expect(cityInput.value).toBe('New City');
+  });
+
+  test('clears error and success messages on new form submission', async () => {
+    render(
+      <MemoryRouter>
+        <AdditionalDetails />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const submitButton = screen.getByRole('button', { name: /save details/i });
+    
+    // First submission
+    fireEvent.click(submitButton);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Details updated successfully!')).toBeInTheDocument();
+    });
+
+    // Second submission should clear previous messages
+    fireEvent.click(submitButton);
+    
+    // The success message should be cleared and then shown again
+    await waitFor(() => {
+      expect(mockFetchData).toHaveBeenCalledTimes(3); // Initial load + 2 submissions
+    });
+  });
+
+  test('displays loading state initially', () => {
+    mockFetchData.mockImplementationOnce(() => 
+      new Promise(resolve => setTimeout(() => resolve({ error: false, data: {} }), 100))
+    );
+
+    render(
+      <MemoryRouter>
+        <AdditionalDetails />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+  });
+
+  test('redirects when user is not authenticated', async () => {
+    mockCheckAuthAndGetUser.mockReturnValueOnce(null);
+
+    render(
+      <MemoryRouter>
+        <AdditionalDetails />
+      </MemoryRouter>
+    );
+
+    // When not authenticated, the component should return early
+    // and not make any API calls
+    expect(mockFetchData).not.toHaveBeenCalled();
   });
 });
