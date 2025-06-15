@@ -1,4 +1,3 @@
-from django.db.models import Q
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import PermissionDenied
 
@@ -75,4 +74,5 @@ class AdminService:
         if user_id:
             return UAV.objects.filter(user_id=user_id)
         
+        return UAV.objects.all()
         return UAV.objects.all()

@@ -1,14 +1,12 @@
 import os
 import json
-import csv
 import zipfile
 import tempfile
-from io import StringIO
 from django.db import transaction
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.conf import settings
-from ..models import UAV, FlightLog, MaintenanceLog, MaintenanceReminder, File, FlightGPSLog, UAVConfig
+from ..models import UAV, FlightLog, MaintenanceLog, MaintenanceReminder, FlightGPSLog, UAVConfig
 
 class ImportService:
     @staticmethod
@@ -399,8 +397,6 @@ class ImportService:
         errors = []
         files_dir = os.path.join(temp_dir, 'maintenance_logs', 'files')
         
-        from .maintenance_service import MaintenanceService
-        
         for log_data in logs_data:
             try:
                 old_maintenance_id = log_data.get('maintenance_id')
@@ -460,11 +456,6 @@ class ImportService:
                             new_log.save()
                             file_found = True
                             break
-                    
-                    # Debug output if file not found
-                    if not file_found and ImportService.DEBUG:
-                        print(f"Could not find file for maintenance log: {file_name}")
-                        print(f"Tried paths: {possible_paths}")
                 
                 imported_count += 1
             except Exception as e:

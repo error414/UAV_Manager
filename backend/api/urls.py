@@ -25,7 +25,7 @@ urlpatterns = [
     path('flightlogs/', FlightLogListCreateView.as_view(), name='flightlog-list'),
     path('flightlogs/<int:pk>/', FlightLogDetailView.as_view(), name='flightlog-detail'),
     
-    # Upload or retrieve GPS data for a flight log
+    # Upload or retrieve GPS and Telemetry data for a flight log
     path('flightlogs/<int:flightlog_id>/gps/', FlightGPSDataUploadView.as_view(), name='flightlog-gps'),
 
     # Returns FlightLog meta information

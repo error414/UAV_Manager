@@ -146,6 +146,8 @@ const FlightDetails = () => {
   });
   const [minFlightId, setMinFlightId] = useState(null);
   const [maxFlightId, setMaxFlightId] = useState(null);
+  const [orderedFlightIds, setOrderedFlightIds] = useState([]);
+  const [currentFlightIndex, setCurrentFlightIndex] = useState(-1);
 
   const {
     isPlaying,
@@ -205,14 +207,14 @@ const FlightDetails = () => {
   };
 
   const navigateToPreviousFlight = () => {
-    if (minFlightId !== null && Number(flightId) > minFlightId) {
-      navigateToFlight(Number(flightId) - 1);
+    if (orderedFlightIds.length > 0 && currentFlightIndex < orderedFlightIds.length - 1) {
+      navigateToFlight(orderedFlightIds[currentFlightIndex + 1]);
     }
   };
 
   const navigateToNextFlight = () => {
-    if (maxFlightId !== null && Number(flightId) < maxFlightId) {
-      navigateToFlight(Number(flightId) + 1);
+    if (orderedFlightIds.length > 0 && currentFlightIndex > 0) {
+      navigateToFlight(orderedFlightIds[currentFlightIndex - 1]);
     }
   };
 
@@ -338,12 +340,20 @@ const FlightDetails = () => {
         if (!result.error && isActive) {
           setMinFlightId(result.data?.minId);
           setMaxFlightId(result.data?.maxId);
+          
+          if (result.data?.orderedIds) {
+            setOrderedFlightIds(result.data.orderedIds);
+            
+            // Find current flight index in ordered array
+            const currentIndex = result.data.orderedIds.indexOf(parseInt(flightId));
+            setCurrentFlightIndex(currentIndex);
+          }
         }
       } catch (e) { /* ignore errors */ }
     };
     fetchMeta();
     return () => { isActive = false; };
-  }, [fetchData]);
+  }, [fetchData, flightId]);
 
   if (!flight) return <Loading message="Loading flight details..." />;
 
@@ -400,7 +410,7 @@ const FlightDetails = () => {
           direction="left"
           onClick={navigateToNextFlight}
           title="Next Flight"
-          disabled={maxFlightId === null || Number(flightId) >= maxFlightId}
+          disabled={orderedFlightIds.length === 0 || currentFlightIndex <= 0}
         />
         <h1 className="text-2xl font-semibold">
           Flight Details {flight.uav?.drone_name && `- ${flight.uav.drone_name}`}
@@ -409,7 +419,7 @@ const FlightDetails = () => {
           direction="right"
           onClick={navigateToPreviousFlight}
           title="Previous Flight"
-          disabled={minFlightId === null || Number(flightId) <= minFlightId}
+          disabled={orderedFlightIds.length === 0 || currentFlightIndex >= orderedFlightIds.length - 1 || currentFlightIndex === -1}
         />
       </div>
 

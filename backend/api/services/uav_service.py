@@ -1,5 +1,5 @@
 import csv
-from django.db.models import Q, Sum, Count, Value, IntegerField
+from django.db.models import Sum, Count, Value, IntegerField
 from django.db.models.functions import Coalesce
 from ..models import UAV, FlightLog, MaintenanceReminder
 
@@ -422,7 +422,7 @@ class FlightLogService:
                         departure_date=departure_date_str,
                         departure_time=departure_time_str,
                         landing_time=landing_time_str,
-                        flight_duration=flight_duration,  # Now flight_duration is defined
+                        flight_duration=flight_duration, 
                         takeoffs=int(row.get('takeoffs', 1)),
                         landings=int(row.get('landings', 1)),
                         light_conditions=row.get('light_conditions', 'Day'),

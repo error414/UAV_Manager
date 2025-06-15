@@ -306,9 +306,11 @@ const mockGpsData = [
   }
 ];
 
+// orderedIds: [3,2,1] => flightId=1 is the last (Index 2), flightId=2 is middle (Index 1), flightId=3 is first (Index 0)
 const mockFlightMeta = {
   minId: 1,
-  maxId: 10
+  maxId: 3,
+  orderedIds: [3, 2, 1]
 };
 
 const renderFlightDetails = async () => {
@@ -451,39 +453,45 @@ describe('FlightDetails Component', () => {
   });
 
   test('handles next flight navigation', async () => {
+    // orderedIds: [3,2,1], flightId=2 (Index 1), left arrow navigates to orderedIds[0]=3
+    mockParams.flightId = '2';
     await act(async () => {
       await renderFlightDetails();
     });
-    
+
     await waitFor(() => {
-      const nextButton = screen.getByTestId('arrow-left'); // Note: left arrow goes to next flight
+      const nextButton = screen.getByTestId('arrow-left'); // left arrow = next flight
       expect(nextButton).toBeInTheDocument();
+      expect(nextButton).not.toBeDisabled();
     });
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('arrow-left'));
     });
-    
-    expect(mockNavigate).toHaveBeenCalledWith('/flightdetails/2');
+
+    // next flight from index 1 is index 0 (flightId=3)
+    expect(mockNavigate).toHaveBeenCalledWith('/flightdetails/3');
   });
 
   test('handles previous flight navigation', async () => {
-    mockParams.flightId = '5'; // Set to middle value
-    
+    // orderedIds: [3,2,1], flightId=2 (Index 1), right arrow navigates to orderedIds[2]=1
+    mockParams.flightId = '2';
     await act(async () => {
       await renderFlightDetails();
     });
-    
+
     await waitFor(() => {
-      const prevButton = screen.getByTestId('arrow-right'); // Note: right arrow goes to previous flight
+      const prevButton = screen.getByTestId('arrow-right'); // right arrow = previous flight
       expect(prevButton).toBeInTheDocument();
+      expect(prevButton).not.toBeDisabled();
     });
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('arrow-right'));
     });
-    
-    expect(mockNavigate).toHaveBeenCalledWith('/flightdetails/4');
+
+    // previous flight from index 1 is index 2 (flightId=1)
+    expect(mockNavigate).toHaveBeenCalledWith('/flightdetails/1');
   });
 
   test('displays flight info card', async () => {
@@ -534,21 +542,40 @@ describe('FlightDetails Component', () => {
   });
 
   test('navigation arrows are disabled appropriately', async () => {
-    // Test with flightId at minimum
+    // Test with flightId=1 (last in orderedIds, Index 2)
     mockParams.flightId = '1';
-    
     await act(async () => {
       await renderFlightDetails();
     });
-    
+
     await waitFor(() => {
-      const prevButton = screen.getByTestId('arrow-right'); // Previous flight
-      const nextButton = screen.getByTestId('arrow-left'); // Next flight
-      
-      // Previous should be disabled at minimum ID
+      const prevButtons = screen.getAllByTestId('arrow-right'); // previous flight (right)
+      const nextButtons = screen.getAllByTestId('arrow-left'); // next flight (left)
+      const prevButton = prevButtons[prevButtons.length - 1];
+      const nextButton = nextButtons[nextButtons.length - 1];
+
+      // previous (right) should be disabled (Index 2 >= orderedIds.length-1)
       expect(prevButton).toBeDisabled();
-      // Next should be enabled (maxId = 10)
+      // next (left) should be enabled (Index 2 > 0)
       expect(nextButton).not.toBeDisabled();
+    });
+
+    // Test with flightId=3 (first in orderedIds, Index 0)
+    mockParams.flightId = '3';
+    await act(async () => {
+      await renderFlightDetails();
+    });
+
+    await waitFor(() => {
+      const prevButtons = screen.getAllByTestId('arrow-right'); // previous flight (right)
+      const nextButtons = screen.getAllByTestId('arrow-left'); // next flight (left)
+      const prevButton = prevButtons[prevButtons.length - 1];
+      const nextButton = nextButtons[nextButtons.length - 1];
+
+      // previous (right) should be enabled (Index 0 < orderedIds.length-1)
+      expect(prevButton).not.toBeDisabled();
+      // next (left) should be disabled (Index 0 <= 0)
+      expect(nextButton).toBeDisabled();
     });
   });
 });

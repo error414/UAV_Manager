@@ -85,7 +85,7 @@ class PaginationService:
             return None, error_response
     
     @staticmethod
-    def paginate_with_enrichment(view, queryset, request, enrichment_func):
+    def paginate_with_enrichment(view, queryset, request, enrichment_func=None):
         """
         Paginate a queryset and apply an enrichment function to the results
         """

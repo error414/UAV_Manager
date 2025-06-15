@@ -95,6 +95,6 @@ class UserService:
             subject,
             message,
             settings.DEFAULT_FROM_EMAIL,
-            [user.email],  # Email is sent to the user who set the alert
+            [user.email],  
             fail_silently=False,
         )

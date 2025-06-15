@@ -193,7 +193,16 @@ class FlightLogMetaView(APIView):
         qs = FlightLog.objects.filter(user=request.user)
         min_id = qs.order_by('flightlog_id').values_list('flightlog_id', flat=True).first()
         max_id = qs.order_by('-flightlog_id').values_list('flightlog_id', flat=True).first()
-        return Response({'minId': min_id, 'maxId': max_id})
+        
+        # Get all flight IDs ordered by departure date and time
+        ordered_ids = list(qs.order_by('-departure_date', '-departure_time')
+                          .values_list('flightlog_id', flat=True))
+        
+        return Response({
+            'minId': min_id, 
+            'maxId': max_id,
+            'orderedIds': ordered_ids  # Add ordered flight IDs by date
+        })
 
 # Maintenance log endpoints
 class MaintenanceLogListCreateView(generics.ListCreateAPIView):

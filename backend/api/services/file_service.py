@@ -1,6 +1,5 @@
 import os
 from django.conf import settings
-from django.db.models import Q
 
 class FileService:
     # Directory name for UAV configs
@@ -48,10 +47,7 @@ class FileService:
         # Ensure main upload directory exists
         upload_dir = os.path.join(settings.MEDIA_ROOT, FileService.UAV_CONFIGS_DIR)
         if not os.path.exists(upload_dir):
-            try:
-                os.makedirs(upload_dir, exist_ok=True)
-            except OSError as e:
-                print(f"Error creating upload directory {upload_dir}: {e}")
+            os.makedirs(upload_dir, exist_ok=True)
     
     @staticmethod
     def ensure_user_upload_directory_exists(user_id):
@@ -60,11 +56,7 @@ class FileService:
         
         user_upload_dir = os.path.join(settings.MEDIA_ROOT, FileService.UAV_CONFIGS_DIR, str(user_id))
         if not os.path.exists(user_upload_dir):
-            try:
-                os.makedirs(user_upload_dir, exist_ok=True)
-                print(f"Created user directory: {user_upload_dir}")
-            except OSError as e:
-                print(f"Error creating user upload directory {user_upload_dir}: {e}")
+            os.makedirs(user_upload_dir, exist_ok=True)
     
     @staticmethod
     def handle_config_file_update(instance, old_instance):
@@ -81,8 +73,8 @@ class FileService:
         try:
             if os.path.isfile(file_path):
                 os.remove(file_path)
-                print(f"Deleted file: {file_path}")
-            else:
-                print(f"File not found for deletion: {file_path}")
         except (ValueError, OSError) as e:
-            print(f"Error deleting file {file_path}: {str(e)}")
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        except (ValueError, OSError) as e:
+            pass

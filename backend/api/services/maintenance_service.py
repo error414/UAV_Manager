@@ -37,8 +37,8 @@ class MaintenanceService:
             try:
                 os.remove(file_path)
             except (FileNotFoundError, PermissionError) as e:
-                # Log error, do not raise
-                print(f"Error deleting file {file_path}: {e}")
+                # Re-raise the exception instead of printing
+                raise e
     
     @staticmethod
     def ensure_upload_directory_exists():
@@ -48,7 +48,7 @@ class MaintenanceService:
             try:
                 os.makedirs(upload_dir, exist_ok=True)
             except OSError as e:
-                print(f"Error creating upload directory {upload_dir}: {e}")
+                raise e
         # User directories are created separately
 
     @staticmethod
@@ -59,9 +59,8 @@ class MaintenanceService:
         if not os.path.exists(user_upload_dir):
             try:
                 os.makedirs(user_upload_dir, exist_ok=True)
-                print(f"Created user directory: {user_upload_dir}")
             except OSError as e:
-                print(f"Error creating user upload directory {user_upload_dir}: {e}")
+                raise e
     
     @staticmethod
     def get_maintenance_file_path(user_id, filename):
@@ -87,5 +86,4 @@ class MaintenanceService:
             for chunk in file_obj.chunks():
                 destination.write(chunk)
         rel_path = f'{MaintenanceService.MAINTENANCE_LOGS_DIR}/{user_id}/{filename}'
-        print(f"File saved to: {abs_file_path}")
         return rel_path.replace('\\', '/')
