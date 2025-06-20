@@ -220,7 +220,8 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CRONJOBS = [
-    ('0 7 * * *', 'api.services.user_service.UserService.check_license_expiry')
+    ('0 7 * * *', 'api.services.user_service.UserService.check_license_expiry'),
+    ('0 8 * * *', 'api.services.maintenance_service.MaintenanceService.check_maintenance_reminders'),
 ]
 
 SITE_ID = 1  # Required by django.contrib.sites

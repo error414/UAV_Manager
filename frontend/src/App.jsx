@@ -10,7 +10,6 @@ import NewAircraftPage from '../pages/NewAircraft.jsx';
 import AircraftSettings from '../pages/AircraftSettings.jsx';
 import FlightDetails from '../pages/FlightDetails.jsx';
 import AdminPage from '../pages/AdminPage';
-import DevToolsPage from '../pages/DevToolsPage.jsx';
 import ForgotPassword from '../pages/ForgotPassword.jsx';
 import ResetPassword from '../pages/ResetPassword.jsx';
 
@@ -30,7 +29,6 @@ function App() {
         <Route path="/AircraftSettings/:uavId" element={<AircraftSettings />} />
         <Route path="/Flightdetails/:flightId" element={<FlightDetails />} />
         <Route path="/Admin" element={<AdminPage />} />
-        <Route path="/DevTools" element={<DevToolsPage/>} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
       </Routes>

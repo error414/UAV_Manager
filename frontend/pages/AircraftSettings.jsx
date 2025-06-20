@@ -188,12 +188,22 @@ const AircraftSettings = () => {
     const { name, value, files } = e.target;
     setConfigFile(cf => ({ ...cf, [name]: name === 'file' ? files[0] : value }));
   };
-  
-  // Add new configuration file
+    // Add new configuration file
   const handleAddConfig = async () => {
     const errors = {};
     if (!configFile.name?.trim()) errors.name = 'Name is required';
-    if (!configFile.file) errors.file = 'File is required';
+    if (!configFile.file) {
+      errors.file = 'File is required';
+    } else {
+      // Check file extension
+      const fileName = configFile.file.name.toLowerCase();
+      const allowedExtensions = ['.txt', '.csv', '.json'];
+      const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+      
+      if (!hasValidExtension) {
+        errors.file = 'Only .txt, .csv, and .json files are allowed';
+      }
+    }
     
     setConfigFormErrors(errors);
     if (Object.keys(errors).length > 0) return;

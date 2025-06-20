@@ -38,9 +38,9 @@ const AircraftList = () => {
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1); // Desktop pagination
-  const [mobilePage, setMobilePage] = useState(1);   // Mobile pagination
-  const [pageSize, setPageSize] = useState(17); // Dynamic for desktop
+  const [currentPage, setCurrentPage] = useState(1);
+  const [mobilePage, setMobilePage] = useState(1);
+  const [pageSize, setPageSize] = useState(17);
   const [pageSizeInitialized, setPageSizeInitialized] = useState(false);
   const [pageSizeCalculationAttempted, setPageSizeCalculationAttempted] = useState(false);
   const tableContainerRef = useRef(null);
@@ -174,42 +174,76 @@ const AircraftList = () => {
   const handleImportCSV = () => fileInputRef.current.click();
   const handleAircraftClick = (uav) => navigate(`/aircraftsettings/${extractUavId(uav)}`);
 
-  const handleExportCSV = () => {
-    if (aircrafts.length === 0) {
-      alert('No aircraft data to export.');
-      return;
+  const handleExportCSV = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch all aircraft data for export (without pagination)
+      const auth = checkAuthAndGetUser();
+      if (!auth) return;
+      
+      const queryParams = {
+        ...debouncedFilters,
+        page_size: 10000, // Large number to get all records
+        ordering: sortField
+      };
+      
+      const result = await fetchData('/api/uavs/', queryParams);
+      
+      if (result.error) {
+        setError('Failed to fetch aircraft data for export');
+        setIsLoading(false);
+        return;
+      }
+      
+      const allAircrafts = result.data.results || [];
+      
+      if (allAircrafts.length === 0) {
+        alert('No aircraft data to export.');
+        setIsLoading(false);
+        return;
+      }
+      
+      const headers = [
+        'drone_name', 'manufacturer', 'type', 'motors', 'motor_type',
+        'video', 'video_system', 'esc', 'esc_firmware', 'receiver',
+        'receiver_firmware', 'flight_controller', 'firmware', 'firmware_version',
+        'gps', 'mag', 'baro', 'gyro', 'acc', 'registration_number', 'serial_number'
+      ];
+      
+      const csvData = allAircrafts.map(aircraft => headers.map(h => aircraft[h] || ''));
+      csvData.unshift(headers);
+      
+      const csvContent = csvData.map(row =>
+        row.map(cell => {
+          if (cell === null || cell === undefined) return '';
+          const cellStr = String(cell);
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`;
+          }
+          return cellStr;
+        }).join(',')
+      ).join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[-:]/g, '').substring(0, 15);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `uav-export-${timestamp}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      setError('Failed to export CSV. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    const headers = [
-      'drone_name', 'manufacturer', 'type', 'motors', 'motor_type',
-      'video', 'video_system', 'esc', 'esc_firmware', 'receiver',
-      'receiver_firmware', 'flight_controller', 'firmware', 'firmware_version',
-      'gps', 'mag', 'baro', 'gyro', 'acc', 'registration_number', 'serial_number'
-    ];
-    const csvData = aircrafts.map(aircraft => headers.map(h => aircraft[h] || ''));
-    csvData.unshift(headers);
-    const csvContent = csvData.map(row =>
-      row.map(cell => {
-        if (cell === null || cell === undefined) return '';
-        const cellStr = String(cell);
-        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
-          return `"${cellStr.replace(/"/g, '""')}"`;
-        }
-        return cellStr;
-      }).join(',')
-    ).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const timestamp = new Date().toISOString().replace(/[-:]/g, '').substring(0, 15);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `uav-export-${timestamp}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 100);
   };
 
   const toggleMobileFilters = () => setMobileFiltersVisible(prev => !prev);

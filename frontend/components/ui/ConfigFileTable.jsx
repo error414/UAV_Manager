@@ -119,6 +119,7 @@ const ConfigFileTable = ({
                   type="file"
                   name="file"
                   onChange={onConfigChange}
+                  accept=".txt,.csv,.json"
                   className={`w-full px-2 py-1 border rounded ${configFormErrors.file ? 'border-red-500' : 'border-gray-300'}`}
                   ref={configFileInputRef}
                 />

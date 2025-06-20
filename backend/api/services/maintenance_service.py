@@ -1,5 +1,6 @@
 import os
 from django.conf import settings
+from django.core.mail import send_mail
 
 class MaintenanceService:
     # Directory name for maintenance logs (relative to MEDIA_ROOT)
@@ -36,9 +37,9 @@ class MaintenanceService:
         if os.path.isfile(file_path):
             try:
                 os.remove(file_path)
-            except (FileNotFoundError, PermissionError) as e:
-                # Re-raise the exception instead of printing
-                raise e
+            except (FileNotFoundError, PermissionError):
+                # Re-raise with original traceback
+                raise
     
     @staticmethod
     def ensure_upload_directory_exists():
@@ -47,9 +48,8 @@ class MaintenanceService:
         if not os.path.exists(upload_dir):
             try:
                 os.makedirs(upload_dir, exist_ok=True)
-            except OSError as e:
-                raise e
-        # User directories are created separately
+            except OSError:
+                raise
 
     @staticmethod
     def ensure_user_upload_directory_exists(user_id):
@@ -59,8 +59,8 @@ class MaintenanceService:
         if not os.path.exists(user_upload_dir):
             try:
                 os.makedirs(user_upload_dir, exist_ok=True)
-            except OSError as e:
-                raise e
+            except OSError:
+                raise
     
     @staticmethod
     def get_maintenance_file_path(user_id, filename):
@@ -87,3 +87,80 @@ class MaintenanceService:
                 destination.write(chunk)
         rel_path = f'{MaintenanceService.MAINTENANCE_LOGS_DIR}/{user_id}/{filename}'
         return rel_path.replace('\\', '/')
+    
+    @staticmethod
+    def check_maintenance_reminders():
+        """
+        Check for maintenance reminders that are due and send email notifications.
+        This method is called by the cronjob.
+        """
+        from django.utils import timezone
+        from ..models import MaintenanceReminder
+        
+        today = timezone.now().date()
+        
+        # Find all active reminders that are due (next_maintenance <= today)
+        due_reminders = MaintenanceReminder.objects.filter(
+            reminder_active=True,
+            next_maintenance__lte=today
+        ).select_related('uav', 'uav__user')
+        
+        # Group by user to send one email per user
+        user_reminders = {}
+        for reminder in due_reminders:
+            user = reminder.uav.user
+            if user not in user_reminders:
+                user_reminders[user] = []
+            user_reminders[user].append(reminder)
+        
+        # Send emails
+        for user, reminders in user_reminders.items():
+            MaintenanceService.send_maintenance_reminder_email(user, reminders)
+        
+        return len(user_reminders)
+    
+    @staticmethod
+    def send_maintenance_reminder_email(user, reminders):
+        """Send email reminder about maintenance due"""
+        try:
+            subject = "Reminder: UAV Maintenance Due"
+            
+            message_lines = [
+                f"Hello {user.first_name or user.email},",
+                "",
+                "This is a reminder that maintenance is due for the following UAVs:",
+                ""
+            ]
+            
+            for reminder in reminders:
+                # Convert component code to display name
+                component_display = dict([
+                    ('MOTOR', 'Motor'),
+                    ('PROPELLER', 'Propeller'), 
+                    ('FRAME', 'Frame')
+                ]).get(reminder.component, reminder.component)
+                
+                message_lines.append(
+                    f"• {reminder.uav.drone_name} - {component_display} maintenance due on {reminder.next_maintenance}"
+                )
+            
+            message_lines.extend([
+                "",
+                "Please log into UAV Manager to update your maintenance records.",
+                f"{settings.FRONTEND_URL}",
+                "",
+                "Best regards,",
+                "The UAV Manager Team"
+            ])
+            
+            message = "\n".join(message_lines)
+            
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception:
+            raise
