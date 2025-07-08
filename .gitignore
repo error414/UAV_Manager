@@ -27,5 +27,13 @@ dist-ssr
 .cache
 .cache-loader
 .cache-loader-ssr
+__pycache__/
 __pycache__
 *.pyc
+*.py[cod]
+*.pyo
+
+# Temporary files
+tmp
+temp
+uploads

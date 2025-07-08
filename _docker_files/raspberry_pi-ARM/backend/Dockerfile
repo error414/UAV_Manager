@@ -8,17 +8,27 @@ ENV PYTHONUNBUFFERED 1
 # Set work directory
 WORKDIR /app
 
-# Install PostgreSQL client
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     postgresql-client \
+    libpq-dev \
+    gcc \
+    libffi-dev \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Python dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
 
-# Start with migrations, then run server
+# Collect static files
+# RUN python manage.py collectstatic --noinput
+
+# Run migrations
 CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]

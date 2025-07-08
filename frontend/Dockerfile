@@ -1,37 +1,38 @@
-# 1. Verwende eine arm-kompatible Node-Version
-FROM --platform=linux/arm/v7 node:20
+# Use official Node image
+FROM node:20
 
-# 2. Setze Arbeitsverzeichnis
+# Set working directory
 WORKDIR /app
 
-# 3. Baue ARGs ein
+# Set build arguments for environment
 ARG NODE_ENV=production
-ARG VITE_API_URL=http://192.168.178.33:8000
+ARG VITE_API_URL=http://localhost:8000
 
+# Set environment variables
 ENV NODE_ENV=${NODE_ENV}
 ENV VITE_API_URL=${VITE_API_URL}
 
-# 4. System-Abhängigkeiten für native Module
+# Install build tools for native modules
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# 5. Kopiere package-Dateien
+# Copy package.json and package-lock.json
 COPY package*.json ./
 
-# 6. Workaround für Rollup-ARM Bug: Entferne Lock & node_modules vor Neuinstallation
-RUN rm -rf node_modules package-lock.json && npm install --include=dev
+# Install dependencies including devDependencies
+RUN npm install --include=dev
 
-# 7. Kopiere restliche Files
+# Copy project files
 COPY . .
 
-# 8. Baue das Projekt
+# Build the app
 RUN npm run build
 
-# 9. Offen für Vite Dev Server
+# Expose port
 EXPOSE 5175
 
-# 10. Starte Dev-Server
+# Start development server on all interfaces
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5175"]
