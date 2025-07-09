@@ -15,6 +15,18 @@
 
 ---
 
+### Application Overview
+
+| Flight Log | Flight Details | Config Comparison |
+|:----------:|:--------------:|:----------------:|
+| ![Flight Log](_docs/screenshots/flightlog.png) | ![Flight Details](_docs/screenshots/flightdetails.png) | ![Config Comparison](_docs/screenshots/compare.png) |
+
+| Aircraft Settings | Aircraft List |
+|:-----------------:|:-------------:|
+| ![Aircraft Settings](_docs/screenshots/aircraft_settings.png) | ![Aircraft List](_docs/screenshots/aircraft_list.png) |
+
+---
+
 ## Prerequisites
 
 - Docker & Docker Compose (for containerized deployment)
@@ -55,7 +67,8 @@ The application uses `django-crontab` to schedule these jobs. The relevant cron 
 
 ```python
 CRONJOBS = [
-    ('0 7 * * *', 'api.services.user_service.UserService.check_license_expiry')
+    ('0 7 * * *', 'api.services.user_service.UserService.check_license_expiry'),
+    ('0 8 * * *', 'api.services.maintenance_service.MaintenanceService.check_maintenance_reminders'),
 ]
 ```
 
