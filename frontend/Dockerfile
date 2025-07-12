@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Set build arguments for environment
 ARG NODE_ENV=production
-ARG VITE_API_URL=http://localhost:8000
+ARG VITE_API_URL
 
 # Set environment variables
 ENV NODE_ENV=${NODE_ENV}

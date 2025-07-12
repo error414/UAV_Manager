@@ -22,7 +22,8 @@ SECRET_KEY = 'django-insecure-ns1jd9c$05-&e0zgb_iwm8=3i5_f8^b-^1psjz3$6%beom%rru
 DEBUG = False
 
 # Hosts allowed to connect
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.178.33']
+ALLOWED_HOSTS_ENV = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(',')]
 
 
 # Application definition
@@ -145,6 +146,9 @@ REST_FRAMEWORK = {
     ),
 }
 
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5175')
+API_HOST = FRONTEND_URL.replace('http://', '').replace(':5175', '')
+
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'USER_CREATE_PASSWORD_RETYPE': True,
@@ -157,7 +161,7 @@ DJOSER = {
     # Only the path is emitted; DOMAIN/SERVER_PROTOCOL is prepended
     'PASSWORD_RESET_CONFIRM_URL': 'reset-password/{uid}/{token}',
 
-    'DOMAIN': 'localhost:5173',      # React dev server
+    'DOMAIN': API_HOST + ':5175' if API_HOST != 'localhost' else 'localhost:5173',
     'SITE_NAME': 'UAV Manager',
     'SERVER_PROTOCOL': 'http',
 }
@@ -192,9 +196,9 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 # Replace the CORS settings with these explicit configurations
 CORS_ALLOWED_ORIGINS = [
+    FRONTEND_URL,
     "http://localhost:5175",
     "http://localhost:5173",
-    "http://192.168.178.33:5175",
 ]
 
 # Add additional CORS settings for handling preflight requests
@@ -225,8 +229,6 @@ CRONJOBS = [
 ]
 
 SITE_ID = 1  # Required by django.contrib.sites
-
-FRONTEND_URL = 'http://localhost:5175'
 
 # Email backend configuration (SMTP)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
