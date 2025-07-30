@@ -49,7 +49,7 @@ export const calculateBearing = (start, end) => {
 
 // Parses coordinates from string format "lat, lng"
 export const extractCoordinates = (str) => {
-  const match = str?.match(/(\d+\.\d+)\s*,\s*(\d+\.\d+)/);
+  const match = str?.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
   return match ? { lat: +match[1], lon: +match[2] } : null;
 };
 
