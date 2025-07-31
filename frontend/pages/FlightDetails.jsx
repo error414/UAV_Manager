@@ -8,7 +8,7 @@ import {
   TurnCoordinator, ThrottleYawStick, ElevatorAileronStick, SignalStrengthIndicator, ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator, DataPanel, AccordionPanel
 } from '../components';
 import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState, } from '../hooks';
-import { takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics } from '../utils';
+import { takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics, createSyntheticFlightPath, parseTelemetryData } from '../utils';
 
 // Set Leaflet default icons for markers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -148,6 +148,8 @@ const FlightDetails = () => {
   const [maxFlightId, setMaxFlightId] = useState(null);
   const [orderedFlightIds, setOrderedFlightIds] = useState([]);
   const [currentFlightIndex, setCurrentFlightIndex] = useState(-1);
+  const [isCalculatingPath, setIsCalculatingPath] = useState(false);
+  const [hasSyntheticPath, setHasSyntheticPath] = useState(false);
 
   const {
     isPlaying,
@@ -279,6 +281,89 @@ const FlightDetails = () => {
         event.target.value = '';
       }
     }, 50);
+  };
+
+  // Handle Calculate Flight Path
+  const handleCalculateFlightPath = () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv';
+    fileInput.onchange = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      setIsCalculatingPath(true);
+      setAlertMessage(null);
+
+      try {
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+          throw new Error('Please select a CSV file.');
+        }
+
+        // Read file as text
+        const csvText = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.onerror = () => reject(new Error('Error reading the file.'));
+          reader.readAsText(file);
+        });
+
+        // Parse telemetry data
+        const telemetryData = parseTelemetryData(csvText);
+        
+        if (!telemetryData.length) {
+          throw new Error('No telemetry data found in the file.');
+        }
+
+        // Get flight coordinates
+        const { departureCoords, landingCoords } = getFlightCoordinates(flight);
+        
+        if (!departureCoords || !landingCoords) {
+          throw new Error('Missing takeoff or landing coordinates. Please ensure both departure and landing locations are set.');
+        }
+
+        // Create synthetic flight path
+        const { trackPoints, gpsData } = createSyntheticFlightPath(
+          departureCoords, 
+          landingCoords, 
+          telemetryData
+        );
+
+        if (!trackPoints.length) {
+          throw new Error('Failed to generate flight path.');
+        }
+
+        // Set the calculated path
+        setGpsTrack(trackPoints);
+        setFullGpsData(gpsData);
+        setGpsStats(calculateGpsStatistics(gpsData));
+
+        // Automatically save to database
+        const result = await fetchData(`/api/flightlogs/${flightId}/gps/`, {}, 'POST', { 
+          gps_data: gpsData,
+          is_synthetic: true 
+        });
+
+        if (result.error) {
+          throw new Error('Failed to save calculated flight path to database');
+        }
+
+        setAlertMessage({ 
+          type: 'success', 
+          message: `Successfully calculated and saved flight path with ${trackPoints.length} points based on telemetry data.` 
+        });
+
+      } catch (error) {
+        setAlertMessage({ 
+          type: 'error', 
+          message: `Error: ${error.message}` 
+        });
+      } finally {
+        setIsCalculatingPath(false);
+      }
+    };
+
+    fileInput.click();
   };
 
   // Fetch flight and GPS data on mount or flightId change
@@ -588,7 +673,7 @@ const FlightDetails = () => {
         </div>
       )}
 
-      <div className="mt-6 flex justify-center gap-4">
+      <div className="mt-6 flex justify-center gap-4 flex-wrap">
         <Button 
           onClick={() => {
             const search = location.search || '';
@@ -600,13 +685,23 @@ const FlightDetails = () => {
         </Button>
         
         {!gpsTrack ? (
-          <Button
-            onClick={handleImportGPS}
-            variant="primary"
-            disabled={isLoading}
-          >
-            Import GPS Track
-          </Button>
+          <>
+            <Button
+              onClick={handleImportGPS}
+              variant="primary"
+              disabled={isLoading || isCalculatingPath}
+            >
+              Import GPS Track
+            </Button>
+            <Button
+              onClick={handleCalculateFlightPath}
+              variant="primary"
+              disabled={isLoading || isCalculatingPath || !departureCoords || !landingCoords}
+              title={!departureCoords || !landingCoords ? 'Takeoff and landing coordinates required' : ''}
+            >
+              {isCalculatingPath ? 'Calculating...' : 'Calculate Flight Path'}
+            </Button>
+          </>
         ) : (
           <Button
             onClick={handleDeleteGPS}
@@ -616,6 +711,7 @@ const FlightDetails = () => {
             Delete GPS Track
           </Button>
         )}
+        
         <input
           ref={fileInputRef}
           type="file"

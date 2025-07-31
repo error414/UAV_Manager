@@ -208,3 +208,118 @@ export const calculateGpsStatistics = (gpsData) => {
     minSatellites: null
   });
 };
+
+/**
+ * Creates a synthetic flight path based on takeoff/landing coordinates and telemetry data
+ * @param {Array} departureCoords - [lat, lon] of takeoff
+ * @param {Array} landingCoords - [lat, lon] of landing
+ * @param {Array} telemetryData - Array of telemetry points from CSV
+ * @returns {Object} Object containing trackPoints array and gpsData array
+ */
+export const createSyntheticFlightPath = (departureCoords, landingCoords, telemetryData) => {
+  if (!departureCoords || !landingCoords || !telemetryData?.length) {
+    return { trackPoints: [], gpsData: [] };
+  }
+
+  const trackPoints = [];
+  const gpsData = [];
+  
+  // Calculate total distance for more realistic path curvature
+  const totalDistance = calculateDistance(departureCoords, landingCoords);
+  
+  telemetryData.forEach((point, index) => {
+    const ratio = index / (telemetryData.length - 1);
+    
+    // Create a slightly curved path instead of straight line
+    const curveFactor = Math.sin(ratio * Math.PI) * 0.1; // Small curve
+    
+    // Linear interpolation with slight curve
+    const lat = departureCoords[0] + (landingCoords[0] - departureCoords[0]) * ratio + 
+                (Math.random() - 0.5) * curveFactor * 0.01;
+    const lon = departureCoords[1] + (landingCoords[1] - departureCoords[1]) * ratio + 
+                (Math.random() - 0.5) * curveFactor * 0.01;
+    
+    trackPoints.push([lat, lon]);
+    
+    // Create GPS data point with telemetry data
+    const gpsPoint = {
+      latitude: lat,
+      longitude: lon,
+      timestamp: point.time || index * 1000,
+      altitude: point.GPS_altitude || 0,
+      speed: point.GPS_speed || 0,
+      ground_course: point.GPS_ground_course || 0,
+      vertical_speed: point.VSpd || 0,
+      pitch: point.Pitch || 0,
+      roll: point.Roll || 0,
+      yaw: point.Yaw || 0,
+      receiver_battery: point.RxBt || 0,
+      current: point.Curr || 0,
+      capacity: point.Capa || 0,
+      receiver_quality: point.RQly || 0,
+      transmitter_quality: point.TQly || 0,
+      transmitter_power: point.TPWR || 0,
+      aileron: point.Ail || 0,
+      elevator: point.Ele || 0,
+      throttle: point.Thr || 0,
+      rudder: point.Rud || 0,
+      num_sat: point.GPS_numSat || 0
+    };
+    
+    gpsData.push(gpsPoint);
+  });
+
+  return { trackPoints, gpsData };
+};
+
+/**
+ * Calculates distance between two coordinates in kilometers
+ * @param {Array} coord1 - [lat, lon]
+ * @param {Array} coord2 - [lat, lon]
+ * @returns {number} Distance in kilometers
+ */
+const calculateDistance = (coord1, coord2) => {
+  const R = 6371; // Earth's radius in km
+  const dLat = (coord2[0] - coord1[0]) * Math.PI / 180;
+  const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(coord1[0] * Math.PI / 180) * Math.cos(coord2[0] * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+/**
+ * Parses telemetry data from CSV text without GPS coordinates
+ * @param {string} csvText - Raw CSV text content
+ * @returns {Array} Array of telemetry data objects
+ */
+export const parseTelemetryData = (csvText) => {
+  if (!csvText?.trim()) return [];
+  
+  const rows = csvText.split('\n').filter(r => r.trim());
+  if (rows.length < 2) return [];
+  
+  const header = rows[0].trim().split(',');
+  const telemetryData = [];
+  
+  rows.slice(1).forEach(row => {
+    const columns = row.trim().split(',');
+    const dataPoint = {};
+    
+    header.forEach((col, index) => {
+      const value = columns[index]?.trim();
+      if (value !== undefined && value !== '') {
+        // Convert numeric values
+        const numValue = parseFloat(value);
+        dataPoint[col] = isNaN(numValue) ? value : numValue;
+      }
+    });
+    
+    if (Object.keys(dataPoint).length > 0) {
+      telemetryData.push(dataPoint);
+    }
+  });
+  
+  return telemetryData;
+};
