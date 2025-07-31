@@ -150,6 +150,11 @@ const FlightDetails = () => {
   const [currentFlightIndex, setCurrentFlightIndex] = useState(-1);
   const [isCalculatingPath, setIsCalculatingPath] = useState(false);
   const [hasSyntheticPath, setHasSyntheticPath] = useState(false);
+  const [showFlightPathModal, setShowFlightPathModal] = useState(false);
+  const [flightPathParams, setFlightPathParams] = useState({
+    heading: '',
+    medianSpeed: ''
+  });
 
   const {
     isPlaying,
@@ -283,8 +288,33 @@ const FlightDetails = () => {
     }, 50);
   };
 
-  // Handle Calculate Flight Path
+  // Handle Calculate Flight Path - now shows popup first
   const handleCalculateFlightPath = () => {
+    setFlightPathParams({ heading: '', medianSpeed: '' });
+    setShowFlightPathModal(true);
+  };
+
+  // Handle flight path parameter submission
+  const handleFlightPathSubmit = () => {
+    const heading = parseFloat(flightPathParams.heading);
+    const medianSpeed = parseFloat(flightPathParams.medianSpeed);
+    
+    if (isNaN(heading) || heading < 0 || heading >= 360) {
+      setAlertMessage({ type: 'error', message: 'Please enter a valid heading between 0 and 359 degrees.' });
+      return;
+    }
+    
+    if (isNaN(medianSpeed) || medianSpeed <= 0) {
+      setAlertMessage({ type: 'error', message: 'Please enter a valid median speed greater than 0 km/h.' });
+      return;
+    }
+    
+    setShowFlightPathModal(false);
+    processFlightPathCalculation(heading, medianSpeed);
+  };
+
+  // Process flight path calculation with user parameters
+  const processFlightPathCalculation = (heading, medianSpeed) => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.csv';
@@ -322,11 +352,13 @@ const FlightDetails = () => {
           throw new Error('Missing takeoff or landing coordinates. Please ensure both departure and landing locations are set.');
         }
 
-        // Create synthetic flight path
+        // Create synthetic flight path with user parameters
         const { trackPoints, gpsData } = createSyntheticFlightPath(
           departureCoords, 
           landingCoords, 
-          telemetryData
+          telemetryData,
+          heading,
+          medianSpeed
         );
 
         if (!trackPoints.length) {
@@ -490,6 +522,53 @@ const FlightDetails = () => {
         confirmText="Delete"
         cancelText="Cancel"
       />
+      
+      {/* Flight Path Parameters Modal */}
+      <ConfirmModal
+        open={showFlightPathModal}
+        title="Flight Path Parameters"
+        onConfirm={handleFlightPathSubmit}
+        onCancel={() => setShowFlightPathModal(false)}
+        confirmText="Calculate"
+        cancelText="Cancel"
+        message={
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 mb-4">
+              Please provide the initial departing heading and median speed for better flight path calculation.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Initial Departing Heading (0-359°)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="359"
+                step="1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., 90"
+                value={flightPathParams.heading}
+                onChange={(e) => setFlightPathParams(prev => ({ ...prev, heading: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Median Speed (km/h)
+              </label>
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., 50"
+                value={flightPathParams.medianSpeed}
+                onChange={(e) => setFlightPathParams(prev => ({ ...prev, medianSpeed: e.target.value }))}
+              />
+            </div>
+          </div>
+        }
+      />
+
       <div className="flex items-center justify-center gap-4 h-10 mb-4">
         <ArrowButton
           direction="left"
