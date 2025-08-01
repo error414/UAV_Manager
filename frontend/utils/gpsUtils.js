@@ -218,25 +218,27 @@ export const calculateGpsStatistics = (gpsData) => {
  * @param {number} medianSpeed - Median speed in km/h
  * @returns {Object} Object containing trackPoints array and gpsData array
  */
-export const createSyntheticFlightPath = (departureCoords, landingCoords, telemetryData, initialHeading = null, medianSpeed = null) => {
+export const createSyntheticFlightPath = (
+  departureCoords,
+  landingCoords,
+  telemetryData,
+  initialHeading = null,
+  medianSpeed = null,
+  scalingFactor = 0.025
+) => {
   if (!departureCoords || !landingCoords || !telemetryData?.length) {
     return { trackPoints: [], gpsData: [] };
   }
 
   const trackPoints = [];
   const gpsData = [];
-  
-  // Calculate total distance and direct bearing
+
   const totalDistance = calculateDistance(departureCoords, landingCoords);
   const directBearing = calculateBearing(departureCoords, landingCoords);
-  
-  // Use provided heading or fallback to direct bearing
   const startHeading = initialHeading !== null ? initialHeading : directBearing;
-  
-  // Use provided median speed or calculate from telemetry
-  const baseSpeed = medianSpeed !== null ? medianSpeed : 
-    calculateMedianSpeed(telemetryData) || 50; // fallback to 50 km/h
-  
+
+  const baseSpeed = medianSpeed !== null ? medianSpeed : calculateMedianSpeed(telemetryData) || 20;
+
   let currentLat = departureCoords[0];
   let currentLon = departureCoords[1];
   let currentHeading = startHeading;
@@ -246,77 +248,79 @@ export const createSyntheticFlightPath = (departureCoords, landingCoords, teleme
 
     if (index === 0) {
       trackPoints.push([currentLat, currentLon]);
-    } else if (index === telemetryData.length - 1) {
-      currentLat = landingCoords[0];
-      currentLon = landingCoords[1];
-      trackPoints.push([currentLat, currentLon]);
     } else {
       let timeDelta = (point.time - telemetryData[index - 1].time);
-      if (timeDelta > 10000) {
-        timeDelta = timeDelta / 1000;
+      if (timeDelta > 10000) timeDelta = timeDelta / 1000;
+      
+      // Since CSV logs 3 times per second, if no time data is available,
+      // assume 1/3 second between points
+      if (timeDelta === 0 || isNaN(timeDelta)) {
+        timeDelta = 1/3; // 0.333 seconds between points
       }
+      
       timeDelta = Math.max(0.1, Math.min(timeDelta, 10));
-      const sampleRateFactor = 1 / 3;
-      timeDelta = timeDelta * sampleRateFactor;
 
-      let actualSpeed = point.GPS_speed || baseSpeed;
+      // Convert GPS_speed from m/s to km/h if needed
+      let actualSpeed = point.GPS_speed ?? baseSpeed;
+      // If GPS_speed is in m/s, convert to km/h
+      if (actualSpeed < 5) { // Likely in m/s if very small
+        actualSpeed = actualSpeed * 3.6; // Convert m/s to km/h
+      }
       actualSpeed = Math.max(5, Math.min(actualSpeed, 120));
 
-      // --- NEW: Include control and attitude inputs
-      // Pitch: affects climb/descent rate (here as a small speed boost)
+      // Modifikationen durch Attitude und Sticks
       if (point.Pitch) actualSpeed += point.Pitch * 0.05;
-      // Roll: affects turn radius (here as a heading change)
-      if (point.Roll) currentHeading += point.Roll * 0.02;
-      // Yaw: heading as before
-      const yawChange = point.Yaw - (telemetryData[index - 1].Yaw || 0);
-      currentHeading = normalizeHeading(currentHeading + yawChange);
+      if (point.Ele) actualSpeed += point.Ele * 0.03;
 
-      // Stick inputs: affect heading and speed
-      if (point.Ail) currentHeading += point.Ail * 0.05; // aileron
-      if (point.Ele) actualSpeed += point.Ele * 0.03;    // elevator
-      // if (point.Thr) actualSpeed += point.Thr * 0.1;  // throttle (THR is NOT used for speed anymore)
-      if (point.Rud) currentHeading += point.Rud * 0.07; // rudder
+      let headingDelta = 0;
+      if (point.Roll) headingDelta += point.Roll * 0.02;
+      if (point.Yaw && telemetryData[index - 1].Yaw !== undefined) {
+        headingDelta += point.Yaw - telemetryData[index - 1].Yaw;
+      }
+      if (point.Ail) headingDelta += point.Ail * 0.05;
+      if (point.Rud) headingDelta += point.Rud * 0.07;
 
-      // Clamp speed again after modifications
+      currentHeading = normalizeHeading(currentHeading + headingDelta);
+
+      actualSpeed = (actualSpeed + baseSpeed) / 2;
       actualSpeed = Math.max(5, Math.min(actualSpeed, 120));
 
-      // Use only the median speed for calculation
-      actualSpeed = baseSpeed;
+      // Fixed distance calculation - convert km/h to km per time delta
+      let distanceTraveled = (actualSpeed * (timeDelta / 3600)) * scalingFactor;
 
-      let distanceTraveled = (actualSpeed * timeDelta) / 3600; // km
-      distanceTraveled = distanceTraveled / 12; // Reduce to 1/12
-
-      const nextPosition = moveByDistanceAndBearing(
-        [currentLat, currentLon], 
-        distanceTraveled, 
-        currentHeading
-      );
-
-      // Apply course correction towards landing point
-      const correctionFactor = Math.min(ratio * 2, 1); // Increase correction as we progress
+      // Kurskorrektur Richtung Ziel
+      const correctionFactor = Math.min(ratio * 2, 1);
       const targetBearing = calculateBearing([currentLat, currentLon], landingCoords);
       const bearingDiff = normalizeHeading(targetBearing - currentHeading);
 
-      // Gradually adjust heading towards target
-      if (Math.abs(bearingDiff) > 5) { // Only correct if difference is significant
-        const correction = bearingDiff * correctionFactor * 0.1; // Gentle correction
+      if (Math.abs(bearingDiff) > 5) {
+        const correction = bearingDiff * correctionFactor * 0.1;
         currentHeading = normalizeHeading(currentHeading + correction);
-
-        // Recalculate position with corrected heading
-        const correctedPosition = moveByDistanceAndBearing(
-          [currentLat, currentLon], 
-          distanceTraveled * 0.1, 
-          currentHeading
-        );
-        currentLat = correctedPosition[0];
-        currentLon = correctedPosition[1];
       }
-      
+
+      const nextPosition = moveByDistanceAndBearing(
+        [currentLat, currentLon],
+        distanceTraveled,
+        currentHeading
+      );
+
+      currentLat = nextPosition[0];
+      currentLon = nextPosition[1];
+
+      if (index === telemetryData.length - 1) {
+        const finalStep = moveByDistanceAndBearing(
+          [currentLat, currentLon],
+          0.001,
+          calculateBearing([currentLat, currentLon], landingCoords)
+        );
+        currentLat = finalStep[0];
+        currentLon = finalStep[1];
+      }
+
       trackPoints.push([currentLat, currentLon]);
     }
 
-    // Create GPS data point with telemetry data
-    const gpsPoint = {
+    gpsData.push({
       latitude: currentLat,
       longitude: currentLon,
       timestamp: point.time || index * 1000,
@@ -337,137 +341,109 @@ export const createSyntheticFlightPath = (departureCoords, landingCoords, teleme
       elevator: point.Ele || 0,
       throttle: point.Thr || 0,
       rudder: point.Rud || 0,
-      num_sat: point.GPS_numSat || 8 // Default to reasonable satellite count
-    };
-    
-    gpsData.push(gpsPoint);
+      num_sat: point.GPS_numSat || 8
+    });
   });
 
   return { trackPoints, gpsData };
 };
 
-/**
- * Calculates bearing between two coordinates in degrees
- * @param {Array} coord1 - [lat, lon]
- * @param {Array} coord2 - [lat, lon]
- * @returns {number} Bearing in degrees (0-359)
- */
+// Hilfsfunktionen bleiben gleich:
+
 const calculateBearing = (coord1, coord2) => {
   const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
   const lat1 = coord1[0] * Math.PI / 180;
   const lat2 = coord2[0] * Math.PI / 180;
-  
+
   const y = Math.sin(dLon) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-  
+  const x = Math.cos(lat1) * Math.sin(lat2) -
+            Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+
   const bearing = Math.atan2(y, x) * 180 / Math.PI;
   return normalizeHeading(bearing);
 };
 
-/**
- * Moves a coordinate by a given distance and bearing
- * @param {Array} coord - [lat, lon]
- * @param {number} distance - Distance in kilometers
- * @param {number} bearing - Bearing in degrees
- * @returns {Array} New coordinate [lat, lon]
- */
 const moveByDistanceAndBearing = (coord, distance, bearing) => {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const lat1 = coord[0] * Math.PI / 180;
   const lon1 = coord[1] * Math.PI / 180;
   const bearingRad = bearing * Math.PI / 180;
-  
+
   const lat2 = Math.asin(
     Math.sin(lat1) * Math.cos(distance / R) +
     Math.cos(lat1) * Math.sin(distance / R) * Math.cos(bearingRad)
   );
-  
+
   const lon2 = lon1 + Math.atan2(
     Math.sin(bearingRad) * Math.sin(distance / R) * Math.cos(lat1),
     Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2)
   );
-  
+
   return [lat2 * 180 / Math.PI, lon2 * 180 / Math.PI];
 };
 
-/**
- * Normalizes heading to 0-359 degrees
- * @param {number} heading - Heading in degrees
- * @returns {number} Normalized heading
- */
 const normalizeHeading = (heading) => {
   let normalized = heading % 360;
   if (normalized < 0) normalized += 360;
   return normalized;
 };
 
-/**
- * Calculates median speed from telemetry data
- * @param {Array} telemetryData - Array of telemetry points
- * @returns {number} Median speed in km/h
- */
 const calculateMedianSpeed = (telemetryData) => {
   const speeds = telemetryData
     .map(point => point.GPS_speed)
     .filter(speed => speed != null && speed > 0)
     .sort((a, b) => a - b);
-  
+
   if (speeds.length === 0) return null;
-  
+
   const mid = Math.floor(speeds.length / 2);
-  return speeds.length % 2 === 0 
-    ? (speeds[mid - 1] + speeds[mid]) / 2 
+  return speeds.length % 2 === 0
+    ? (speeds[mid - 1] + speeds[mid]) / 2
     : speeds[mid];
 };
 
-/**
- * Parses telemetry data from CSV text without GPS coordinates
- * @param {string} csvText - Raw CSV text content
- * @returns {Array} Array of telemetry data objects
- */
 export const parseTelemetryData = (csvText) => {
   if (!csvText?.trim()) return [];
-  
+
   const rows = csvText.split('\n').filter(r => r.trim());
   if (rows.length < 2) return [];
-  
+
   const header = rows[0].trim().split(',');
   const telemetryData = [];
-  
+
   rows.slice(1).forEach(row => {
     const columns = row.trim().split(',');
     const dataPoint = {};
-    
+
     header.forEach((col, index) => {
       const value = columns[index]?.trim();
-      if (value !== undefined && value !== '') {
-        // Convert numeric values
+      if (value && value !== '') {
         const numValue = parseFloat(value);
         dataPoint[col] = isNaN(numValue) ? value : numValue;
       }
     });
-    
+
     if (Object.keys(dataPoint).length > 0) {
       telemetryData.push(dataPoint);
     }
   });
-  
+
   return telemetryData;
 };
 
-/**
- * Calculates distance between two coordinates in kilometers
- * @param {Array} coord1 - [lat, lon]
- * @param {Array} coord2 - [lat, lon]
- * @returns {number} Distance in kilometers
- */
+// Add missing calculateDistance function
 const calculateDistance = (coord1, coord2) => {
-  const R = 6371; // Earth's radius in km
+  const R = 6371; // Earth's radius in kilometers
   const dLat = (coord2[0] - coord1[0]) * Math.PI / 180;
   const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
+  const lat1 = coord1[0] * Math.PI / 180;
+  const lat2 = coord2[0] * Math.PI / 180;
+
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(coord1[0] * Math.PI / 180) * Math.cos(coord2[0] * Math.PI / 180) *
+            Math.cos(lat1) * Math.cos(lat2) *
             Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
   return R * c;
 };
+
