@@ -268,17 +268,21 @@ export const createSyntheticFlightPath = (
       }
       actualSpeed = Math.max(5, Math.min(actualSpeed, 120));
 
-      // Modifikationen durch Attitude und Sticks
-      if (point.Pitch) actualSpeed += point.Pitch * 0.05;
-      if (point.Ele) actualSpeed += point.Ele * 0.03;
+      // Modifications to speed and heading based on telemetry data
+      if (point.Pitch) actualSpeed += point.Pitch * 0.02; // Reduced from 0.05
+      if (point.Ele) actualSpeed += point.Ele * 0.015;   // Reduced from 0.03
 
       let headingDelta = 0;
-      if (point.Roll) headingDelta += point.Roll * 0.02;
+      if (point.Roll) headingDelta += point.Roll * 0.01;  // Reduced from 0.02
       if (point.Yaw && telemetryData[index - 1].Yaw !== undefined) {
-        headingDelta += point.Yaw - telemetryData[index - 1].Yaw;
+        headingDelta += (point.Yaw - telemetryData[index - 1].Yaw) * 0.5; // Added factor
       }
-      if (point.Ail) headingDelta += point.Ail * 0.05;
-      if (point.Rud) headingDelta += point.Rud * 0.07;
+      if (point.Ail) headingDelta += point.Ail * 0.03;   // Reduced from 0.05
+      if (point.Rud) headingDelta += point.Rud * 0.04;   // Reduced from 0.07
+
+      // Apply stick inputs with damping based on progress
+      const stickDamping = Math.max(0.3, 1 - ratio * 0.7); // Reduce stick influence as we approach landing
+      headingDelta *= stickDamping;
 
       currentHeading = normalizeHeading(currentHeading + headingDelta);
 
@@ -288,13 +292,18 @@ export const createSyntheticFlightPath = (
       // Fixed distance calculation - convert km/h to km per time delta
       let distanceTraveled = (actualSpeed * (timeDelta / 3600)) * scalingFactor;
 
-      // Kurskorrektur Richtung Ziel
-      const correctionFactor = Math.min(ratio * 2, 1);
+      // Enhanced course correction towards landing point
+      const correctionFactor = Math.min(ratio * 3, 1); // Increased from ratio * 2
       const targetBearing = calculateBearing([currentLat, currentLon], landingCoords);
       const bearingDiff = normalizeHeading(targetBearing - currentHeading);
 
-      if (Math.abs(bearingDiff) > 5) {
-        const correction = bearingDiff * correctionFactor * 0.1;
+      // Stronger correction in the final approach
+      let correctionStrength = 0.1;
+      if (ratio > 0.7) correctionStrength = 0.3;  // Stronger correction in final 30%
+      if (ratio > 0.9) correctionStrength = 0.5;  // Even stronger in final 10%
+
+      if (Math.abs(bearingDiff) > 3) { // Reduced threshold from 5 to 3
+        const correction = bearingDiff * correctionFactor * correctionStrength;
         currentHeading = normalizeHeading(currentHeading + correction);
       }
 
@@ -307,14 +316,15 @@ export const createSyntheticFlightPath = (
       currentLat = nextPosition[0];
       currentLon = nextPosition[1];
 
+      // Enhanced final approach - force landing at exact coordinates
       if (index === telemetryData.length - 1) {
-        const finalStep = moveByDistanceAndBearing(
-          [currentLat, currentLon],
-          0.001,
-          calculateBearing([currentLat, currentLon], landingCoords)
-        );
-        currentLat = finalStep[0];
-        currentLon = finalStep[1];
+        currentLat = landingCoords[0];
+        currentLon = landingCoords[1];
+      } else if (ratio > 0.95) {
+        // In the final 5%, gradually move towards exact landing coordinates
+        const finalApproachFactor = (ratio - 0.95) / 0.05; // 0 to 1 in final 5%
+        currentLat = currentLat + (landingCoords[0] - currentLat) * finalApproachFactor * 0.3;
+        currentLon = currentLon + (landingCoords[1] - currentLon) * finalApproachFactor * 0.3;
       }
 
       trackPoints.push([currentLat, currentLon]);
@@ -347,8 +357,6 @@ export const createSyntheticFlightPath = (
 
   return { trackPoints, gpsData };
 };
-
-// Hilfsfunktionen bleiben gleich:
 
 const calculateBearing = (coord1, coord2) => {
   const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
