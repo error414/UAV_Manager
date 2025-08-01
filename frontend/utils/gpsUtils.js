@@ -257,20 +257,16 @@ export const createSyntheticFlightPath = (
       if (timeDelta === 0 || isNaN(timeDelta)) {
         timeDelta = 1/3; // 0.333 seconds between points
       }
-      
       timeDelta = Math.max(0.1, Math.min(timeDelta, 10));
 
-      // Convert GPS_speed from m/s to km/h if needed
-      let actualSpeed = point.GPS_speed ?? baseSpeed;
-      // If GPS_speed is in m/s, convert to km/h
+      // Use base speed without modifications
+      let actualSpeed = baseSpeed;
+      
+      // Convert to consistent units if needed
       if (actualSpeed < 5) { // Likely in m/s if very small
         actualSpeed = actualSpeed * 3.6; // Convert m/s to km/h
       }
       actualSpeed = Math.max(5, Math.min(actualSpeed, 120));
-
-      // Modifications to speed and heading based on telemetry data
-      if (point.Pitch) actualSpeed += point.Pitch * 0.02; // Reduced from 0.05
-      if (point.Ele) actualSpeed += point.Ele * 0.015;   // Reduced from 0.03
 
       let headingDelta = 0;
       if (point.Roll) headingDelta += point.Roll * 0.01;  // Reduced from 0.02
@@ -286,45 +282,45 @@ export const createSyntheticFlightPath = (
 
       currentHeading = normalizeHeading(currentHeading + headingDelta);
 
-      actualSpeed = (actualSpeed + baseSpeed) / 2;
-      actualSpeed = Math.max(5, Math.min(actualSpeed, 120));
+      // Progressive course correction towards landing area in final 20%
+      if (ratio > 0.8) {
+        const targetBearing = calculateBearing([currentLat, currentLon], landingCoords);
+        const bearingDiff = normalizeHeading(targetBearing - currentHeading);
+        
+        // Limit bearing difference to prevent spinning - take shortest path
+        let limitedBearingDiff = bearingDiff;
+        if (limitedBearingDiff > 180) {
+          limitedBearingDiff = limitedBearingDiff - 360;
+        } else if (limitedBearingDiff < -180) {
+          limitedBearingDiff = limitedBearingDiff + 360;
+        }
+        
+        // Limit maximum turn rate to prevent sharp turns/spinning
+        const maxTurnRate = 15; // Maximum degrees per correction
+        limitedBearingDiff = Math.max(-maxTurnRate, Math.min(maxTurnRate, limitedBearingDiff));
+        
+        // Progressive correction strength from 0.2 to 0.5 in final 20%
+        const correctionStrength = 0.2 + ((ratio - 0.8) / 0.2) * 0.3;
+        const correction = limitedBearingDiff * correctionStrength;
+        currentHeading = normalizeHeading(currentHeading + correction);
+      }
 
       // Fixed distance calculation - convert km/h to km per time delta
       let distanceTraveled = (actualSpeed * (timeDelta / 3600)) * scalingFactor;
 
-      // Enhanced course correction towards landing point
-      const correctionFactor = Math.min(ratio * 3, 1); // Increased from ratio * 2
-      const targetBearing = calculateBearing([currentLat, currentLon], landingCoords);
-      const bearingDiff = normalizeHeading(targetBearing - currentHeading);
-
-      // Stronger correction in the final approach
-      let correctionStrength = 0.1;
-      if (ratio > 0.7) correctionStrength = 0.3;  // Stronger correction in final 30%
-      if (ratio > 0.9) correctionStrength = 0.5;  // Even stronger in final 10%
-
-      if (Math.abs(bearingDiff) > 3) { // Reduced threshold from 5 to 3
-        const correction = bearingDiff * correctionFactor * correctionStrength;
-        currentHeading = normalizeHeading(currentHeading + correction);
-      }
-
-      const nextPosition = moveByDistanceAndBearing(
-        [currentLat, currentLon],
-        distanceTraveled,
-        currentHeading
-      );
-
-      currentLat = nextPosition[0];
-      currentLon = nextPosition[1];
-
-      // Enhanced final approach - force landing at exact coordinates
+      // On the very last point, move directly to landing coordinates
       if (index === telemetryData.length - 1) {
         currentLat = landingCoords[0];
         currentLon = landingCoords[1];
-      } else if (ratio > 0.95) {
-        // In the final 5%, gradually move towards exact landing coordinates
-        const finalApproachFactor = (ratio - 0.95) / 0.05; // 0 to 1 in final 5%
-        currentLat = currentLat + (landingCoords[0] - currentLat) * finalApproachFactor * 0.3;
-        currentLon = currentLon + (landingCoords[1] - currentLon) * finalApproachFactor * 0.3;
+      } else {
+        const nextPosition = moveByDistanceAndBearing(
+          [currentLat, currentLon],
+          distanceTraveled,
+          currentHeading
+        );
+
+        currentLat = nextPosition[0];
+        currentLon = nextPosition[1];
       }
 
       trackPoints.push([currentLat, currentLon]);
