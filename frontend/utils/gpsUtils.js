@@ -246,12 +246,14 @@ export const createSyntheticFlightPath = (
   telemetryData.forEach((point, index) => {
     const ratio = index / (telemetryData.length - 1);
 
+    let actualSpeed = baseSpeed;
+
     if (index === 0) {
       trackPoints.push([currentLat, currentLon]);
     } else {
       let timeDelta = (point.time - telemetryData[index - 1].time);
       if (timeDelta > 10000) timeDelta = timeDelta / 1000;
-      
+
       // Since CSV logs 3 times per second, if no time data is available,
       // assume 1/3 second between points
       if (timeDelta === 0 || isNaN(timeDelta)) {
@@ -259,9 +261,6 @@ export const createSyntheticFlightPath = (
       }
       timeDelta = Math.max(0.1, Math.min(timeDelta, 10));
 
-      // Use base speed without modifications
-      let actualSpeed = baseSpeed;
-      
       // Convert to consistent units if needed
       if (actualSpeed < 5) { // Likely in m/s if very small
         actualSpeed = actualSpeed * 3.6; // Convert m/s to km/h
@@ -284,6 +283,12 @@ export const createSyntheticFlightPath = (
 
       // Progressive course correction towards landing area in final 20%
       if (ratio > 0.8) {
+        // Reduce speed in final 20%: from 100% to 2% of median speed
+        const minSpeedFactor = 0.02;
+        const progress = (ratio - 0.8) / 0.2; // 0 at 80%, 1 at 100%
+        const speedFactor = 1 - (1 - minSpeedFactor) * progress;
+        actualSpeed = baseSpeed * speedFactor;
+
         const targetBearing = calculateBearing([currentLat, currentLon], landingCoords);
         const bearingDiff = normalizeHeading(targetBearing - currentHeading);
         
@@ -331,7 +336,7 @@ export const createSyntheticFlightPath = (
       longitude: currentLon,
       timestamp: point.time || index * 1000,
       altitude: point.GPS_altitude || 0,
-      speed: point.GPS_speed || baseSpeed,
+      speed: actualSpeed, 
       ground_course: currentHeading,
       vertical_speed: point.VSpd || 0,
       pitch: point.Pitch || 0,

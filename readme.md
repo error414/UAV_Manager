@@ -123,7 +123,6 @@ python manage.py runserver
 ```bash
 cd frontend
 npm install
-# Umgebungsvariable für die aktuelle Session setzen
 $env:VITE_API_URL = "http://localhost:8000"
 npm run dev
 ```
