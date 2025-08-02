@@ -352,7 +352,7 @@ export const createSyntheticFlightPath = (
       elevator: point.Ele || 0,
       throttle: point.Thr || 0,
       rudder: point.Rud || 0,
-      num_sat: point.GPS_numSat || 8
+      num_sat: 0
     });
   });
 
