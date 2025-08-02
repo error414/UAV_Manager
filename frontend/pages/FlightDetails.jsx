@@ -20,6 +20,62 @@ L.Icon.Default.mergeOptions({
 
 // Map component for displaying flight and GPS track
 const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying, currentPointIndex, resetTrigger, fullGpsData }) => {
+  // Create color-coded polyline segments based on satellite count
+  const createColorCodedSegments = () => {
+    if (!fullGpsData || !gpsTrack || fullGpsData.length !== gpsTrack.length) {
+      return [];
+    }
+
+    const segments = [];
+    let currentSegment = [];
+    let currentColor = 'blue';
+
+    for (let i = 0; i < fullGpsData.length; i++) {
+      const point = fullGpsData[i];
+      const numSat = point.num_sat || 0;
+      
+      // Determine color based on satellite count
+      let color;
+      if (numSat < 4) {
+        color = 'red'; // Red for poor GPS signal
+      } else if (numSat < 6) {
+        color = '#FFD700'; // Yellow
+      } else {
+        color = 'blue'; // Blue (default)
+      }
+
+      // If color changes or this is the first point, start new segment
+      if (color !== currentColor || currentSegment.length === 0) {
+        // Save previous segment if it has points
+        if (currentSegment.length > 0) {
+          segments.push({
+            positions: [...currentSegment],
+            color: currentColor
+          });
+        }
+        
+        // Start new segment
+        currentSegment = [gpsTrack[i]];
+        currentColor = color;
+      } else {
+        // Add point to current segment
+        currentSegment.push(gpsTrack[i]);
+      }
+    }
+
+    // Add the last segment
+    if (currentSegment.length > 0) {
+      segments.push({
+        positions: currentSegment,
+        color: currentColor
+      });
+    }
+
+    return segments;
+  };
+
+  const colorCodedSegments = createColorCodedSegments();
+
   return (
     <MapContainer
       bounds={getMapBounds(flight, gpsTrack)}
@@ -48,10 +104,26 @@ const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying
       )}
       {gpsTrack?.length > 0 && (
         <>
-          <Polyline
-            positions={gpsTrack}
-            pathOptions={{ color: 'blue', weight: 3, opacity: 0.7 }}
-          />
+          {/* Render color-coded segments if GPS data is available */}
+          {colorCodedSegments.length > 0 ? (
+            colorCodedSegments.map((segment, index) => (
+              <Polyline
+                key={index}
+                positions={segment.positions}
+                pathOptions={{ 
+                  color: segment.color, 
+                  weight: 3, 
+                  opacity: 0.7 
+                }}
+              />
+            ))
+          ) : (
+            /* Fallback to single blue line if no GPS data */
+            <Polyline
+              positions={gpsTrack}
+              pathOptions={{ color: 'blue', weight: 3, opacity: 0.7 }}
+            />
+          )}
           <AnimatedMarker 
             track={gpsTrack} 
             isPlaying={isPlaying}
