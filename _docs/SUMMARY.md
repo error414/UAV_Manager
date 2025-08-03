@@ -1,6 +1,6 @@
 # Table of contents
 
-* [Welcome](README.md)
+* [Welcome to the UAV Manager Documentation](README.md)
 
 ## Getting Started
 

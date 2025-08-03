@@ -16,11 +16,15 @@ layout:
     visible: true
 ---
 
-# Welcome
+# Welcome to the UAV Manager Documentation
 
-Welcome to the GitBook starter template! Here you'll get an overview of all the amazing features GitBook offers to help you build beautiful, interactive documentation.
+## Welcome to the UAV Manager Documentation
 
-You'll see some of the best parts of GitBook in action — and find help on how you can turn this template into your own.
+Welcome to the official documentation site for **UAV Manager** – a modern, full-stack web application designed to simplify and streamline the management of drones (UAVs), flight operations, and maintenance records. Whether you're a drone pilot, part of a club, or managing a small UAV fleet for your company, UAV Manager offers a powerful yet user-friendly toolset to help you stay organized and efficient.
+
+Use the sidebar to explore guides, feature overviews, and technical documentation. If you’re new, we recommend starting with the **Getting Started** section.
+
+Let’s take your UAV operations to the next level — welcome aboard!
 
 ### Jump right in
 
