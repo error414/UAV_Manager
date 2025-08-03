@@ -45,7 +45,7 @@ When you visit the application for the first time, you'll be taken to the **Logi
 
 <figure><img src="../.gitbook/assets/additional_details.png" alt=""><figcaption></figcaption></figure>
 
-✈️ After Registration: Add Your First Aircraft
+### Step 3: Add Your First Aircraft
 
 Once you've saved your **Additional Details**, you will be automatically redirected to the **New Aircraft** page.\
 This behavior is intentional — before logging any flight time, you must first register at least one **UAV / Aircraft**.
