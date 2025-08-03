@@ -5,7 +5,7 @@
 ## Getting Started
 
 * [Quickstart (Install)](getting-started/quickstart.md)
-* [Publish your docs](getting-started/publish-your-docs.md)
+* [First Use & User Registration](getting-started/publish-your-docs.md)
 
 ## Basics
 
