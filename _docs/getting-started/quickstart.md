@@ -1,4 +1,5 @@
 ---
+description: Local Installation of the UAV Manager
 icon: bolt
 layout:
   width: default
@@ -16,22 +17,80 @@ layout:
     visible: true
 ---
 
-# Quickstart
+# Quickstart (Install)
 
-<figure><img src="https://gitbookio.github.io/onboarding-template-images/quickstart-hero.png" alt=""><figcaption></figcaption></figure>
+## Quick Start
 
-Beautiful documentation starts with the content you create — and GitBook makes it easy to get started with any pre-existing content.
+### Prerequisites
 
-{% hint style="info" %}
-Want to learn about writing content from scratch? Head to the [Basics](../basics/editor.md) section to learn more.
-{% endhint %}
+Ensure you have the following installed:
 
-### Import
+* [Docker ](https://www.docker.com/products/docker-desktop/)& Docker Compose _(recommended deployment method)_
+* [Node.js](https://nodejs.org/en/download) & npm _(for local frontend development)_
+* [Python 3.13.1](https://www.python.org/) & pip _(for local backend development)_
+* [PostgreSQL](https://www.postgresql.org/) _(used in production and local development)_
 
-GitBook supports importing content from many popular writing tools and formats. If your content already exists, you can upload a file or group of files to be imported.
+***
 
-<div data-full-width="false"><figure><img src="https://gitbookio.github.io/onboarding-template-images/quickstart-import.png" alt=""><figcaption></figcaption></figure></div>
+### 🚀 Recommended: Installation with Docker
 
-### Sync a repository
+1. **Clone the Repository**
 
-GitBook also allows you to set up a bi-directional sync with an existing repository on GitHub or GitLab. Setting up Git Sync allows you and your team to write content in GitBook or in code, and never have to worry about your content becoming out of sync.
+```bash
+git clone https://github.com/CarviFPV/UAV_Manager.git
+cd UAV_Manager
+```
+
+2. **Build and Start the Docker Containers**
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+3. **Open the Frontend**
+
+Visit [http://localhost:5175](http://localhost:5175) in your browser.
+
+> **Note:**\
+> If running on a different host or in a network, update the `VITE_API_URL` environment variable in `.env` accordingly.
+
+***
+
+### 🧪 Manual Installation (Development)
+
+#### Backend Setup (Django)
+
+```bash
+cd backend
+python -m venv .venv
+.venv/Scripts/activate  # Use `. .venv/bin/activate` on macOS/Linux
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+#### Frontend Setup (React)
+
+```bash
+cd frontend
+npm install
+```
+
+Set the API URL environment variable:
+
+```bash
+# Windows (PowerShell)
+$env:VITE_API_URL = "http://localhost:8000"
+
+# macOS/Linux
+export VITE_API_URL=http://localhost:8000
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Visit [http://localhost:5173](http://localhost:5173)&#x20;
