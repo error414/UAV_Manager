@@ -1,16 +1,20 @@
 # Table of contents
 
-* [Welcome to the UAV Manager Documentation](README.md)
+* [UAV Manager Documentation](README.md)
 
 ## Getting Started
 
 * [Quickstart (Install)](getting-started/quickstart.md)
 * [First Use & User Registration](getting-started/publish-your-docs.md)
+* [Flight Data Logging with Lua Scripts](getting-started/flight-data-logging-with-lua-scripts.md)
 
-## Basics
+## Functions
 
-* [Editor](basics/editor.md)
-* [Markdown](basics/markdown.md)
-* [Images & media](basics/images-and-media.md)
-* [Interactive blocks](basics/interactive-blocks.md)
-* [Integrations](basics/integrations.md)
+* [UAV / Aircraft Managment](functions/editor.md)
+* [Flight Log ](functions/markdown.md)
+* [Flight Details](functions/images-and-media/README.md)
+  * [Import GPS Track](functions/images-and-media/import-gps-track.md)
+  * [Calculate Flight Path - (without GPS)](functions/images-and-media/calculate-flight-path-without-gps.md)
+* [User Settings](functions/interactive-blocks.md)
+* [Import / Exports](functions/integrations.md)
+* [Admin Panel](functions/admin-panel.md)
