@@ -6,3 +6,4 @@ export * from './gpsUtils';
 export * from './compareUtils';
 export * from './flightTimesUtils';
 export * from './uavIdUtils';
+export * from './flightPathUtils';

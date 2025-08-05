@@ -198,6 +198,10 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
           })}
         </nav>
         
+        <div className="text-center mb-2 text-xs text-gray-500">
+          Version 1.3.0
+        </div>
+        
         {userName && (
           <div className="p-3 border-t border-gray-800">
             <div className="text-center mb-2 text-sm text-gray-400">
