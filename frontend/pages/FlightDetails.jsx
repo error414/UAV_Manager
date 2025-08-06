@@ -225,7 +225,12 @@ const FlightDetails = () => {
   const [showFlightPathModal, setShowFlightPathModal] = useState(false);
   const [flightPathParams, setFlightPathParams] = useState({
     heading: '',
-    medianSpeed: ''
+    medianSpeed: '',
+    circularRadius: '',
+    boundaryNorth: '',
+    boundaryEast: '',
+    boundarySouth: '',
+    boundaryWest: ''
   });
 
   const {
@@ -360,12 +365,6 @@ const FlightDetails = () => {
     }, 50);
   };
 
-  // Handle Calculate Flight Path - now shows popup first
-  const handleCalculateFlightPath = () => {
-    setFlightPathParams({ heading: '', medianSpeed: '' });
-    setShowFlightPathModal(true);
-  };
-
   // Handle flight path parameter submission
   const handleFlightPathSubmit = () => {
     const heading = parseFloat(flightPathParams.heading);
@@ -380,13 +379,29 @@ const FlightDetails = () => {
       setAlertMessage({ type: 'error', message: 'Please enter a valid median speed greater than 0 km/h.' });
       return;
     }
+
+    // Parse circular boundary (optional)
+    const circularRadius = parseFloat(flightPathParams.circularRadius);
+    const circularBoundary = !isNaN(circularRadius) && circularRadius > 0 ? { radius: circularRadius } : null;
+
+    // Parse rectangular boundaries (optional)
+    const boundaries = {
+      north: parseFloat(flightPathParams.boundaryNorth) || 0,
+      east: parseFloat(flightPathParams.boundaryEast) || 0,
+      south: parseFloat(flightPathParams.boundarySouth) || 0,
+      west: parseFloat(flightPathParams.boundaryWest) || 0
+    };
+
+    // Check if any rectangular boundary is set
+    const hasRectangularBoundaries = boundaries.north > 0 || boundaries.east > 0 || 
+                                   boundaries.south > 0 || boundaries.west > 0;
     
     setShowFlightPathModal(false);
-    processFlightPathCalculation(heading, medianSpeed);
+    processFlightPathCalculation(heading, medianSpeed, hasRectangularBoundaries ? boundaries : null, circularBoundary);
   };
 
   // Process flight path calculation with user parameters
-  const processFlightPathCalculation = (heading, medianSpeed) => {
+  const processFlightPathCalculation = (heading, medianSpeed, boundaries = null, circularBoundary = null) => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.csv';
@@ -424,13 +439,16 @@ const FlightDetails = () => {
           throw new Error('Missing takeoff or landing coordinates. Please ensure both departure and landing locations are set.');
         }
 
-        // Create synthetic flight path with user parameters
+        // Create synthetic flight path with user parameters and boundaries
         const { trackPoints, gpsData } = createSyntheticFlightPath(
           departureCoords, 
           landingCoords, 
           telemetryData,
           heading,
-          medianSpeed
+          medianSpeed,
+          0.025, // scalingFactor
+          boundaries,
+          circularBoundary
         );
 
         if (!trackPoints.length) {
@@ -452,9 +470,11 @@ const FlightDetails = () => {
           throw new Error('Failed to save calculated flight path to database');
         }
 
+        const boundaryText = circularBoundary ? ` with circular boundary (${circularBoundary.radius}m radius)` : 
+                           boundaries ? ' with rectangular boundary constraints' : '';
         setAlertMessage({ 
           type: 'success', 
-          message: `Successfully calculated and saved flight path with ${trackPoints.length} points based on telemetry data.` 
+          message: `Successfully calculated and saved flight path with ${trackPoints.length} points based on telemetry data${boundaryText}.` 
         });
 
       } catch (error) {
@@ -468,6 +488,20 @@ const FlightDetails = () => {
     };
 
     fileInput.click();
+  };
+
+  // Handle Calculate Flight Path - now shows popup first
+  const handleCalculateFlightPath = () => {
+    setFlightPathParams({ 
+      heading: '', 
+      medianSpeed: '',
+      circularRadius: '',
+      boundaryNorth: '',
+      boundaryEast: '',
+      boundarySouth: '',
+      boundaryWest: ''
+    });
+    setShowFlightPathModal(true);
   };
 
   // Fetch flight and GPS data on mount or flightId change
@@ -608,34 +642,131 @@ const FlightDetails = () => {
             <p className="text-sm text-gray-600 mb-4">
               Please provide the initial departing heading and median speed for better flight path calculation.
             </p>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Initial Departing Heading (0-359°)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="359"
-                step="1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., 90"
-                value={flightPathParams.heading}
-                onChange={(e) => setFlightPathParams(prev => ({ ...prev, heading: e.target.value }))}
-              />
+            
+            {/* Required Parameters */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Initial Departing Heading (0-359°) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="359"
+                  step="1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., 90"
+                  value={flightPathParams.heading}
+                  onChange={(e) => setFlightPathParams(prev => ({ ...prev, heading: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Median Speed (km/h) *
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., 50"
+                  value={flightPathParams.medianSpeed}
+                  onChange={(e) => setFlightPathParams(prev => ({ ...prev, medianSpeed: e.target.value }))}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Median Speed (km/h)
-              </label>
-              <input
-                type="number"
-                min="0.1"
-                step="0.1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., 50"
-                value={flightPathParams.medianSpeed}
-                onChange={(e) => setFlightPathParams(prev => ({ ...prev, medianSpeed: e.target.value }))}
-              />
+
+            {/* Circular Boundary Parameters */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Circular Flight Boundary (Optional)
+              </h4>
+              <p className="text-xs text-gray-500 mb-3">
+                Set a circular boundary around the takeoff point. Drone will turn when approaching this limit.
+              </p>
+              <div className="w-1/2">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Radius from Takeoff Point (meters)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="10"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="e.g., 500"
+                  value={flightPathParams.circularRadius}
+                  onChange={(e) => setFlightPathParams(prev => ({ ...prev, circularRadius: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Rectangular Boundary Parameters */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Rectangular Flight Boundaries (Optional)
+              </h4>
+              <p className="text-xs text-gray-500 mb-3">
+                Set maximum distances in meters from takeoff point. Drone will turn when approaching these limits.
+                Note: Circular boundary takes priority over rectangular boundaries if both are set.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    North Boundary (meters)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="e.g., 500"
+                    value={flightPathParams.boundaryNorth}
+                    onChange={(e) => setFlightPathParams(prev => ({ ...prev, boundaryNorth: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    East Boundary (meters)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="e.g., 300"
+                    value={flightPathParams.boundaryEast}
+                    onChange={(e) => setFlightPathParams(prev => ({ ...prev, boundaryEast: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    South Boundary (meters)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="e.g., 200"
+                    value={flightPathParams.boundarySouth}
+                    onChange={(e) => setFlightPathParams(prev => ({ ...prev, boundarySouth: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    West Boundary (meters)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="e.g., 400"
+                    value={flightPathParams.boundaryWest}
+                    onChange={(e) => setFlightPathParams(prev => ({ ...prev, boundaryWest: e.target.value }))}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         }
