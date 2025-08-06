@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [Version 1.4.0] - 2025-08-06
+
+### ✨ New Features
+- **Circular Flight Boundaries**: Added optional circular boundary constraint centered at takeoff point
+- **Boundary Priority System**: Circular boundaries take priority over rectangular boundaries when both are set
+- **Enhanced Flight Path Control**: Improved synthetic flight path generation with circular containment options
+
 ## [Version 1.3.0] - 2025-08-05
 
 ### ✨ New Features
@@ -18,4 +25,4 @@
 - Improved flight path realism with boundary enforcement
 
 ---
-*Added intelligent boundary system for more realistic
+*Added intelligent boundary system for more realistic flight path generation*

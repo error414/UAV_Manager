@@ -199,7 +199,7 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
         </nav>
         
         <div className="text-center mb-2 text-xs text-gray-500">
-          Version 1.3.0
+          Version 1.4.0
         </div>
         
         {userName && (

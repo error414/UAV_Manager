@@ -226,6 +226,7 @@ const FlightDetails = () => {
   const [flightPathParams, setFlightPathParams] = useState({
     heading: '',
     medianSpeed: '',
+    circularRadius: '',
     boundaryNorth: '',
     boundaryEast: '',
     boundarySouth: '',
@@ -379,7 +380,11 @@ const FlightDetails = () => {
       return;
     }
 
-    // Parse boundary values (optional)
+    // Parse circular boundary (optional)
+    const circularRadius = parseFloat(flightPathParams.circularRadius);
+    const circularBoundary = !isNaN(circularRadius) && circularRadius > 0 ? { radius: circularRadius } : null;
+
+    // Parse rectangular boundaries (optional)
     const boundaries = {
       north: parseFloat(flightPathParams.boundaryNorth) || 0,
       east: parseFloat(flightPathParams.boundaryEast) || 0,
@@ -387,16 +392,16 @@ const FlightDetails = () => {
       west: parseFloat(flightPathParams.boundaryWest) || 0
     };
 
-    // Check if any boundary is set
-    const hasBoundaries = boundaries.north > 0 || boundaries.east > 0 || 
-                         boundaries.south > 0 || boundaries.west > 0;
+    // Check if any rectangular boundary is set
+    const hasRectangularBoundaries = boundaries.north > 0 || boundaries.east > 0 || 
+                                   boundaries.south > 0 || boundaries.west > 0;
     
     setShowFlightPathModal(false);
-    processFlightPathCalculation(heading, medianSpeed, hasBoundaries ? boundaries : null);
+    processFlightPathCalculation(heading, medianSpeed, hasRectangularBoundaries ? boundaries : null, circularBoundary);
   };
 
   // Process flight path calculation with user parameters
-  const processFlightPathCalculation = (heading, medianSpeed, boundaries = null) => {
+  const processFlightPathCalculation = (heading, medianSpeed, boundaries = null, circularBoundary = null) => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.csv';
@@ -442,7 +447,8 @@ const FlightDetails = () => {
           heading,
           medianSpeed,
           0.025, // scalingFactor
-          boundaries
+          boundaries,
+          circularBoundary
         );
 
         if (!trackPoints.length) {
@@ -464,7 +470,8 @@ const FlightDetails = () => {
           throw new Error('Failed to save calculated flight path to database');
         }
 
-        const boundaryText = boundaries ? ' with boundary constraints' : '';
+        const boundaryText = circularBoundary ? ` with circular boundary (${circularBoundary.radius}m radius)` : 
+                           boundaries ? ' with rectangular boundary constraints' : '';
         setAlertMessage({ 
           type: 'success', 
           message: `Successfully calculated and saved flight path with ${trackPoints.length} points based on telemetry data${boundaryText}.` 
@@ -488,6 +495,7 @@ const FlightDetails = () => {
     setFlightPathParams({ 
       heading: '', 
       medianSpeed: '',
+      circularRadius: '',
       boundaryNorth: '',
       boundaryEast: '',
       boundarySouth: '',
@@ -668,13 +676,38 @@ const FlightDetails = () => {
               </div>
             </div>
 
-            {/* Optional Boundary Parameters */}
+            {/* Circular Boundary Parameters */}
             <div className="border-t pt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-2">
-                Flight Boundaries (Optional)
+                Circular Flight Boundary (Optional)
+              </h4>
+              <p className="text-xs text-gray-500 mb-3">
+                Set a circular boundary around the takeoff point. Drone will turn when approaching this limit.
+              </p>
+              <div className="w-1/2">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Radius from Takeoff Point (meters)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="10"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="e.g., 500"
+                  value={flightPathParams.circularRadius}
+                  onChange={(e) => setFlightPathParams(prev => ({ ...prev, circularRadius: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Rectangular Boundary Parameters */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Rectangular Flight Boundaries (Optional)
               </h4>
               <p className="text-xs text-gray-500 mb-3">
                 Set maximum distances in meters from takeoff point. Drone will turn when approaching these limits.
+                Note: Circular boundary takes priority over rectangular boundaries if both are set.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div>

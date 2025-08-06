@@ -12,6 +12,7 @@
  * @param {number} medianSpeed - Median speed in km/h
  * @param {number} scalingFactor - Scaling factor for distance calculations
  * @param {Object} boundaries - Optional boundary constraints {north: meters, east: meters, south: meters, west: meters}
+ * @param {Object} circularBoundary - Optional circular boundary {radius: meters}
  * @returns {Object} Object containing trackPoints array and gpsData array
  */
 export const createSyntheticFlightPath = (
@@ -21,7 +22,8 @@ export const createSyntheticFlightPath = (
   initialHeading = null,
   medianSpeed = null,
   scalingFactor = 0.025,
-  boundaries = null
+  boundaries = null,
+  circularBoundary = null
 ) => {
   if (!departureCoords || !landingCoords || !telemetryData?.length) {
     return { trackPoints: [], gpsData: [] };
@@ -84,8 +86,15 @@ export const createSyntheticFlightPath = (
 
       currentHeading = normalizeHeading(currentHeading + headingDelta);
 
-      // Check boundary constraints and apply mandatory turns if needed
-      if (boundaryCoords) {
+      // Check circular boundary constraints first (higher priority)
+      if (circularBoundary && circularBoundary.radius > 0) {
+        const circularTurn = checkCircularBoundaryViolation([currentLat, currentLon], currentHeading, departureCoords, circularBoundary.radius);
+        if (circularTurn !== null) {
+          currentHeading = circularTurn;
+        }
+      }
+      // Check rectangular boundary constraints if no circular boundary violation
+      else if (boundaryCoords) {
         const boundaryTurn = checkBoundaryViolation([currentLat, currentLon], currentHeading, boundaryCoords);
         if (boundaryTurn !== null) {
           currentHeading = boundaryTurn;
@@ -305,6 +314,53 @@ const checkBoundaryViolation = (currentPos, currentHeading, boundaryCoords) => {
   const boundaryTurn = Math.max(-maxTurnRate, Math.min(maxTurnRate, normalizedDiff));
   
   return normalizeHeading(currentHeading + boundaryTurn);
+};
+
+/**
+ * Check if current position with heading would violate circular boundary and return corrective heading
+ * @param {Array} currentPos - [lat, lon] current position
+ * @param {number} currentHeading - Current heading in degrees
+ * @param {Array} centerCoords - [lat, lon] center coordinates (takeoff point)
+ * @param {number} radius - Radius in meters
+ * @returns {number|null} Corrective heading or null if no violation
+ */
+const checkCircularBoundaryViolation = (currentPos, currentHeading, centerCoords, radius) => {
+  const distanceFromCenter = calculateDistance(currentPos, centerCoords) * 1000; // Convert km to meters
+  const margin = radius * 0.05; // 5% margin to start turning before hitting boundary
+  
+  // Check if approaching boundary
+  if (distanceFromCenter >= radius - margin) {
+    // Calculate heading from current position back towards center
+    const headingToCenter = calculateBearing(currentPos, centerCoords);
+    
+    // If we're moving away from center (heading difference > 90°), apply correction
+    const headingDiff = Math.abs(normalizeHeading(currentHeading - headingToCenter));
+    const isMovingAway = headingDiff > 90 && headingDiff < 270;
+    
+    if (isMovingAway) {
+      // Calculate corrective heading - turn towards center with some tangential component
+      // This creates a circular flight pattern rather than just heading straight back
+      const tangentOffset = 45; // Degrees offset from direct heading to center
+      let targetHeading = headingToCenter + (Math.random() > 0.5 ? tangentOffset : -tangentOffset);
+      targetHeading = normalizeHeading(targetHeading);
+      
+      // Apply gradual turn towards target heading
+      const turnDiff = targetHeading - currentHeading;
+      let normalizedDiff = turnDiff;
+      
+      // Normalize to shortest path
+      if (normalizedDiff > 180) normalizedDiff -= 360;
+      if (normalizedDiff < -180) normalizedDiff += 360;
+      
+      // Limit turn rate for smooth turns
+      const maxTurnRate = 25; // Maximum degrees per step for circular boundary
+      const boundaryTurn = Math.max(-maxTurnRate, Math.min(maxTurnRate, normalizedDiff));
+      
+      return normalizeHeading(currentHeading + boundaryTurn);
+    }
+  }
+  
+  return null;
 };
 
 /**
