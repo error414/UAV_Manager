@@ -18,14 +18,17 @@ GitHub repository for the Lua scripts: [https://github.com/CarviFPV/flylog\_edge
 2.  **Configure the Script in EdgeTX**
 
     1. On your EdgeTX transmitter, open the **Model** page and navigate to the **Special Functions** tab.
-    2. Create a new special function (tap the `+` icon). [![Printscreen 1: Special Function setup for flylog.lua](https://github.com/CarviFPV/flylog_edgetx/raw/main/screenshots/1_special_functions_tab.png)](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/1_special_functions_tab.png)
-    3. Under **Trigger**, select the switch you want to use to start/stop logging (e.g., your arming switch).
-    4. Under **Function**, choose **Lua Script**.
-    5. Under **Value**, select `flylog.lua`.
-    6. Set **Repeat** to **ON**.
-    7.  Make sure **Enable** is toggled on.
+    2. Create a new special function (tap the `+` icon).
 
-        [![Printscreen 2: Enable Special Function](https://github.com/CarviFPV/flylog_edgetx/raw/main/screenshots/2_special_functions.png)](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/2_special_functions.png)
+    &#x20;[![Printscreen 1: Special Function setup for flylog.lua](https://github.com/CarviFPV/flylog_edgetx/raw/main/screenshots/1_special_functions_tab.png)](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/1_special_functions_tab.png)
+
+    1. Under **Trigger**, select the switch you want to use to start/stop logging (e.g., your arming switch).
+    2. Under **Function**, choose **Lua Script**.
+    3. Under **Value**, select `flylog.lua`.
+    4. Set **Repeat** to **ON**.
+    5. Make sure **Enable** is toggled on.
+
+    [![Printscreen 2: Enable Special Function](https://github.com/CarviFPV/flylog_edgetx/raw/main/screenshots/2_special_functions.png)](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/2_special_functions.png)
 
     Refer to the provided screenshots for an example of how this is set up.
 
@@ -43,11 +46,11 @@ GitHub repository for the Lua scripts: [https://github.com/CarviFPV/flylog\_edge
 
         [![Printscreen 1: Special Function setup for tellog.lua](https://github.com/CarviFPV/flylog_edgetx/raw/main/screenshots/edge-tx_settings.png)](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/edge-tx_settings.png)
 
-        1 special functions
+        1\. special functions
 
-        2 flylog.lua script
+        2\. flylog.lua script
 
-        3 tellog.lua script
+        3\. tellog.lua script
     3. Under **Trigger**, select the switch you want to use to start/stop logging (e.g., your arming switch).
     4. Under **Function**, choose **Lua Script**.
     5. Under **Value**, select `tellog.lua`.
