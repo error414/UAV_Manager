@@ -36,7 +36,10 @@ export const createSyntheticFlightPath = (
   const directBearing = calculateBearing(departureCoords, landingCoords);
   const startHeading = initialHeading !== null ? initialHeading : directBearing;
 
-  const baseSpeed = medianSpeed !== null ? medianSpeed : calculateMedianSpeed(telemetryData) || 20;
+  // Infer units once and keep everything in km/h consistently
+  const { isKmh, median: inferredMedian } = analyzeSpeedUnits(telemetryData);
+  const baseSpeedRaw = medianSpeed !== null ? medianSpeed : (inferredMedian ?? 20);
+  const baseSpeed = isKmh ? baseSpeedRaw : baseSpeedRaw * 3.6;
 
   let currentLat = departureCoords[0];
   let currentLon = departureCoords[1];
@@ -49,52 +52,41 @@ export const createSyntheticFlightPath = (
   }
 
   telemetryData.forEach((point, index) => {
-    const ratio = index / (telemetryData.length - 1);
+    // Defensive ratio (avoids 0/0 when length === 1)
+    const denom = Math.max(1, telemetryData.length - 1);
+    const ratio = index / denom;
 
     let actualSpeed = baseSpeed;
 
     if (index === 0) {
       trackPoints.push([currentLat, currentLon]);
     } else {
-      let timeDelta = (point.time - telemetryData[index - 1].time);
-      if (timeDelta > 10000) timeDelta = timeDelta / 1000;
+      // Robust time normalization (seconds)
+      let timeDelta = normalizeTimeDelta(point.time, telemetryData[index - 1].time);
 
-      // Since CSV logs 3 times per second, if no time data is available,
-      // assume 1/3 second between points
-      if (timeDelta === 0 || isNaN(timeDelta)) {
-        timeDelta = 1/3; // 0.333 seconds between points
-      }
-      timeDelta = Math.max(0.1, Math.min(timeDelta, 10));
-
-      // Convert to consistent units if needed
-      if (actualSpeed < 5) { // Likely in m/s if very small
-        actualSpeed = actualSpeed * 3.6; // Convert m/s to km/h
-      }
+      // Clamp speed to reasonable UAV range
       actualSpeed = Math.max(5, Math.min(actualSpeed, 120));
 
       let headingDelta = 0;
-      if (point.Roll) headingDelta += point.Roll * 0.01;  // Reduced from 0.02
+      if (point.Roll) headingDelta += point.Roll * 0.01;
       if (point.Yaw && telemetryData[index - 1].Yaw !== undefined) {
-        headingDelta += (point.Yaw - telemetryData[index - 1].Yaw) * 0.5; // Added factor
+        headingDelta += (point.Yaw - telemetryData[index - 1].Yaw) * 0.5;
       }
-      if (point.Ail) headingDelta += point.Ail * 0.03;   // Reduced from 0.05
-      if (point.Rud) headingDelta += point.Rud * 0.04;   // Reduced from 0.07
+      if (point.Ail) headingDelta += point.Ail * 0.03;
+      if (point.Rud) headingDelta += point.Rud * 0.04;
 
-      // Apply stick inputs with damping based on progress
-      const stickDamping = Math.max(0.3, 1 - ratio * 0.7); // Reduce stick influence as we approach landing
+      const stickDamping = Math.max(0.3, 1 - ratio * 0.7);
       headingDelta *= stickDamping;
 
       currentHeading = normalizeHeading(currentHeading + headingDelta);
 
-      // Check circular boundary constraints first (higher priority)
+      // Boundary checks
       if (circularBoundary && circularBoundary.radius > 0) {
         const circularTurn = checkCircularBoundaryViolation([currentLat, currentLon], currentHeading, departureCoords, circularBoundary.radius);
         if (circularTurn !== null) {
           currentHeading = circularTurn;
         }
-      }
-      // Check rectangular boundary constraints if no circular boundary violation
-      else if (boundaryCoords) {
+      } else if (boundaryCoords) {
         const boundaryTurn = checkBoundaryViolation([currentLat, currentLon], currentHeading, boundaryCoords);
         if (boundaryTurn !== null) {
           currentHeading = boundaryTurn;
@@ -103,37 +95,20 @@ export const createSyntheticFlightPath = (
 
       // Progressive course correction towards landing area in final 20%
       if (ratio > 0.8) {
-        // Reduce speed in final 20%: from 100% to 2% of median speed
         const minSpeedFactor = 0.02;
-        const progress = (ratio - 0.8) / 0.2; // 0 at 80%, 1 at 100%
+        const progress = (ratio - 0.8) / 0.2;
         const speedFactor = 1 - (1 - minSpeedFactor) * progress;
         actualSpeed = baseSpeed * speedFactor;
 
         const targetBearing = calculateBearing([currentLat, currentLon], landingCoords);
-        const bearingDiff = normalizeHeading(targetBearing - currentHeading);
-        
-        // Limit bearing difference to prevent spinning - take shortest path
-        let limitedBearingDiff = bearingDiff;
-        if (limitedBearingDiff > 180) {
-          limitedBearingDiff = limitedBearingDiff - 360;
-        } else if (limitedBearingDiff < -180) {
-          limitedBearingDiff = limitedBearingDiff + 360;
-        }
-        
-        // Limit maximum turn rate to prevent sharp turns/spinning
-        const maxTurnRate = 15; // Maximum degrees per correction
-        limitedBearingDiff = Math.max(-maxTurnRate, Math.min(maxTurnRate, limitedBearingDiff));
-        
-        // Progressive correction strength from 0.2 to 0.5 in final 20%
+        const limitedBearingDiff = Math.max(-15, Math.min(15, shortestAngleDiff(currentHeading, targetBearing)));
         const correctionStrength = 0.2 + ((ratio - 0.8) / 0.2) * 0.3;
-        const correction = limitedBearingDiff * correctionStrength;
-        currentHeading = normalizeHeading(currentHeading + correction);
+        currentHeading = normalizeHeading(currentHeading + limitedBearingDiff * correctionStrength);
       }
 
-      // Fixed distance calculation - convert km/h to km per time delta
-      let distanceTraveled = (actualSpeed * (timeDelta / 3600)) * scalingFactor;
+      // Distance (km) = (km/h) * (s / 3600) * scaling
+      const distanceTraveled = (actualSpeed * (timeDelta / 3600)) * scalingFactor;
 
-      // On the very last point, move directly to landing coordinates
       if (index === telemetryData.length - 1) {
         currentLat = landingCoords[0];
         currentLon = landingCoords[1];
@@ -156,7 +131,7 @@ export const createSyntheticFlightPath = (
       longitude: currentLon,
       timestamp: point.time || index * 1000,
       altitude: point.GPS_altitude || 0,
-      speed: actualSpeed, 
+      speed: actualSpeed,
       ground_course: currentHeading,
       vertical_speed: point.VSpd || 0,
       pitch: point.Pitch || 0,
@@ -246,73 +221,58 @@ const calculateBoundaryCoordinates = (departureCoords, boundaries) => {
  */
 const checkBoundaryViolation = (currentPos, currentHeading, boundaryCoords) => {
   const [lat, lon] = currentPos;
-  const margin = 0.0001; // Small margin to start turning before hitting boundary
-  
+  // Use ~10 m margins converted to degrees at current latitude
+  const latMargin = metersToLatDeg(10);
+  const lonMargin = metersToLonDeg(10, lat);
+
   let violatedBoundaries = [];
-  
-  // Check which boundaries are close to being violated
-  if (lat >= boundaryCoords.north - margin) violatedBoundaries.push('north');
-  if (lat <= boundaryCoords.south + margin) violatedBoundaries.push('south');
-  if (lon >= boundaryCoords.east - margin) violatedBoundaries.push('east');
-  if (lon <= boundaryCoords.west + margin) violatedBoundaries.push('west');
-  
+
+  if (lat >= boundaryCoords.north - latMargin) violatedBoundaries.push('north');
+  if (lat <= boundaryCoords.south + latMargin) violatedBoundaries.push('south');
+  if (lon >= boundaryCoords.east - lonMargin) violatedBoundaries.push('east');
+  if (lon <= boundaryCoords.west + lonMargin) violatedBoundaries.push('west');
+
   if (violatedBoundaries.length === 0) return null;
-  
-  // Calculate center point of boundaries for reference
+
   const centerLat = (boundaryCoords.north + boundaryCoords.south) / 2;
   const centerLon = (boundaryCoords.east + boundaryCoords.west) / 2;
-  
-  // Calculate heading towards center
+
   const headingToCenter = calculateBearing([lat, lon], [centerLat, centerLon]);
-  
-  // Determine appropriate turn based on violated boundaries
+
   let targetHeading = headingToCenter;
-  
+
   if (violatedBoundaries.includes('north')) {
-    // If hitting north boundary, turn south (180°)
     if (currentHeading >= 270 || currentHeading <= 90) {
       targetHeading = 180;
     }
   }
-  
+
   if (violatedBoundaries.includes('south')) {
-    // If hitting south boundary, turn north (0°)
     if (currentHeading >= 90 && currentHeading <= 270) {
       targetHeading = 0;
     }
   }
-  
+
   if (violatedBoundaries.includes('east')) {
-    // If hitting east boundary, turn west (270°)
     if (currentHeading >= 0 && currentHeading <= 180) {
       targetHeading = 270;
     }
   }
-  
+
   if (violatedBoundaries.includes('west')) {
-    // If hitting west boundary, turn east (90°)
-    if (currentHeading >= 180 && currentHeading <= 360) {
+    if (currentHeading >= 180 && currentHeading < 360) {
       targetHeading = 90;
     }
   }
-  
-  // For corner violations, use heading towards center
+
   if (violatedBoundaries.length > 1) {
     targetHeading = headingToCenter;
   }
-  
-  // Apply gradual turn towards target heading
-  const headingDiff = targetHeading - currentHeading;
-  let normalizedDiff = headingDiff;
-  
-  // Normalize to shortest path
-  if (normalizedDiff > 180) normalizedDiff -= 360;
-  if (normalizedDiff < -180) normalizedDiff += 360;
-  
-  // Limit turn rate for smooth turns
-  const maxTurnRate = 30; // Maximum degrees per step
+
+  const normalizedDiff = shortestAngleDiff(currentHeading, targetHeading);
+  const maxTurnRate = 30;
   const boundaryTurn = Math.max(-maxTurnRate, Math.min(maxTurnRate, normalizedDiff));
-  
+
   return normalizeHeading(currentHeading + boundaryTurn);
 };
 
@@ -325,41 +285,32 @@ const checkBoundaryViolation = (currentPos, currentHeading, boundaryCoords) => {
  * @returns {number|null} Corrective heading or null if no violation
  */
 const checkCircularBoundaryViolation = (currentPos, currentHeading, centerCoords, radius) => {
-  const distanceFromCenter = calculateDistance(currentPos, centerCoords) * 1000; // Convert km to meters
-  const margin = radius * 0.05; // 5% margin to start turning before hitting boundary
-  
-  // Check if approaching boundary
+  const distanceFromCenter = calculateDistance(currentPos, centerCoords) * 1000; // meters
+  const margin = radius * 0.05;
+
   if (distanceFromCenter >= radius - margin) {
-    // Calculate heading from current position back towards center
     const headingToCenter = calculateBearing(currentPos, centerCoords);
-    
-    // If we're moving away from center (heading difference > 90°), apply correction
-    const headingDiff = Math.abs(normalizeHeading(currentHeading - headingToCenter));
-    const isMovingAway = headingDiff > 90 && headingDiff < 270;
-    
+
+    const diffAbs = Math.abs(normalizeHeading(currentHeading - headingToCenter));
+    const isMovingAway = diffAbs > 90 && diffAbs < 270;
+
     if (isMovingAway) {
-      // Calculate corrective heading - turn towards center with some tangential component
-      // This creates a circular flight pattern rather than just heading straight back
-      const tangentOffset = 45; // Degrees offset from direct heading to center
-      let targetHeading = headingToCenter + (Math.random() > 0.5 ? tangentOffset : -tangentOffset);
-      targetHeading = normalizeHeading(targetHeading);
-      
-      // Apply gradual turn towards target heading
-      const turnDiff = targetHeading - currentHeading;
-      let normalizedDiff = turnDiff;
-      
-      // Normalize to shortest path
-      if (normalizedDiff > 180) normalizedDiff -= 360;
-      if (normalizedDiff < -180) normalizedDiff += 360;
-      
-      // Limit turn rate for smooth turns
-      const maxTurnRate = 25; // Maximum degrees per step for circular boundary
-      const boundaryTurn = Math.max(-maxTurnRate, Math.min(maxTurnRate, normalizedDiff));
-      
+      const tangentOffset = 45;
+      // Choose the tangent (left/right) that requires the smallest turn from currentHeading
+      const opt1 = normalizeHeading(headingToCenter + tangentOffset);
+      const opt2 = normalizeHeading(headingToCenter - tangentOffset);
+      const d1 = Math.abs(shortestAngleDiff(currentHeading, opt1));
+      const d2 = Math.abs(shortestAngleDiff(currentHeading, opt2));
+      const targetHeading = d1 <= d2 ? opt1 : opt2;
+
+      const turnDiff = shortestAngleDiff(currentHeading, targetHeading);
+      const maxTurnRate = 25;
+      const boundaryTurn = Math.max(-maxTurnRate, Math.min(maxTurnRate, turnDiff));
+
       return normalizeHeading(currentHeading + boundaryTurn);
     }
   }
-  
+
   return null;
 };
 
@@ -458,3 +409,54 @@ const calculateDistance = (coord1, coord2) => {
 
   return R * c;
 };
+
+/**
+ * Helpers: time normalization, speed-unit inference, angle diff, and meter-to-degree converters
+ */
+function normalizeTimeDelta(currentTime, previousTime) {
+  const curr = Number(currentTime);
+  const prev = Number(previousTime);
+  const raw = curr - prev;
+
+  // Fallback if missing/invalid or non-increasing
+  if (!isFinite(raw) || raw <= 0) return 1 / 3; // ~3 Hz default
+
+  // If >10 it's very likely milliseconds
+  if (raw > 10) return Math.min(10, Math.max(0.1, raw / 1000));
+
+  // Otherwise treat as seconds
+  return Math.min(10, Math.max(0.1, raw));
+}
+
+function analyzeSpeedUnits(telemetryData) {
+  const vals = telemetryData
+    .map(p => p?.GPS_speed)
+    .filter(v => v != null && isFinite(v) && v > 0)
+    .sort((a, b) => a - b);
+
+  if (vals.length === 0) return { isKmh: true, median: null };
+
+  const mid = Math.floor(vals.length / 2);
+  const median = vals.length % 2 === 0 ? (vals[mid - 1] + vals[mid]) / 2 : vals[mid];
+  const max = vals[vals.length - 1];
+
+  // Heuristic: large values strongly imply km/h
+  const isKmh = max > 60 || median > 40;
+  return { isKmh, median };
+}
+
+function shortestAngleDiff(fromDeg, toDeg) {
+  let d = normalizeHeading(toDeg - fromDeg);
+  if (d > 180) d -= 360;
+  return d; // [-180, 180]
+}
+
+function metersToLatDeg(meters) {
+  const earthRadius = 6371000;
+  return (meters / earthRadius) * (180 / Math.PI);
+}
+
+function metersToLonDeg(meters, atLatDeg) {
+  const earthRadius = 6371000;
+  return (meters / (earthRadius * Math.cos(atLatDeg * Math.PI / 180))) * (180 / Math.PI);
+}

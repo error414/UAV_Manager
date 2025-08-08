@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [Version 1.4.1] - 2025-08-08
+- Version display now sourced from frontend/public/app-version.json and fetched at runtime (no rebuild needed).
+- Flight path utils: add time delta normalization, unify speed units, guard single-point ratio, deterministic circular turns, meter-based boundary margins.
+
 ## [Version 1.4.0] - 2025-08-06
 
 ### ✨ New Features

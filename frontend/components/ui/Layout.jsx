@@ -8,6 +8,7 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
   const [activePath, setActivePath] = useState('');
   const [isStaff, setIsStaff] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [appVersion, setAppVersion] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -130,6 +131,22 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
     });
   }
 
+  useEffect(() => {
+    // Load app version from public file (no rebuild required)
+    const loadVersion = async () => {
+      try {
+        const res = await fetch('/app-version.json', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          setAppVersion(data?.version || '');
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadVersion();
+  }, []);
+
   return (
     <div className="flex h-screen relative">
       {/* Sidebar toggle button (mobile) */}
@@ -198,9 +215,12 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
           })}
         </nav>
         
-        <div className="text-center mb-2 text-xs text-gray-500">
-          Version 1.4.0
-        </div>
+        {/* Version from public/app-version.json */}
+        {appVersion && (
+          <div className="text-center mb-2 text-xs text-gray-500">
+            Version {appVersion}
+          </div>
+        )}
         
         {userName && (
           <div className="p-3 border-t border-gray-800">
