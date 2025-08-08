@@ -74,7 +74,7 @@ The Aircraft Settings display a detailed view of all UAV attributes.
 
 2.)  Here you can set a reminder. To prevent the reminder from being automatically dismissed, the next maintenance date must be set **after** the reminder date. The reminder lead time can be adjusted in the [User Settings](interactive-blocks.md).
 
-3.) Using **"Set inactive"** will lock the UAV and mark it as inactive. This option is only available if the UAV has at least one flight recorded in the flight log.
+3.) Using **"Set inactive"** will lock the UAV and mark it as inactive. This option is only available if the UAV has at least one flight recorded in the [flight log](markdown.md).
 
 If no flights are registered, the UAV can be deleted. See the screenshot below.
 
