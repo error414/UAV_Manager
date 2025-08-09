@@ -62,7 +62,9 @@ The Aircraft Settings display a detailed view of all UAV attributes.
 
 2.) Here, if set, you can see when the last maintenance was performed and when the next maintenance is due.
 
-3.) Here, you can upload configuration files such as `.txt`, `.json`, or `.csv`—for example, a diff file from Betaflight or INAV. If multiple files are uploaded, you can select two files on the left and then compare them line by line.
+3.) Here, you can upload configuration files such as `.txt`, `.json`, or `.csv`—for example, a diff file from Betaflight or INAV. If multiple files are uploaded, you can select two files on the left and then compare them line by line.&#x20;
+
+<figure><img src="../.gitbook/assets/comparing.png" alt="" width="563"><figcaption></figcaption></figure>
 
 4.) Maintenance notes can be added here, with or without attachments. You can also upload and store files such as Blackbox log files.
 
@@ -76,7 +78,7 @@ The Aircraft Settings display a detailed view of all UAV attributes.
 
 3.) Using **"Set inactive"** will lock the UAV and mark it as inactive. This option is only available if the UAV has at least one flight recorded in the [flight log](markdown.md).
 
-If no flights are registered, the UAV can be deleted. See the screenshot below.
+If no flights are registered, the UAV can be deleted (1). See the screenshot below.
 
 <figure><img src="../.gitbook/assets/delete_aircarft.png" alt=""><figcaption></figcaption></figure>
 
