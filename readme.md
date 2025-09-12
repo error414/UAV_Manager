@@ -15,6 +15,11 @@
 
 ---
 
+**📖 Documentation:**  
+Find the full user documentation at [https://uav-manager.gitbook.io/uav-manager-docs/](https://uav-manager.gitbook.io/uav-manager-docs/)
+
+---
+
 ### Application Overview
 
 |                   Flight Log                   |                     Flight Details                     |                  Config Comparison                  |
