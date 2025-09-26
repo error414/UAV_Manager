@@ -244,7 +244,7 @@ const FlightDetails = () => {
     changeSpeed,
     handlePositionChange,
     setCurrentPointIndex
-  } = useGpsAnimation(gpsTrack);
+  } = useGpsAnimation(gpsTrack, fullGpsData);
 
   const { checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, message => setAlertMessage({ type: 'error', message }));
@@ -914,6 +914,7 @@ const FlightDetails = () => {
                   currentPointIndex={currentPointIndex}
                   trackLength={gpsTrack?.length || 0}
                   onPositionChange={handlePositionChange}
+                  fullGpsData={fullGpsData}
                 />
               </div>
             </div>

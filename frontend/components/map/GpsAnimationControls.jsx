@@ -78,7 +78,8 @@ const GpsAnimationControls = ({
   changeSpeed,
   currentPointIndex,
   trackLength,
-  onPositionChange
+  onPositionChange,
+  fullGpsData,
 }) => {
   return (
     <>
@@ -120,7 +121,9 @@ const GpsAnimationControls = ({
             onChange={e => changeSpeed(Number(e.target.value))}
             className="border rounded px-3 py-2"
           >
-            <option value={0.5}>0.5 entries per second</option>
+            {trackLength > 1 && (
+              <option value={-1}>Real time</option>
+            )}
             <option value={1}>1 entry per second</option>
             <option value={2}>2 entries per second</option>
             <option value={5}>5 entries per second</option>
@@ -149,6 +152,7 @@ const GpsAnimationControls = ({
         <div className="flex justify-between text-sm text-gray-600 mt-2">
           <span>Start</span>
           <span>Position: {currentPointIndex} / {trackLength - 1}</span>
+          <span>Time: {Math.round((fullGpsData[currentPointIndex].timestamp - fullGpsData[0].timestamp) / 1000000)} s</span>
           <span>End</span>
         </div>
       </div>

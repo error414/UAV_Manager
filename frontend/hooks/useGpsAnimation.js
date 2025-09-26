@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 // Handles GPS track animation state and controls
-const useGpsAnimation = (gpsTrack) => {
+const useGpsAnimation = (gpsTrack, fullGpsData) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPointIndex, setCurrentPointIndex] = useState(0);
   const [animationSpeed, setAnimationSpeed] = useState(20);
@@ -11,8 +11,15 @@ const useGpsAnimation = (gpsTrack) => {
   // Start playback from current or reset if at end
   const startAnimation = useCallback(() => {
     if (!gpsTrack?.length) return;
+    if (!fullGpsData?.length) return;
+
     if (currentPointIndex >= gpsTrack.length - 1) setCurrentPointIndex(0);
     setIsPlaying(true);
+
+    var currentAnimationSpeed = animationSpeed;
+    if(animationSpeed == -1 && fullGpsData.length > 1){
+      currentAnimationSpeed = Math.round(100 / (( fullGpsData[1].timestamp - fullGpsData[0].timestamp) / 10000) * 100) / 100;
+    }
 
     if (intervalRef.current) clearInterval(intervalRef.current);
 
@@ -25,8 +32,8 @@ const useGpsAnimation = (gpsTrack) => {
         }
         return prevIndex + 1;
       });
-    }, 1000 / animationSpeed);
-  }, [gpsTrack, animationSpeed, currentPointIndex]);
+    }, 1000 / currentAnimationSpeed);
+  }, [gpsTrack, animationSpeed, fullGpsData,  currentPointIndex]);
 
   // Pause playback
   const pauseAnimation = useCallback(() => {
@@ -44,11 +51,15 @@ const useGpsAnimation = (gpsTrack) => {
   // Update speed and restart if playing
   const changeSpeed = useCallback((newSpeed) => {
     setAnimationSpeed(newSpeed);
+  }, []);
+  
+  //react to animationSpeedChange
+  useEffect(() => {
     if (isPlaying) {
       pauseAnimation();
       startAnimation();
     }
-  }, [isPlaying, pauseAnimation, startAnimation]);
+  }, [animationSpeed]);
 
   // Set position manually, pause if playing
   const handlePositionChange = useCallback((newPosition) => {

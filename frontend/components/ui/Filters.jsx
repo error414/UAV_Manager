@@ -32,7 +32,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
               </select>
             ) : (
               <input
-                type="text"
+                type={field.type}
                 name={field.name}
                 placeholder={field.placeholder || ""}
                 value={filters[field.name] || ""}
