@@ -41,3 +41,19 @@ export function useQueryState(defaultSort = '-departure_date,-departure_time') {
 
   return { getQueryState, setQueryState };
 }
+
+export function removeSearchParam(search, param)
+{
+  const params = new URLSearchParams(search);
+  params.delete(param);
+
+  return '?'+params.toString();
+}
+
+export function addSearchParam(search, param, value)
+{
+  const params = new URLSearchParams(search);
+  params.set(param, value);
+
+  return '?'+params.toString();
+}

@@ -3,6 +3,7 @@ import Register from '../pages/Register.jsx';
 import Login from '../pages/Login.jsx';
 import AdditionalDetails from '../pages/AdditionalDetails.jsx';
 import Flightlog from '../pages/Flightlog.jsx';
+import FlightlogCalendar from '../pages/FlightLogCalendar.jsx';
 import AircraftList from '../pages/AircraftList.jsx'; 
 import NewAircraftForm from '../pages/NewAircraft.jsx';
 import UserSettings from '../pages/UserSettings.jsx';
@@ -22,6 +23,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/additionalDetails" element={<AdditionalDetails />} />
         <Route path="/flightlog" element={<Flightlog />} />
+        <Route path="/flightlogcalendar" element={<FlightlogCalendar />} />
         <Route path="/AircraftList" element={<AircraftList />} />
         <Route path="/newaircraft" element={<NewAircraftForm />} />
         <Route path="/UserSettings" element={<UserSettings />} />
