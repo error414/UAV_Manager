@@ -3,7 +3,6 @@ import { useLocation, Navigate } from 'react-router-dom';
 import { Layout, Alert, ResponsiveTable, Loading, ConfirmModal, Pagination, Button } from '../components';
 import { userTableColumns, uavTableColumns, getEnhancedFlightLogColumns, userFilterFormFields } from '../utils';
 import { useAuth, useApi } from '../hooks';
-
 const AdminPage = () => {
   const location = useLocation();
   const API_URL = import.meta.env.VITE_API_URL;
