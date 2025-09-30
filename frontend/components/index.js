@@ -31,3 +31,4 @@ export { default as SignalStrengthIndicator } from './instruments/telemetry/Sign
 export { ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator } from './instruments/telemetry/DigitalTelemetryIndicators';
 export { default as ConfigFileTable } from './ui/ConfigFileTable';
 export { InfoRow, GridInfo, InfoSection, DataPanel, AccordionPanel, FlightInfoCard } from './ui/InfoSection';
+export { PatchColorTypeEnum } from './enum/PatchColorTypeEnum';

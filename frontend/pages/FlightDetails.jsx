@@ -1,14 +1,15 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo  } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
+  PatchColorTypeEnum, 
   Layout, Loading, ConfirmModal, Button, Alert, FlightInfoCard, AnimatedMarker, GpsAnimationControls, AirspeedIndicator, AttitudeIndicator, AltitudeIndicator, ArrowButton, VerticalSpeedIndicator, CompassIndicator,
   TurnCoordinator, ThrottleYawStick, ElevatorAileronStick, SignalStrengthIndicator, ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator, DataPanel, AccordionPanel
 } from '../components';
 import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState, } from '../hooks';
-import { takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics, createSyntheticFlightPath, parseTelemetryData } from '../utils';
+import { calculateColorGreenToRed, takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics, createSyntheticFlightPath, parseTelemetryData } from '../utils';
 
 // Set Leaflet default icons for markers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -18,8 +19,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
+
 // Map component for displaying flight and GPS track
-const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying, currentPointIndex, resetTrigger, fullGpsData }) => {
+const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying, currentPointIndex, resetTrigger, fullGpsData, patchColorType }) => {
   // Create color-coded polyline segments based on satellite count
   const createColorCodedSegments = () => {
     if (!fullGpsData || !gpsTrack || fullGpsData.length !== gpsTrack.length) {
@@ -29,21 +31,43 @@ const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying
     const segments = [];
     let currentSegment = [];
     let currentColor = 'blue';
+    
+    let maxValuePatch = 1000;
+    switch(patchColorType) {
+        case PatchColorTypeEnum.Gps:
+          break;
+        case PatchColorTypeEnum.Altitude:  
+          maxValuePatch = Math.max(...fullGpsData.map(point => point.altitude));
+          break;
+        case PatchColorTypeEnum.Speed:  
+          maxValuePatch = Math.max(...fullGpsData.map(point => point.speed));
+          break;
+    }
 
     for (let i = 0; i < fullGpsData.length; i++) {
       const point = fullGpsData[i];
       const numSat = point.num_sat || 0;
-      
-      // Determine color based on satellite count
-      let color;
-      if (numSat < 4) {
-        color = 'red'; // Red for poor GPS signal
-      } else if (numSat < 6) {
-        color = '#FFD700'; // Yellow
-      } else {
-        color = 'blue'; // Blue (default)
-      }
+     
+      let color = 'blue';
 
+      switch(patchColorType) {
+        case PatchColorTypeEnum.Gps:
+          if (numSat < 4) {
+            color = 'red'; // Red for poor GPS signal
+          } else if (numSat < 6) {
+            color = '#FFD700'; // Yellow
+          } else {
+            color = 'blue'; // Blue (default)
+          }
+          break;
+        case PatchColorTypeEnum.Altitude:  
+          color = point.altitude != undefined ? calculateColorGreenToRed(point.altitude, maxValuePatch) : 'blue';
+          break;
+        case PatchColorTypeEnum.Speed:  
+          color = point.speed != undefined ? calculateColorGreenToRed(point.speed, maxValuePatch) : 'blue';
+          break;
+      }
+      
       // If color changes or this is the first point, start new segment
       if (color !== currentColor || currentSegment.length === 0) {
         // Save previous segment if it has points
@@ -55,7 +79,7 @@ const FlightMap = ({ flight, gpsTrack, departureCoords, landingCoords, isPlaying
         }
         
         // Start new segment
-        currentSegment = [gpsTrack[i]];
+        currentSegment = (currentSegment.length > 0 ? [currentSegment[currentSegment.length - 1], gpsTrack[i]] : [gpsTrack[i]]);
         currentColor = color;
       } else {
         // Add point to current segment
@@ -232,6 +256,7 @@ const FlightDetails = () => {
     boundarySouth: '',
     boundaryWest: ''
   });
+  const [patchColorType, setPatchColorType] = useState(PatchColorTypeEnum.Gps);
 
   const {
     isPlaying,
@@ -901,6 +926,7 @@ const FlightDetails = () => {
                   currentPointIndex={currentPointIndex}
                   resetTrigger={resetTrigger}
                   fullGpsData={fullGpsData}
+                  patchColorType={patchColorType}
                 />
               </div>
               <div className="mt-2 pt-2 border-t border-gray-200">
@@ -915,6 +941,8 @@ const FlightDetails = () => {
                   trackLength={gpsTrack?.length || 0}
                   onPositionChange={handlePositionChange}
                   fullGpsData={fullGpsData}
+                  patchColorType={patchColorType}
+                  setPatchColorType={setPatchColorType}
                 />
               </div>
             </div>

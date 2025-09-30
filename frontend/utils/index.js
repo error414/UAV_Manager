@@ -7,3 +7,4 @@ export * from './compareUtils';
 export * from './flightTimesUtils';
 export * from './uavIdUtils';
 export * from './flightPathUtils';
+export * from './colorUtils';
