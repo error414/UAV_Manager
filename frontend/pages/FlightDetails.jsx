@@ -8,6 +8,8 @@ import {
   Layout, Loading, ConfirmModal, Button, Alert, FlightInfoCard, AnimatedMarker, GpsAnimationControls, AirspeedIndicator, AttitudeIndicator, AltitudeIndicator, ArrowButton, VerticalSpeedIndicator, CompassIndicator,
   TurnCoordinator, ThrottleYawStick, ElevatorAileronStick, SignalStrengthIndicator, ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator, DataPanel, AccordionPanel
 } from '../components';
+import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState, addSearchParam } from '../hooks';
+import { takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics, createSyntheticFlightPath, parseTelemetryData } from '../utils';
 import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState, } from '../hooks';
 import { calculateColorGreenToRed, takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics, createSyntheticFlightPath, parseTelemetryData } from '../utils';
 
@@ -796,7 +798,6 @@ const FlightDetails = () => {
           </div>
         }
       />
-
       <div className="flex items-center justify-center gap-4 h-10 mb-4">
         <ArrowButton
           direction="left"
@@ -993,6 +994,15 @@ const FlightDetails = () => {
           variant="secondary"
         >
           Back to Flight Log
+        </Button>
+        <Button 
+          onClick={() => {
+            const search = location.search || '';
+            navigate(`/flightlogcalendar/`+addSearchParam(search, 'calendar_defaultDate', flight.departure_date));
+          }} 
+          variant="secondary"
+        >
+          Flight Calendar
         </Button>
         
         {!gpsTrack ? (
