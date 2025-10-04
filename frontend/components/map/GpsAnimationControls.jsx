@@ -1,4 +1,5 @@
 import { Button } from '../index';
+import { PatchColorTypeEnum } from '../../components';
 
 // Add this new component for displaying GPS data
 export const GpsDataPanel = ({ gpsPoint, gpsStats }) => {
@@ -80,6 +81,8 @@ const GpsAnimationControls = ({
   trackLength,
   onPositionChange,
   fullGpsData,
+  patchColorType,
+  setPatchColorType,
 }) => {
   return (
     <>
@@ -131,8 +134,22 @@ const GpsAnimationControls = ({
             <option value={20}>20 entries per second</option>
           </select>
         </div>
+
+        <div className="flex items-center gap-2">
+          <span className="font-medium">Patch color type:</span>
+          <select 
+            value={patchColorType} 
+            onChange={e => setPatchColorType(e.target.value)}
+            className="border rounded px-3 py-2"
+          >
+            {Object.entries(PatchColorTypeEnum).map(([key, value]) => (
+                <option key={key} value={value}>{value}</option>
+            ))}
+          </select>
+        </div>
+
       </div>
-      
+
       <div className="mt-4 w-full">
         <div className="relative">
           <input
