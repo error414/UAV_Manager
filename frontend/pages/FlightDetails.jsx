@@ -9,8 +9,6 @@ import {
   TurnCoordinator, ThrottleYawStick, ElevatorAileronStick, SignalStrengthIndicator, ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator, DataPanel, AccordionPanel
 } from '../components';
 import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState, addSearchParam } from '../hooks';
-import { takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics, createSyntheticFlightPath, parseTelemetryData } from '../utils';
-import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState, } from '../hooks';
 import { calculateColorGreenToRed, takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics, createSyntheticFlightPath, parseTelemetryData } from '../utils';
 
 // Set Leaflet default icons for markers

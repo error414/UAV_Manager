@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [Version 1.5.0] - 2025-10-04
+
+### ✨ New Features
+- **Calendar View**: New calendar view for flight logs
+- **Improved Flight Details**: Enhanced flight details display
+
+### 🐛 Bug Fixes
+- **Animation Color Patch**: Fixed color issues in GPS animation
+
+---
+
 ## [Version 1.4.1] - 2025-08-08
 - Version display now sourced from frontend/public/app-version.json and fetched at runtime (no rebuild needed).
 - Flight path utils: add time delta normalization, unify speed units, guard single-point ratio, deterministic circular turns, meter-based boundary margins.
