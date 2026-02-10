@@ -383,7 +383,7 @@ const Flightlog = () => {
     const timer = setTimeout(() => {
       calculateOptimalPageSize();
     }, 250);
-    
+
     // Safety timeout to prevent infinite loading
     const safetyTimer = setTimeout(() => {
       if (!pageSizeInitialized) {
@@ -391,24 +391,26 @@ const Flightlog = () => {
         setIsLoading(false);
       }
     }, 2000);
-    
+
     return () => {
       clearTimeout(timer);
       clearTimeout(safetyTimer);
     };
-  }, [calculateOptimalPageSize]);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
-      calculateOptimalPageSize();
+      if (pageSizeInitialized) {
+        calculateOptimalPageSize();
+      }
     };
-    
+
     window.addEventListener('resize', handleResize);
-    
+
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [calculateOptimalPageSize]);
+  }, [pageSizeInitialized]);
 
   // Separate effect for fetching UAVs
   useEffect(() => {
