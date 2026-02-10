@@ -92,7 +92,7 @@ const FLIGHT_INFO_SECTIONS = {
     ['Flight Duration', flight => flight.flight_duration ? `${flight.flight_duration} seconds` : 'N/A'],
   ],
   file: [
-      ['GPS Track Log Name:', flight => flight.uav?.drone_name.replace(' ', '_') +  '_TeleLog_' + flight.departure_date.replace('-', '') + '_' + flight.departure_time.replace(':', '') + '.csv']
+      ['GPS Track Log Name:', flight => flight.uav?.drone_name.replaceAll(' ', '_') +  '_TeleLog_' + flight.departure_date.replaceAll('-', '') + '_' + flight.departure_time.replaceAll(':', '') + '.csv']
   ]
 };
 
