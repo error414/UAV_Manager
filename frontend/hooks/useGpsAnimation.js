@@ -17,8 +17,8 @@ const useGpsAnimation = (gpsTrack, fullGpsData) => {
     setIsPlaying(true);
 
     var currentAnimationSpeed = animationSpeed;
-    if(animationSpeed == -1 && fullGpsData.length > 1){
-      currentAnimationSpeed = Math.round(100 / (( fullGpsData[1].timestamp - fullGpsData[0].timestamp) / 10000) * 100) / 100;
+    if(animationSpeed == -1 && fullGpsData.length > 10){
+      currentAnimationSpeed = Math.round(100 / (( fullGpsData[10].timestamp - fullGpsData[0].timestamp) / 10000 / 10) * 100) / 100;
     }
 
     if (intervalRef.current) clearInterval(intervalRef.current);
