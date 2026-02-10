@@ -1,7 +1,7 @@
 import csv
-from django.db.models import Sum, Count, Value, IntegerField
+from django.db.models import Exists, Sum, Count, Value, IntegerField, OuterRef
 from django.db.models.functions import Coalesce
-from ..models import UAV, FlightLog, MaintenanceReminder
+from ..models import UAV, FlightLog, MaintenanceReminder, FlightGPSLog
 
 class UAVService:
     @staticmethod
@@ -221,7 +221,13 @@ class FlightLogService:
             queryset = FlightLog.objects.filter(user_id=query_params['user'])
         else:
             queryset = FlightLog.objects.filter(user=user)
-        
+
+        queryset = queryset.annotate(
+            has_gps_log=Exists(
+                FlightGPSLog.objects.filter(flight_log=OuterRef('pk'))
+            )
+        )
+
         # Add filtering if needed
         if query_params:
             # UAV filter - already implemented

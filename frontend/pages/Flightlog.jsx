@@ -33,9 +33,9 @@ const Flightlog = () => {
   const fileInputRef = useRef(null);
   const filterTimer = useRef(null);
   const tableContainerRef = useRef(null);
-  
+
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
-  const { fetchData } = useApi(API_URL, setError);
+  const { fetchData } = useApi(API_URL, setError, getAuthHeaders, handleAuthError);
   
   const { getQueryState, setQueryState } = useQueryState('-departure_date,-departure_time');
   
@@ -52,7 +52,7 @@ const Flightlog = () => {
     const auth = checkAuthAndGetUser();
     if (!auth) return null;
     return await operation(auth);
-  }, [checkAuthAndGetUser]);
+  }, []);
 
   const fetchFlightLogs = useCallback(async () => {
     return runAuthenticatedOperation(async () => {
@@ -501,6 +501,7 @@ const Flightlog = () => {
               mobileFiltersVisible={mobileFiltersVisible}
               mobileAddNewVisible={mobileAddNewVisible}
               toggleMobileAddNew={toggleMobileAddNew}
+              rowClassName={(row) => !row.has_gps_log ? 'border-l-[3px] border-red-200' : ''}
             />
           </div>
           

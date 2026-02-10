@@ -290,7 +290,7 @@ export const INITIAL_FLIGHT_STATE = {
 // Returns flight log form fields, UAV options are dynamic
 export const getFlightFormFields = (availableUAVs = []) => [
   { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
-  { name: 'departure_date', label: 'Date', type: 'date', placeholder: 'Date' },
+  { name: 'date', label: 'Date', type: 'date_range', placeholder: 'Date' },
   { name: 'departure_time', label: 'Departure Time', type: 'time', placeholder: 'Departure Time', step: '1' },
   { name: 'landing_time', label: 'LDG Time', type: 'time', placeholder: 'LDG Time', step: '1' },
   { name: 'landing_place', label: 'LDG Place', type: 'text', placeholder: 'LDG Place' },
