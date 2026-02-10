@@ -152,6 +152,8 @@ const ResponsiveTable = ({
   mobileAddNewVisible = true,
   tableStyles = {},
   containerStyles = {},
+  rowClassName,
+
 }) => {
   // Use provided action buttons or default edit button
   const renderActionButtons = actionButtons || ((itemId) => (
@@ -358,8 +360,8 @@ const ResponsiveTable = ({
                     ) : (
                       <>
                         {/* Normal mode: show cell values */}
-                        {columns.map((col) => (
-                          <td key={col.accessor} className={`py-2 px-3 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`}>
+                        {columns.map((col, colIndex) => (
+                          <td key={col.accessor} className={`py-2 px-3 overflow-hidden text-ellipsis whitespace-nowrap ${colIndex===0 && rowClassName ? rowClassName(item) : ''} ${getColumnClasses(col)}`}>
                             <div className="truncate">
                               {col.render ? col.render(item[col.accessor], item) : item[col.accessor]}
                             </div>

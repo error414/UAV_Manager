@@ -601,7 +601,7 @@ const FlightDetails = () => {
     };
     fetchMeta();
     return () => { isActive = false; };
-  }, [fetchData, flightId]);
+  }, [flightId]);
 
   if (!flight) return <Loading message="Loading flight details..." />;
 

@@ -19,8 +19,8 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'user_id', 'email', 'first_name', 'last_name', 'phone', 
-            'street', 'zip', 'city', 'country', 'company', 
+            'user_id', 'email', 'first_name', 'last_name', 'phone',
+            'street', 'zip', 'city', 'country', 'company',
             'drone_ops_nb', 'pilot_license_nb', 'a1_a3', 'a2', 'sts',
             'is_active', 'is_staff', 'created_at', 'updated_at'
         ]
@@ -46,7 +46,7 @@ class UAVSerializer(serializers.ModelSerializer):
         model = UAV
         fields = '__all__'
         read_only_fields = ('created_at', 'updated_at')
-    
+
     def validate_drone_name(self, value):
         user = self.context['request'].user
         qs = UAV.objects.filter(user=user, drone_name=value)
@@ -95,10 +95,12 @@ class FlightLogSerializer(serializers.ModelSerializer):
     # Accept UAV ID for write operations
     uav_id = serializers.IntegerField(write_only=True)
 
+    has_gps_log = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = FlightLog
         fields = '__all__'
-        
+
     def validate_uav_id(self, value):
         # Ensure UAV exists and belongs to the current user
         try:
@@ -107,7 +109,7 @@ class FlightLogSerializer(serializers.ModelSerializer):
             return value
         except UAV.DoesNotExist:
             raise serializers.ValidationError(f"UAV with id {value} does not exist or doesn't belong to you")
-    
+
     def create(self, validated_data):
         # Replace uav_id with UAV instance
         uav_id = validated_data.pop('uav_id')
@@ -124,18 +126,18 @@ class FlightGPSLogSerializer(serializers.ModelSerializer):
             'receiver_quality', 'transmitter_quality', 'transmitter_power',
             'aileron', 'elevator', 'throttle', 'rudder'
         ]
-        
+
 class FlightLogWithGPSSerializer(serializers.ModelSerializer):
     # Use full UAV serializer for frontend compatibility
     uav = UAVSerializer(read_only=True)
     gps_logs = FlightGPSLogSerializer(many=True, read_only=True)
     # Accept UAV ID for write operations
     uav_id = serializers.IntegerField(write_only=True, required=False)
-    
+
     class Meta:
         model = FlightLog
         fields = '__all__'
-    
+
     def validate_uav_id(self, value):
         # Ensure UAV exists and belongs to the current user
         try:
@@ -144,7 +146,7 @@ class FlightLogWithGPSSerializer(serializers.ModelSerializer):
             return value
         except UAV.DoesNotExist:
             raise serializers.ValidationError(f"UAV with id {value} does not exist or doesn't belong to you")
-    
+
     def update(self, instance, validated_data):
         # Update UAV if uav_id is provided
         if 'uav_id' in validated_data:

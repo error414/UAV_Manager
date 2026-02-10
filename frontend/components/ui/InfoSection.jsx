@@ -28,16 +28,16 @@ const InfoSection = ({ title, className = "bg-gray-50 p-4 rounded-lg shadow", ch
 
 // Panel for displaying a list of label-value pairs
 const DataPanel = ({ title, items = [], columns = 1 }) => (
-  <div className="bg-white p-3 rounded-md shadow-sm">
-    {title && <h4 className="text-md font-medium text-gray-700 mb-2">{title}</h4>}
-    <div className="text-sm space-y-1">
-      {items.map((item, index) => (
-        <p key={index}>
-          <span className="font-medium">{item.label}:</span> {item.value}
-        </p>
-      ))}
+    <div className="bg-white p-3 rounded-md shadow-sm">
+        {title && <h4 className="text-md font-medium text-gray-700 mb-2">{title}</h4>}
+        <div className="text-sm space-y-1">
+            {items.map((item, index) => (
+                <p key={index}>
+                    {item.label && <span className="font-medium">{item.label}:</span>} {item.value}
+                </p>
+            ))}
+        </div>
     </div>
-  </div>
 );
 
 // Collapsible panel component
@@ -90,6 +90,9 @@ const FLIGHT_INFO_SECTIONS = {
     ['Departure Time', flight => flight.departure_time],
     ['Landing Time', flight => flight.landing_time],
     ['Flight Duration', flight => flight.flight_duration ? `${flight.flight_duration} seconds` : 'N/A'],
+  ],
+  file: [
+      ['GPS Track Log Name:', flight => flight.uav?.drone_name.replace(' ', '_') +  '_TeleLog_' + flight.departure_date.replace('-', '') + '_' + flight.departure_time.replace(':', '') + '.csv']
   ]
 };
 
@@ -154,6 +157,15 @@ const FlightInfoCard = ({ flight, hasGpsTrack = false }) => {
               value: getter(flight) || 'N/A' 
             }))} 
           />
+
+        {!hasGpsTrack && (
+            <DataPanel
+                title="GPS Track Log Name For Upload"
+                items={FLIGHT_INFO_SECTIONS.file.map(([label, getter]) => ({
+                    value: getter(flight) || 'N/A'
+                }))}
+            />
+        )}
         </div>
       )}
     </div>
