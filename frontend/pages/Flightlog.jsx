@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Alert, Button, ResponsiveTable, ConfirmModal, Pagination } from '../components';
+import { Layout, Alert, Button, ResponsiveTable, ConfirmModal, Pagination, ImportPreviewModal } from '../components';
 import { getEnhancedFlightLogColumns, getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS, exportFlightLogToPDF, calculateFlightDuration, extractUavId } from '../utils';
 import { useAuth, useApi, useUAVs, useQueryState } from '../hooks';
 
@@ -8,7 +8,7 @@ const Flightlog = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const API_URL = import.meta.env.VITE_API_URL;
-  
+
   const [logs, setLogs] = useState([]);
   const [availableUAVs, setAvailableUAVs] = useState([]);
   const [error, setError] = useState(null);
@@ -30,21 +30,26 @@ const Flightlog = () => {
   const [pageSizeInitialized, setPageSizeInitialized] = useState(false);
   const [pageSizeCalculationAttempted, setPageSizeCalculationAttempted] = useState(false);
 
+  // New state for import preview
+  const [showImportPreview, setShowImportPreview] = useState(false);
+  const [csvPreviewData, setCsvPreviewData] = useState(null);
+  const [csvFileName, setCsvFileName] = useState('');
+
   const fileInputRef = useRef(null);
   const filterTimer = useRef(null);
   const tableContainerRef = useRef(null);
 
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError, getAuthHeaders, handleAuthError);
-  
+
   const { getQueryState, setQueryState } = useQueryState('-departure_date,-departure_time');
-  
+
   const safeAvailableUAVs = useMemo(() => {
     return Array.isArray(availableUAVs) ? availableUAVs : [];
   }, [availableUAVs]);
-  
+
   const formFields = useMemo(() => getFlightFormFields(safeAvailableUAVs), [safeAvailableUAVs]);
-  
+
   const toggleMobileFilters = useCallback(() => setMobileFiltersVisible(v => !v), []);
   const toggleMobileAddNew = useCallback(() => setMobileAddNewVisible(v => !v), []);
 
@@ -57,26 +62,26 @@ const Flightlog = () => {
   const fetchFlightLogs = useCallback(async () => {
     return runAuthenticatedOperation(async () => {
       setIsLoading(true);
-      
+
       const queryParams = {
         ...debouncedFilters,
         page: currentPage,
         page_size: pageSize,
         ordering: sortField
       };
-      
+
       // Convert UAV object to ID if necessary
       if (queryParams.uav && typeof queryParams.uav === 'object' && queryParams.uav.uav_id) {
         queryParams.uav = queryParams.uav.uav_id;
       }
-      
+
       const result = await fetchData('/api/flightlogs/', queryParams);
-      
+
       if (!result.error) {
         setLogs(result.data.results || []);
         setTotalPages(Math.ceil((result.data.count || 0) / pageSize));
       }
-      
+
       setIsLoading(false);
       return result;
     });
@@ -115,8 +120,8 @@ const Flightlog = () => {
       // Handle UAV as object or ID
       if (name === 'uav') {
         newState.uav = typeof value === 'object' && value !== null && 'uav_id' in value
-          ? value.uav_id
-          : parseInt(value, 10) || '';
+            ? value.uav_id
+            : parseInt(value, 10) || '';
       } else {
         newState[name] = value;
       }
@@ -155,7 +160,7 @@ const Flightlog = () => {
       ...flightData,
       uav_id: uavValue,
       flight_duration: parseInt(flightData.flight_duration) || 0,
-      takeoffs: parseInt(flightData.takeoffs) || 1,  
+      takeoffs: parseInt(flightData.takeoffs) || 1,
       landings: parseInt(flightData.landings) || 1,
       comments: flightData.comments || '',
       user: userId
@@ -163,23 +168,23 @@ const Flightlog = () => {
   }, []);
 
   const handleNewFlightAdd = useCallback(async () => {
-    const requiredFields = ['departure_date', 'departure_time', 'landing_time', 'uav', 
+    const requiredFields = ['departure_date', 'departure_time', 'landing_time', 'uav',
       'departure_place', 'landing_place', 'light_conditions', 'ops_conditions', 'pilot_type'];
-      
+
     const missingFields = requiredFields.filter(field => !newFlight[field]);
     if (missingFields.length > 0) {
       setError('Please fill in all required fields.');
       return;
     }
-  
+
     return runAuthenticatedOperation(async (auth) => {
       const flightPayload = prepareFlightPayload(newFlight, auth.user_id);
       if (!flightPayload) return;
-      
+
       delete flightPayload.uav;
-      
+
       const result = await fetchData('/api/flightlogs/', {}, 'POST', flightPayload);
-      
+
       if (!result.error) {
         fetchFlightLogs();
         setNewFlight({...INITIAL_FLIGHT_STATE});
@@ -197,10 +202,10 @@ const Flightlog = () => {
 
   const handleEdit = useCallback((id) => {
     const logToEdit = logs.find(log => log.flightlog_id === id);
-    
+
     if (logToEdit) {
       const uavValue = extractUavId(logToEdit.uav);
-      
+
       setEditingLog({
         ...logToEdit,
         uav: uavValue,
@@ -209,7 +214,7 @@ const Flightlog = () => {
           return acc;
         }, {})
       });
-      
+
       setEditingLogId(id);
     }
   }, [logs]);
@@ -220,9 +225,9 @@ const Flightlog = () => {
       if (!flightPayload) return;
 
       delete flightPayload.uav;
-      
+
       const result = await fetchData(`/api/flightlogs/${editingLogId}/`, {}, 'PUT', flightPayload);
-      
+
       if (!result.error) {
         fetchFlightLogs();
         setEditingLogId(null);
@@ -247,7 +252,7 @@ const Flightlog = () => {
   const performDeleteLog = useCallback(async (id) => {
     return runAuthenticatedOperation(async () => {
       const result = await fetchData(`/api/flightlogs/${id}/`, {}, 'DELETE');
-      
+
       if (!result.error) {
         fetchFlightLogs();
         setEditingLogId(null);
@@ -256,6 +261,42 @@ const Flightlog = () => {
       }
     });
   }, [runAuthenticatedOperation, fetchData, fetchFlightLogs]);
+
+  // Parse CSV file and show preview
+  const parseCSVFile = useCallback((file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split('\n').filter(line => line.trim());
+
+        if (lines.length < 2) {
+          setError('CSV file must contain at least a header row and one data row');
+          return;
+        }
+
+        // Parse header
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+
+        // Parse data rows
+        const rows = lines.slice(1).map(line => {
+          const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+          const row = {};
+          headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+          });
+          return row;
+        });
+
+        setCsvPreviewData({ headers, rows });
+        setCsvFileName(file.name);
+        setShowImportPreview(true);
+      } catch (err) {
+        setError('Failed to parse CSV file. Please check the file format.');
+      }
+    };
+    reader.readAsText(file);
+  }, []);
 
   const handleFileUpload = useCallback(async (event) => {
     const file = event.target.files[0];
@@ -268,13 +309,32 @@ const Flightlog = () => {
       return;
     }
 
-    setIsLoading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    // Parse CSV and show preview instead of uploading immediately
+    parseCSVFile(file);
+  }, [parseCSVFile]);
+
+  // Handle confirmed import with selected rows
+  const handleConfirmImport = useCallback(async (selectedRows) => {
+    setShowImportPreview(false);
+    setIsLoading(true);
 
     try {
+      // Convert selected rows back to CSV format
+      const headers = csvPreviewData.headers;
+      const csvContent = [
+        headers.join(','),
+        ...selectedRows.map(row =>
+            headers.map(header => `"${row[header] || ''}"`).join(',')
+        )
+      ].join('\n');
+
+      // Create a new file with selected rows
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const formData = new FormData();
+      formData.append('file', blob, csvFileName);
+
       const response = await fetch(`${API_URL}/api/import/flightlog/`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -291,7 +351,7 @@ const Flightlog = () => {
       }
 
       await fetchFlightLogs();
-      
+
       setImportResult({
         message: (result.message || '') + (result.details?.unmapped_message || '')
       });
@@ -299,8 +359,10 @@ const Flightlog = () => {
       setError('Failed to upload CSV. Please try again.');
     } finally {
       setIsLoading(false);
+      setCsvPreviewData(null);
+      setCsvFileName('');
     }
-  }, [API_URL, fetchFlightLogs, getAuthHeaders, handleAuthError]);
+  }, [API_URL, csvPreviewData, csvFileName, fetchFlightLogs, getAuthHeaders, handleAuthError]);
 
   const handleImportClick = useCallback(() => {
     if (fileInputRef.current) {
@@ -335,7 +397,7 @@ const Flightlog = () => {
       if (field === 'departure_date') {
         return prevSort === field ? `-${field},-departure_time` : `${field},departure_time`;
       }
-      
+
       return prevSort === field ? `-${field}` : (prevSort === `-${field}` ? field : field);
     });
     // Query-String wird durch useEffect aktualisiert
@@ -354,9 +416,9 @@ const Flightlog = () => {
       }
       return;
     }
-    
+
     const containerHeight = tableContainerRef.current.clientHeight;
-    
+
     // Fallback if container height is too small
     if (containerHeight < 100) {
       if (!pageSizeCalculationAttempted) {
@@ -365,13 +427,13 @@ const Flightlog = () => {
       }
       return;
     }
-    
+
     const estimatedRowHeight = 53;
     const nonDataHeight = 150;
     const availableHeight = containerHeight - nonDataHeight;
     let optimalRows = Math.floor(availableHeight / estimatedRowHeight);
     optimalRows = Math.max(1, Math.min(optimalRows, 50));
-    
+
     setPageSize(optimalRows);
     setPageSizeInitialized(true);
     setPageSizeCalculationAttempted(true);
@@ -432,7 +494,7 @@ const Flightlog = () => {
     setFilters(prev => ({ ...prev, ...parsedFilters }));
     setDebouncedFilters(parsedFilters);
     // Only run on initial mount
-  }, []); 
+  }, []);
   // --- Query-String aktualisieren, wenn Filter/Seite/Sortierung sich ändern ---
   useEffect(() => {
     setQueryState(currentPage, sortField, debouncedFilters);
@@ -448,204 +510,216 @@ const Flightlog = () => {
   }, []);
 
   return (
-    <Layout title="Flight Log">
-      <Alert type="error" message={error} />
+      <Layout title="Flight Log">
+        <Alert type="error" message={error} />
 
-      {isLoading ? (
-        <div className="flex justify-center py-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="flex flex-col h-full" style={{ height: "calc(100vh - 50px)" }}>
-          <div className="xl:hidden mt-0.5 mb-0.5 w-full">
-            <Button 
-              onClick={toggleMobileFilters}
-              variant="secondary"
-              size="md"
-              fullWidth={true}
-              className="flex items-center justify-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
-              </svg>
-              {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
-            </Button>
-          </div>
-          
-          <div className="flex-grow overflow-auto" ref={tableContainerRef}>
-            <ResponsiveTable 
-              columns={flightLogTableColumns}
-              data={logs}
-              onEdit={handleEdit}
-              onRowClick={handleRowClick}
-              filterFields={formFields}
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              addFields={formFields}
-              newItem={newFlight}
-              onNewItemChange={handleNewFlightChange}
-              onAdd={handleNewFlightAdd}
-              editingId={editingLogId}
-              editingData={editingLog}
-              onEditChange={handleEditChange}
-              onSaveEdit={handleSaveEdit}
-              onCancelEdit={handleCancelEdit}
-              onDelete={handleDeleteLog}
-              onSort={handleSortChange}
-              availableOptions={{ 
-                availableUAVs: safeAvailableUAVs,
-                formOptions: FLIGHT_FORM_OPTIONS
-              }}
-              rowClickable={true}
-              showActionColumn={true}
-              actionColumnText="Actions"
-              titleField="uav"
-              mobileFiltersVisible={mobileFiltersVisible}
-              mobileAddNewVisible={mobileAddNewVisible}
-              toggleMobileAddNew={toggleMobileAddNew}
-              rowClassName={(row) => !row.has_gps_log ? 'border-l-[3px] border-red-200' : ''}
-            />
-          </div>
-          
-          <div className="xl:hidden mt-3 mb-0.5 w-full">
-            <Button 
-              onClick={toggleMobileAddNew}
-              variant="success"
-              size="md"
-              fullWidth={true}
-              className="flex items-center justify-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              {mobileAddNewVisible ? 'Hide Add New Form' : 'Add New Flight'}
-            </Button>
-          </div>
-          
-          <div className="flex-shrink-0 border-t border-gray-200 bg-white mt-0 mb-0">
-            <div className="xl:hidden py-1">
-              <div className="flex justify-center mb-2">
-                <Pagination 
-                  currentPage={currentPage} 
-                  totalPages={totalPages} 
-                  onPageChange={handlePageChange} 
-                  className="flex justify-center items-center gap-2" 
+        {isLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+            </div>
+        ) : (
+            <div className="flex flex-col h-full" style={{ height: "calc(100vh - 50px)" }}>
+              <div className="xl:hidden mt-0.5 mb-0.5 w-full">
+                <Button
+                    onClick={toggleMobileFilters}
+                    variant="secondary"
+                    size="md"
+                    fullWidth={true}
+                    className="flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 0V4" />
+                  </svg>
+                  {mobileFiltersVisible ? 'Hide Filters' : 'Show Filters'}
+                </Button>
+              </div>
+
+              <div className="flex-grow overflow-auto" ref={tableContainerRef}>
+                <ResponsiveTable
+                    columns={flightLogTableColumns}
+                    data={logs}
+                    onEdit={handleEdit}
+                    onRowClick={handleRowClick}
+                    filterFields={formFields}
+                    filters={filters}
+                    onFilterChange={handleFilterChange}
+                    addFields={formFields}
+                    newItem={newFlight}
+                    onNewItemChange={handleNewFlightChange}
+                    onAdd={handleNewFlightAdd}
+                    editingId={editingLogId}
+                    editingData={editingLog}
+                    onEditChange={handleEditChange}
+                    onSaveEdit={handleSaveEdit}
+                    onCancelEdit={handleCancelEdit}
+                    onDelete={handleDeleteLog}
+                    onSort={handleSortChange}
+                    availableOptions={{
+                      availableUAVs: safeAvailableUAVs,
+                      formOptions: FLIGHT_FORM_OPTIONS
+                    }}
+                    rowClickable={true}
+                    showActionColumn={true}
+                    actionColumnText="Actions"
+                    titleField="uav"
+                    mobileFiltersVisible={mobileFiltersVisible}
+                    mobileAddNewVisible={mobileAddNewVisible}
+                    toggleMobileAddNew={toggleMobileAddNew}
+                    rowClassName={(row) => !row.has_gps_log ? 'border-l-[3px] border-red-200' : ''}
                 />
               </div>
-              <div className="space-y-2 px-1">
-                <Button 
-                  onClick={handleImportClick}
-                  variant="primary"
-                  size="md"
-                  fullWidth={true}
-                  className="flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Import CSV
-                </Button>
+
+              <div className="xl:hidden mt-3 mb-0.5 w-full">
                 <Button
-                  onClick={handleExportPDF}
-                  variant="secondary"
-                  size="md"
-                  fullWidth={true}
-                  className="flex items-center justify-center"
+                    onClick={toggleMobileAddNew}
+                    variant="success"
+                    size="md"
+                    fullWidth={true}
+                    className="flex items-center justify-center"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Export PDF
+                  {mobileAddNewVisible ? 'Hide Add New Form' : 'Add New Flight'}
                 </Button>
-                <Button 
-                  onClick={() => {
-                    navigate('/flightlogcalendar'+location.search);
-                  }} 
-                  variant="secondary"
-                  size="md"
-                  fullWidth={true}
-                  className="flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Show calendar
-                </Button>
+              </div>
+
+              <div className="flex-shrink-0 border-t border-gray-200 bg-white mt-0 mb-0">
+                <div className="xl:hidden py-1">
+                  <div className="flex justify-center mb-2">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={handlePageChange}
+                        className="flex justify-center items-center gap-2"
+                    />
+                  </div>
+                  <div className="space-y-2 px-1">
+                    <Button
+                        onClick={handleImportClick}
+                        variant="primary"
+                        size="md"
+                        fullWidth={true}
+                        className="flex items-center justify-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      Import CSV
+                    </Button>
+                    <Button
+                        onClick={handleExportPDF}
+                        variant="secondary"
+                        size="md"
+                        fullWidth={true}
+                        className="flex items-center justify-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Export PDF
+                    </Button>
+                    <Button
+                        onClick={() => {
+                          navigate('/flightlogcalendar'+location.search);
+                        }}
+                        variant="secondary"
+                        size="md"
+                        fullWidth={true}
+                        className="flex items-center justify-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      Show calendar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="hidden xl:grid grid-cols-3 py-3 pb-1">
+                  <div className="flex space-x-2 self-center">
+                    <Button
+                        onClick={handleImportClick}
+                        variant="primary"
+                        size="md"
+                    >
+                      Import CSV
+                    </Button>
+                    <Button
+                        onClick={handleExportPDF}
+                        variant="secondary"
+                        size="md"
+                    >
+                      Export PDF
+                    </Button>
+                    <Button
+                        onClick={() => {
+                          navigate('/flightlogcalendar'+location.search);
+                        }}
+                        variant="secondary"
+                    >
+                      Show calendar
+                    </Button>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={handlePageChange}
+                        className="flex justify-center items-center gap-2"
+                    />
+                  </div>
+
+                  <div></div>
+                </div>
               </div>
             </div>
-            
-            <div className="hidden xl:grid grid-cols-3 py-3 pb-1">
-              <div className="flex space-x-2 self-center">
-                <Button 
-                  onClick={handleImportClick}
-                  variant="primary"
-                  size="md"
-                >
-                  Import CSV
-                </Button>
-                <Button
-                  onClick={handleExportPDF}
-                  variant="secondary"
-                  size="md"
-                >
-                  Export PDF
-                </Button>
-                <Button 
-                  onClick={() => {
-                    navigate('/flightlogcalendar'+location.search);
-                  }} 
-                  variant="secondary"
-                >
-                  Show calendar
-                </Button>
-              </div>
+        )}
 
-              <div className="flex justify-center">
-                <Pagination 
-                  currentPage={currentPage} 
-                  totalPages={totalPages} 
-                  onPageChange={handlePageChange} 
-                  className="flex justify-center items-center gap-2" 
-                />
-              </div>
-              
-              <div></div>
-            </div>
-          </div>
-        </div>
-      )}
+        <input
+            type="file"
+            accept=".csv"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+        />
 
-      <input 
-        type="file" 
-        accept=".csv" 
-        ref={fileInputRef} 
-        onChange={handleFileUpload} 
-        style={{ display: 'none' }} 
-      />
+        <ConfirmModal
+            open={!!confirmDeleteId}
+            title="Confirm Deletion"
+            message="Do you really want to delete this flight log?"
+            onConfirm={() => {
+              performDeleteLog(confirmDeleteId);
+              setConfirmDeleteId(null);
+            }}
+            onCancel={() => setConfirmDeleteId(null)}
+            confirmText="Delete"
+            cancelText="Cancel"
+        />
 
-      <ConfirmModal
-        open={!!confirmDeleteId}
-        title="Confirm Deletion"
-        message="Do you really want to delete this flight log?"
-        onConfirm={() => {
-          performDeleteLog(confirmDeleteId);
-          setConfirmDeleteId(null);
-        }}
-        onCancel={() => setConfirmDeleteId(null)}
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
-      
-      <ConfirmModal
-        open={!!importResult}
-        title="Import completed"
-        message={importResult?.message || ''}
-        onConfirm={() => setImportResult(null)}
-        onCancel={() => setImportResult(null)}
-        confirmText="OK"
-        cancelText={null}
-      />
-    </Layout>
+        <ConfirmModal
+            open={!!importResult}
+            title="Import completed"
+            message={importResult?.message || ''}
+            onConfirm={() => setImportResult(null)}
+            onCancel={() => setImportResult(null)}
+            confirmText="OK"
+            cancelText={null}
+        />
+
+        <ImportPreviewModal
+            show={showImportPreview}
+            onClose={() => {
+              setShowImportPreview(false);
+              setCsvPreviewData(null);
+              setCsvFileName('');
+            }}
+            onConfirm={handleConfirmImport}
+            csvData={csvPreviewData}
+            fileName={csvFileName}
+        />
+      </Layout>
   );
 };
 
