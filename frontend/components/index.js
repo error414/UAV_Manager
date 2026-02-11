@@ -18,6 +18,7 @@ export { default as AnimatedMarker } from './map/AnimatedMarker';
 export { default as GpsAnimationControls } from './map/GpsAnimationControls';
 export { default as TelemetryPanel } from './map/TelemetryPanel';
 export { default as CompareModal } from './ui/CompareModal';
+export { default as ImportPreviewModal } from './ui/ImportPreviewModal';
 export { AttitudeIndicator } from './instruments/analog/AttitudeIndicator';
 export { default as BaseInstrument } from './instruments/analog/BaseInstrument';
 export { default as AirspeedIndicator } from './instruments/analog/AirspeedIndicator';
