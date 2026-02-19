@@ -16,9 +16,9 @@ UAV Desk is available exclusively as a web application: https://uavdesk.app
 
 **Important:** The UAV Manager project will not be actively developed further — new features and improvements will be added to UAV Desk.
 
-<div align="center">
-### **Screenshots (UAV Desk):**
-</div>
+**Screenshots (UAV Desk):**
+
+![Flight details (UAV Desk)](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/flightdetails.png)
 
 | Flight logs (light) | Report trends | Reports |
 | :---: | :---: | :---: |
