@@ -2,7 +2,7 @@
 
 ![UAV Desk — New](https://img.shields.io/badge/UAV%20Desk-New-orange?style=flat-square)
 
-## New — UAV Desk (web app) 🚀
+# New — UAV Desk (web app) 🚀
 
 **UAV Desk** is the web-only successor to **UAV Manager** and includes all existing features plus new capabilities:
 
@@ -27,11 +27,6 @@ UAV Desk is available exclusively as a web application: https://uavdesk.app
 | ![UAV Management dark](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/4_UAV_Managment_dark.png) | ![Diff](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/5_diff_black.png) | ![UAV files](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/6_uav_files.png) |
 
 </div>
-
-# UAV Manager
-
-
-# UAV Manager
 
 **UAV Manager** is a modern full-stack web application for managing drones (UAVs), flight logs, maintenance records, and user profiles. The application is designed for drone pilots, clubs, and small companies who want to efficiently manage their fleet and operations digitally.
 
