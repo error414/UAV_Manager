@@ -4,13 +4,11 @@
 
 ## New — UAV Desk (web app) 🚀
 
-<div align="right">
 **UAV Desk** is the web-only successor to **UAV Manager** and includes all existing features plus new capabilities:
 
 - Direct import from an EdgeTX logs folder (no manual assignment of telemetry logs to individual flights required)
 - Personalized, filterable reports and improved reporting options
 - Seamless import of a `UAV_Manager` export via the built‑in import feature
-</div>
 
 UAV Desk is available exclusively as a web application: https://uavdesk.app
 
