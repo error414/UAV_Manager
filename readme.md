@@ -28,6 +28,10 @@ UAV Desk is available exclusively as a web application: https://uavdesk.app
 
 </div>
 
+
+## UAV Manager (Old/Deprecated)
+
+
 **UAV Manager** is a modern full-stack web application for managing drones (UAVs), flight logs, maintenance records, and user profiles. The application is designed for drone pilots, clubs, and small companies who want to efficiently manage their fleet and operations digitally.
 
 ## Features
