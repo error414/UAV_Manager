@@ -1,3 +1,26 @@
+> **New — UAV Desk (web app)** 
+>
+> **UAV Desk** is the new, web-only successor to **UAV Manager**. It provides all functionality of the original UAV Manager plus new capabilities such as:
+>
+> - Direct import from an EdgeTX logs folder (no manual assignment of telemetry logs to individual flights required)
+> - Personalized, filterable reports and improved reporting options
+> - Seamless import of a `UAV_Manager` export via the built‑in import feature
+>
+> UAV Desk is available exclusively as a web application: `https://uavdesk.app`
+>
+> **Important:** The UAV Manager project will not be actively developed further — new features and improvements will be added to UAV Desk.
+>
+> **Screenshots (UAV Desk):**
+>
+> | Flight logs (light) | Report trends | Reports |
+> | :---: | :---: | :---: |
+> | ![Flight logs light](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/2_flightlogs_light.png) | ![Report trends](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/3_report_trends.png) | ![Reports](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/3_reports.png) |
+>
+> | UAV Management (dark) | Diff | UAV files |
+> | :---: | :---: | :---: |
+> | ![UAV Management dark](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/4_UAV_Managment_dark.png) | ![Diff](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/5_diff_black.png) | ![UAV files](https://github.com/CarviFPV/flylog_edgetx/blob/main/screenshots/6_uav_files.png) |
+>
+
 # UAV Manager
 
 **UAV Manager** is a modern full-stack web application for managing drones (UAVs), flight logs, maintenance records, and user profiles. The application is designed for drone pilots, clubs, and small companies who want to efficiently manage their fleet and operations digitally.
