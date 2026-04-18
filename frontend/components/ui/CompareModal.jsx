@@ -25,29 +25,31 @@ const CompareModal = ({ show, onClose, data }) => {
               <div className="p-2 font-medium border-r">{data.file1.name}</div>
               <div className="p-2 font-medium">{data.file2.name}</div>
             </div>
-            
-            <div className="grid grid-cols-[auto_1fr_1fr]">
+
+            <div className="grid grid-cols-[auto_auto_1fr_auto_auto_1fr]">
               {data.diffLines.map((diff, index) => (
-                <React.Fragment key={index}>
-                  {/* Line number */}
-                  <div className="px-2 py-1 text-gray-500 border-r bg-gray-50 text-right">
-                    {diff.lineNumber}
-                  </div>
-                  {/* File 1 line, highlight if removed/changed */}
-                  <div className={`px-2 py-1 border-r whitespace-pre-wrap ${
-                    diff.type === 'removed' ? 'bg-red-100' :
-                    diff.type === 'changed' ? 'bg-orange-100' : ''
-                  }`}>
-                    {diff.line1 ?? ''}
-                  </div>
-                  {/* File 2 line, highlight if added/changed */}
-                  <div className={`px-2 py-1 whitespace-pre-wrap ${
-                    diff.type === 'added' ? 'bg-green-100' :
-                    diff.type === 'changed' ? 'bg-orange-100' : ''
-                  }`}>
-                    {diff.line2 ?? ''}
-                  </div>
-                </React.Fragment>
+                  <React.Fragment key={index}>
+                    <div className="px-2 py-1 text-gray-500 border-r bg-gray-50 text-right min-w-[2.5rem] select-none">
+                      {diff.lineNumber1 ?? ''}
+                    </div>
+                    <div className={`px-2 py-1 border-r whitespace-pre-wrap font-mono text-sm ${
+                        diff.type === 'removed' ? 'bg-red-100' :
+                            diff.type === 'changed' ? 'bg-orange-100' : ''
+                    }`}>
+                      {diff.line1 ?? ''}
+                    </div>
+                    <div className="border-r" />
+                    <div className="px-2 py-1 text-gray-500 border-r bg-gray-50 text-right min-w-[2.5rem] select-none">
+                      {diff.lineNumber2 ?? ''}
+                    </div>
+                    <div className={`px-2 py-1 whitespace-pre-wrap font-mono text-sm ${
+                        diff.type === 'added' ? 'bg-green-100' :
+                            diff.type === 'changed' ? 'bg-orange-100' : ''
+                    }`}>
+                      {diff.line2 ?? ''}
+                    </div>
+                    <div />
+                  </React.Fragment>
               ))}
             </div>
           </div>
