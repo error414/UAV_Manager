@@ -129,33 +129,40 @@ class ExportService:
     
     @staticmethod
     def _export_flight_logs(zip_file, user):
-        """Export flight logs as JSON and CSV. Include GPS logs."""
+        """Export flight logs as JSON and CSV. Include GPS logs and blackbox files."""
         flight_logs = FlightLog.objects.filter(user=user)
         if not flight_logs.exists():
             return
-        
+
         logs_data = FlightLogSerializer(flight_logs, many=True).data
         json_content = json.dumps(logs_data, indent=2)
         zip_file.writestr('flight_logs/flight_logs.json', json_content)
-        
+
         if flight_logs.exists():
             output = StringIO()
             writer = csv.writer(output)
             header = [
-                'flightlog_id', 'uav_id', 'drone_name', 'departure_place', 'departure_date', 
+                'flightlog_id', 'uav_id', 'drone_name', 'departure_place', 'departure_date',
                 'departure_time', 'landing_place', 'landing_time', 'flight_duration',
                 'takeoffs', 'landings', 'light_conditions', 'ops_conditions', 'pilot_type',
-                'comments'
+                'comments', 'blackbox_log'
             ]
             writer.writerow(header)
             for log in flight_logs:
                 row = [
-                    log.flightlog_id, log.uav_id, log.uav.drone_name, log.departure_place, 
-                    log.departure_date, log.departure_time, log.landing_place, 
+                    log.flightlog_id, log.uav_id, log.uav.drone_name, log.departure_place,
+                    log.departure_date, log.departure_time, log.landing_place,
                     log.landing_time, log.flight_duration, log.takeoffs, log.landings,
-                    log.light_conditions, log.ops_conditions, log.pilot_type, log.comments
+                    log.light_conditions, log.ops_conditions, log.pilot_type, log.comments,
+                    log.blackbox_log or ''
                 ]
                 writer.writerow(row)
+                # Add blackbox file to ZIP if present
+                if log.blackbox_log:
+                    blackbox_path = os.path.join(settings.MEDIA_ROOT, log.blackbox_log)
+                    if os.path.exists(blackbox_path):
+                        file_name = os.path.basename(log.blackbox_log)
+                        zip_file.write(blackbox_path, f'flight_logs/blackbox/{file_name}')
             zip_file.writestr('flight_logs/flight_logs.csv', output.getvalue())
             # Export GPS logs per flight log
             for log in flight_logs:

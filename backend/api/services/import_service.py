@@ -56,6 +56,7 @@ class ImportService:
                         'uavs_imported': 0,
                         'uav_configs_imported': 0,
                         'flight_logs_imported': 0,
+                        'blackbox_files_imported': 0,
                         'maintenance_logs_imported': 0,
                         'maintenance_reminders_imported': 0,
                         'errors': []
@@ -106,16 +107,23 @@ class ImportService:
                 if os.path.exists(flight_logs_path):
                     try:
                         with transaction.atomic():
-                            flight_log_mapping = {}  # old_id -> new_id
+                            flight_log_mapping = {}   # old_id -> new_id
+                            blackbox_mapping = {}     # new_id -> old relative path
                             imported_count = ImportService._import_flight_logs(
-                                user, flight_logs_path, uav_mapping, flight_log_mapping
+                                user, flight_logs_path, uav_mapping, flight_log_mapping, blackbox_mapping
                             )
                             result['details']['flight_logs_imported'] = imported_count
-                            
+
                             # Import GPS data for flight logs
                             gps_dir = os.path.join(temp_dir, 'flight_logs', 'gps_data')
                             if os.path.exists(gps_dir):
                                 ImportService._import_gps_data(gps_dir, flight_log_mapping)
+
+                            # Import blackbox files for flight logs
+                            blackbox_dir = os.path.join(temp_dir, 'flight_logs', 'blackbox')
+                            if os.path.exists(blackbox_dir) and blackbox_mapping:
+                                bb_count = ImportService._import_blackbox_files(blackbox_dir, blackbox_mapping)
+                                result['details']['blackbox_files_imported'] = bb_count
                     except Exception as e:
                         result['details']['errors'].append(f"Flight logs import error: {str(e)}")
                 
@@ -159,7 +167,10 @@ class ImportService:
                     
                     if result['details']['flight_logs_imported'] > 0:
                         import_parts.append(f"{result['details']['flight_logs_imported']} flight logs")
-                    
+
+                    if result['details']['blackbox_files_imported'] > 0:
+                        import_parts.append(f"{result['details']['blackbox_files_imported']} blackbox files")
+
                     if result['details']['maintenance_logs_imported'] > 0:
                         import_parts.append(f"{result['details']['maintenance_logs_imported']} maintenance logs")
                     
@@ -300,64 +311,70 @@ class ImportService:
         return imported_count
 
     @staticmethod
-    def _import_flight_logs(user, logs_path, uav_mapping, flight_log_mapping):
+    def _import_flight_logs(user, logs_path, uav_mapping, flight_log_mapping, blackbox_mapping=None):
         """Import flight logs from JSON file."""
         with open(logs_path, 'r') as f:
             logs_data = json.load(f)
-        
+
         imported_count = 0
         skipped_count = 0
         errors = []
-        
+
         for log_data in logs_data:
             try:
                 old_id = log_data.get('flightlog_id')
                 old_uav_id = log_data.get('uav_id') or (log_data['uav'].get('uav_id') if isinstance(log_data.get('uav'), dict) else log_data.get('uav'))
                 new_uav_id = ImportService._get_new_uav_id(user, old_uav_id, uav_mapping, log_data)
-                
+
                 if new_uav_id is None:
                     errors.append(f"No suitable UAV found for flight log {old_id}")
                     continue
-                
+
                 departure_date = log_data.get('departure_date')
                 departure_time = log_data.get('departure_time')
                 departure_place = log_data.get('departure_place')
-                
+
                 # Check for existing log with same UAV, date, and optionally time/place
                 existing_logs = FlightLog.objects.filter(
                     user=user,
                     uav_id=new_uav_id,
                     departure_date=departure_date
                 )
-                
+
                 if departure_time:
                     existing_logs = existing_logs.filter(departure_time=departure_time)
-                    
+
                 if departure_place:
                     existing_logs = existing_logs.filter(departure_place=departure_place)
-                
+
                 if existing_logs.exists():
                     if old_id:
                         flight_log_mapping[old_id] = existing_logs.first().flightlog_id
-                    
                     skipped_count += 1
                     continue
-                
+
+                # Save blackbox path before stripping it from the data
+                old_blackbox_log = log_data.get('blackbox_log')
+
                 ImportService._remove_conflict_fields(log_data, [
-                    'flightlog_id', 'uav', 'created_at', 'gps_logs'
+                    'flightlog_id', 'uav', 'created_at', 'gps_logs', 'blackbox_log', 'has_gps_log'
                 ])
                 log_data['uav_id'] = new_uav_id
                 log_data['user'] = user
-                
+
                 new_log = FlightLog.objects.create(**log_data)
-                
+
                 if old_id:
                     flight_log_mapping[old_id] = new_log.flightlog_id
-                
+
+                # Record blackbox mapping so the file can be copied afterwards
+                if blackbox_mapping is not None and old_blackbox_log:
+                    blackbox_mapping[new_log.flightlog_id] = old_blackbox_log
+
                 imported_count += 1
             except Exception as e:
                 errors.append(f"Error importing flight log: {str(e)}")
-        
+
         return imported_count
 
     @staticmethod
@@ -385,6 +402,44 @@ class ImportService:
                     point.pop('id', None)
                     point.pop('flight_log', None)
                     FlightGPSLog.objects.create(flight_log=flight_log, **point)
+
+    @staticmethod
+    def _import_blackbox_files(blackbox_dir, blackbox_mapping):
+        """Copy blackbox CSV files from the ZIP extract dir to media storage and link them."""
+        imported_count = 0
+
+        for new_log_id, old_relative_path in blackbox_mapping.items():
+            try:
+                file_name = os.path.basename(old_relative_path)
+                src_path = os.path.join(blackbox_dir, file_name)
+
+                if not os.path.exists(src_path):
+                    continue
+
+                flight_log = FlightLog.objects.get(flightlog_id=new_log_id)
+
+                # Build destination name using the new flight log ID
+                stem, ext = os.path.splitext(file_name)
+                # Strip a trailing -<digits> suffix from the old name so we don't double-append IDs
+                import re as _re
+                stem = _re.sub(r'-\d+$', '', stem)
+                dest_filename = f"{stem}-{new_log_id}{ext}"
+
+                dest_dir = os.path.join(settings.MEDIA_ROOT, 'blackbox')
+                os.makedirs(dest_dir, exist_ok=True)
+                dest_path = os.path.join(dest_dir, dest_filename)
+
+                import shutil as _shutil
+                _shutil.copy2(src_path, dest_path)
+
+                flight_log.blackbox_log = f"blackbox/{dest_filename}"
+                flight_log.save(update_fields=['blackbox_log'])
+
+                imported_count += 1
+            except Exception:
+                pass
+
+        return imported_count
 
     @staticmethod
     def _import_maintenance_logs(user, logs_path, uav_mapping, temp_dir):
