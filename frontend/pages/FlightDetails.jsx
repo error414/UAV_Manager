@@ -229,6 +229,7 @@ const FlightDetails = () => {
   const [gpsTrack, setGpsTrack] = useState(null);
   const [fullGpsData, setFullGpsData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isBlackboxLoading, setIsBlackboxLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [gpsStats, setGpsStats] = useState({
@@ -359,7 +360,7 @@ const FlightDetails = () => {
     if (!file) return;
 
     setAlertMessage(null);
-    setIsLoading(true);
+    setIsBlackboxLoading(true);
 
     try {
       const formData = new FormData();
@@ -383,7 +384,7 @@ const FlightDetails = () => {
     } catch (error) {
       setAlertMessage({ type: 'error', message: `Error: ${error.message || 'Failed to upload blackbox log.'}` });
     } finally {
-      setIsLoading(false);
+      setIsBlackboxLoading(false);
       event.target.value = '';
     }
   };
@@ -871,6 +872,7 @@ const FlightDetails = () => {
       </div>
 
       {alertMessage && <Alert type={alertMessage.type} message={alertMessage.message} />}
+      {isBlackboxLoading && <Loading message="Uploading blackbox data..." />}
       {isLoading && <Loading message="Processing GPS data..." />}
 
       {hasGpsTrack ? (
