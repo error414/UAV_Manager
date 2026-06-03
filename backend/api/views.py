@@ -1,4 +1,5 @@
 # backend/api/views.py
+from django.conf import settings
 from rest_framework import generics, permissions, filters, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -184,6 +185,88 @@ class FlightGPSDataUploadView(APIView):
             "detail": f"Successfully deleted {deleted_count} GPS points",
             "deleted_count": deleted_count
         }, status=status.HTTP_200_OK)
+
+# Endpoint for uploading blackbox log files
+class BlackboxUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    BLACKBOX_DECODE = '/opt/blackbox-tools/blackbox_decode'
+
+    def post(self, request, flightlog_id):
+        import os, glob, shutil, subprocess, tempfile
+
+        try:
+            flight_log = AdminService.get_object_if_owner(
+                user=request.user,
+                model_class=FlightLog,
+                object_id=flightlog_id
+            )
+        except FlightLog.DoesNotExist:
+            return Response({"detail": "Flight log not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"detail": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        original_stem = os.path.splitext(file.name)[0]
+        temp_dir = tempfile.mkdtemp()
+
+        try:
+            # 1. Save uploaded file to temp location
+            temp_input = os.path.join(temp_dir, file.name)
+            with open(temp_input, 'wb+') as dest:
+                for chunk in file.chunks():
+                    dest.write(chunk)
+
+            # 2. Decode with blackbox_decode — output lands next to the input file
+            result = subprocess.run(
+                [self.BLACKBOX_DECODE, temp_input],
+                cwd=temp_dir,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if result.returncode != 0:
+                return Response(
+                    {"detail": f"blackbox_decode failed: {result.stderr.strip()}"},
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                )
+
+            # 3. Locate the output CSV (blackbox_decode names them <stem>.NN.csv)
+            csv_files = sorted(glob.glob(os.path.join(temp_dir, '*.csv')))
+            if not csv_files:
+                return Response(
+                    {"detail": "blackbox_decode produced no CSV output"},
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                )
+
+            # 4. Delete old blackbox file if one exists
+            if flight_log.blackbox_log:
+                old_path = os.path.join(settings.MEDIA_ROOT, flight_log.blackbox_log)
+                if os.path.isfile(old_path):
+                    os.remove(old_path)
+
+            # 5. Copy the first CSV to the blackbox upload folder with the standard name
+            blackbox_dir = os.path.join(settings.MEDIA_ROOT, 'blackbox')
+            os.makedirs(blackbox_dir, exist_ok=True)
+
+            dest_filename = f"{original_stem}-{flightlog_id}.csv"
+            shutil.copy2(csv_files[0], os.path.join(blackbox_dir, dest_filename))
+
+            relative_path = f"blackbox/{dest_filename}"
+            flight_log.blackbox_log = relative_path
+            flight_log.save(update_fields=['blackbox_log'])
+
+            return Response(
+                {"detail": "Blackbox log decoded and saved", "blackbox_log": relative_path},
+                status=status.HTTP_201_CREATED,
+            )
+
+        finally:
+            # 5. Always clean up the temp directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
 
 # Flight log metadata endpoint
 class FlightLogMetaView(APIView):

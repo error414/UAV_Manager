@@ -222,6 +222,7 @@ const FlightDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
+  const blackboxFileInputRef = useRef(null);
   const API_URL = import.meta.env.VITE_API_URL;
 
   const [flight, setFlight] = useState(null);
@@ -331,6 +332,43 @@ const FlightDetails = () => {
   const handleImportGPS = () => fileInputRef.current.click();
   const handleDeleteGPS = () => setShowDeleteModal(true);
   const cancelDeleteGPS = () => setShowDeleteModal(false);
+
+  // Handle blackbox log upload
+  const handleUploadBlackbox = () => blackboxFileInputRef.current.click();
+
+  const handleBlackboxFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setAlertMessage(null);
+    setIsLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${API_URL}/api/flightlogs/${flightId}/blackbox/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      setFlight(prev => ({ ...prev, blackbox_log: data.blackbox_log }));
+      setAlertMessage({ type: 'success', message: 'Blackbox log uploaded successfully.' });
+    } catch (error) {
+      setAlertMessage({ type: 'error', message: `Error: ${error.message || 'Failed to upload blackbox log.'}` });
+    } finally {
+      setIsLoading(false);
+      event.target.value = '';
+    }
+  };
 
   // Confirm GPS track deletion
   const confirmDeleteGPS = async () => {
@@ -1031,12 +1069,26 @@ const FlightDetails = () => {
           </Button>
         )}
         
+        <Button
+          onClick={handleUploadBlackbox}
+          variant="warning"
+          disabled={isLoading}
+        >
+          {flight?.blackbox_log ? 'Replace Blackbox Log' : 'Upload Blackbox Log'}
+        </Button>
+
         <input
           ref={fileInputRef}
           type="file"
           className="hidden"
           accept=".csv"
           onChange={handleFileChange}
+        />
+        <input
+          ref={blackboxFileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleBlackboxFileChange}
         />
       </div>
     </Layout>

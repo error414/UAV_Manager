@@ -182,6 +182,7 @@ class FlightLog(models.Model):
     ops_conditions = models.CharField(max_length=255, choices=OPS_CONDITIONS, db_index=True)
     pilot_type = models.CharField(max_length=255, choices=PILOT_TYPE, db_index=True)
     comments = models.CharField(max_length=255, blank=True, null=True)
+    blackbox_log = models.CharField(max_length=500, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     
     class Meta:

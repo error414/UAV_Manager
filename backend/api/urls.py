@@ -10,7 +10,8 @@ from .views import (
     AdminUserListView, AdminUserDetailView, AdminUAVListView, AdminUAVDetailView,
     UAVImportView, FlightLogImportView, UserDataExportView, UserDataImportView,
     UAVConfigListCreateView, UAVConfigDetailView,
-    FlightLogMetaView, UAVMetaView
+    FlightLogMetaView, UAVMetaView,
+    BlackboxUploadView,
 )
 
 urlpatterns = [
@@ -27,6 +28,9 @@ urlpatterns = [
     
     # Upload or retrieve GPS and Telemetry data for a flight log
     path('flightlogs/<int:flightlog_id>/gps/', FlightGPSDataUploadView.as_view(), name='flightlog-gps'),
+
+    # Upload blackbox log file for a flight log
+    path('flightlogs/<int:flightlog_id>/blackbox/', BlackboxUploadView.as_view(), name='flightlog-blackbox'),
 
     # Returns FlightLog meta information
     path('flightlogs/meta/', FlightLogMetaView.as_view(), name='flightlog-meta'),
