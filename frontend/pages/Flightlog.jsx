@@ -344,7 +344,7 @@ const Flightlog = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        if (handleAuthError(response)) return;
+        if (await handleAuthError(response)) return;
         setError(result.error || 'Failed to import flight logs');
         setIsLoading(false);
         return;

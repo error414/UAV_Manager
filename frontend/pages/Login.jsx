@@ -48,8 +48,8 @@ const Login = () => {
         throw new Error('No access token received.');
       }
       
-      // Store token for authenticated requests
       localStorage.setItem('access_token', data.access);
+      if (data.refresh) localStorage.setItem('refresh_token', data.refresh);
       
       // Fetch user info with token
       const userResult = await fetchData('/auth/users/me/');

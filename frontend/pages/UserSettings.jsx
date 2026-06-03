@@ -177,7 +177,7 @@ const UserSettings = () => {
       });
       
       if (!response.ok) {
-        if (handleAuthError(response)) {
+        if (await handleAuthError(response)) {
           throw new Error('Authentication failed');
         }
         throw new Error(`Failed to export: ${response.status} ${response.statusText}`);

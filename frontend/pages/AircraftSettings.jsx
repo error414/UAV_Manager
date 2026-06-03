@@ -156,7 +156,7 @@ const AircraftSettings = () => {
         });
         
         if (!response.ok) {
-          if (handleAuthError(response)) return false;
+          if (await handleAuthError(response)) return false;
           throw new Error(`Failed to ${method === 'POST' ? 'add' : 'update'} maintenance log`);
         }
       } else {
@@ -223,7 +223,7 @@ const AircraftSettings = () => {
       });
       
       if (!response.ok) {
-        if (handleAuthError(response)) return;
+        if (await handleAuthError(response)) return;
         throw new Error('Failed to upload configuration file');
       }
       
