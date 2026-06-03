@@ -33,3 +33,4 @@ export { ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator } from '.
 export { default as ConfigFileTable } from './ui/ConfigFileTable';
 export { InfoRow, GridInfo, InfoSection, DataPanel, AccordionPanel, FlightInfoCard } from './ui/InfoSection';
 export { PatchColorTypeEnum } from './enum/PatchColorTypeEnum';
+export { default as BlackboxChart } from './blackbox/BlackboxChart';

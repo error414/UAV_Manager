@@ -267,6 +267,30 @@ class BlackboxUploadView(APIView):
             # 5. Always clean up the temp directory
             shutil.rmtree(temp_dir, ignore_errors=True)
 
+    def delete(self, request, flightlog_id):
+        import os
+
+        try:
+            flight_log = AdminService.get_object_if_owner(
+                user=request.user,
+                model_class=FlightLog,
+                object_id=flightlog_id
+            )
+        except FlightLog.DoesNotExist:
+            return Response({"detail": "Flight log not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if not flight_log.blackbox_log:
+            return Response({"detail": "No blackbox log attached"}, status=status.HTTP_404_NOT_FOUND)
+
+        file_path = os.path.join(settings.MEDIA_ROOT, flight_log.blackbox_log)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
+        flight_log.blackbox_log = None
+        flight_log.save(update_fields=['blackbox_log'])
+
+        return Response({"detail": "Blackbox log deleted"}, status=status.HTTP_200_OK)
+
 
 # Flight log metadata endpoint
 class FlightLogMetaView(APIView):

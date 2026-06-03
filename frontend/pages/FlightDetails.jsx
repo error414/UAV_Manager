@@ -4,9 +4,9 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
-  PatchColorTypeEnum, 
+  PatchColorTypeEnum,
   Layout, Loading, ConfirmModal, Button, Alert, FlightInfoCard, AnimatedMarker, GpsAnimationControls, AirspeedIndicator, AttitudeIndicator, AltitudeIndicator, ArrowButton, VerticalSpeedIndicator, CompassIndicator,
-  TurnCoordinator, ThrottleYawStick, ElevatorAileronStick, SignalStrengthIndicator, ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator, DataPanel, AccordionPanel
+  TurnCoordinator, ThrottleYawStick, ElevatorAileronStick, SignalStrengthIndicator, ReceiverBatteryIndicator, CapacityIndicator, CurrentIndicator, DataPanel, AccordionPanel, BlackboxChart
 } from '../components';
 import { useAuth, useApi, useResponsiveSize, useGpsAnimation, useAccordionState, addSearchParam } from '../hooks';
 import { calculateColorGreenToRed, takeoffIcon, landingIcon, getFlightCoordinates, getMapBounds, parseGPSFile, calculateGpsStatistics, createSyntheticFlightPath, parseTelemetryData } from '../utils';
@@ -333,8 +333,26 @@ const FlightDetails = () => {
   const handleDeleteGPS = () => setShowDeleteModal(true);
   const cancelDeleteGPS = () => setShowDeleteModal(false);
 
-  // Handle blackbox log upload
+  // Handle blackbox log upload / delete
   const handleUploadBlackbox = () => blackboxFileInputRef.current.click();
+
+  const handleDeleteBlackbox = async () => {
+    setAlertMessage(null);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/flightlogs/${flightId}/blackbox/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      });
+      if (!response.ok) throw new Error('Delete failed');
+      setFlight(prev => ({ ...prev, blackbox_log: null }));
+      setAlertMessage({ type: 'success', message: 'Blackbox log deleted.' });
+    } catch (error) {
+      setAlertMessage({ type: 'error', message: `Error: ${error.message || 'Failed to delete blackbox log.'}` });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleBlackboxFileChange = async (event) => {
     const file = event.target.files[0];
@@ -1021,6 +1039,12 @@ const FlightDetails = () => {
         </div>
       )}
 
+      {flight?.blackbox_log && (
+        <div className="mt-6">
+          <BlackboxChart blackboxLog={flight.blackbox_log} apiUrl={API_URL} />
+        </div>
+      )}
+
       <div className="mt-6 flex justify-center gap-4 flex-wrap">
         <Button 
           onClick={() => {
@@ -1069,13 +1093,15 @@ const FlightDetails = () => {
           </Button>
         )}
         
-        <Button
-          onClick={handleUploadBlackbox}
-          variant="warning"
-          disabled={isLoading}
-        >
-          {flight?.blackbox_log ? 'Replace Blackbox Log' : 'Upload Blackbox Log'}
-        </Button>
+        {flight?.blackbox_log ? (
+          <Button onClick={handleDeleteBlackbox} variant="danger" disabled={isLoading}>
+            Delete Blackbox Log
+          </Button>
+        ) : (
+          <Button onClick={handleUploadBlackbox} variant="warning" disabled={isLoading}>
+            Upload Blackbox Log
+          </Button>
+        )}
 
         <input
           ref={fileInputRef}
