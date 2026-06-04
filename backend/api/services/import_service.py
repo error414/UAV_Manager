@@ -124,6 +124,11 @@ class ImportService:
                             if os.path.exists(blackbox_dir) and blackbox_mapping:
                                 bb_count = ImportService._import_blackbox_files(blackbox_dir, blackbox_mapping)
                                 result['details']['blackbox_files_imported'] = bb_count
+
+                            # Import original blackbox files
+                            blackbox_original_dir = os.path.join(temp_dir, 'flight_logs', 'blackbox-original')
+                            if os.path.exists(blackbox_original_dir) and blackbox_mapping:
+                                ImportService._import_blackbox_original_files(blackbox_original_dir, blackbox_mapping)
                     except Exception as e:
                         result['details']['errors'].append(f"Flight logs import error: {str(e)}")
                 
@@ -440,6 +445,33 @@ class ImportService:
                 pass
 
         return imported_count
+
+    @staticmethod
+    def _import_blackbox_original_files(blackbox_original_dir, blackbox_mapping):
+        """Copy original blackbox files from the ZIP extract dir to upload/blackbox-original/."""
+        import re as _re
+        import shutil as _shutil
+
+        for new_log_id, old_relative_path in blackbox_mapping.items():
+            try:
+                old_stem = os.path.splitext(os.path.basename(old_relative_path))[0]
+                old_stem = _re.sub(r'-\d+$', '', old_stem)
+                src_filename = f"{old_stem}.txt"
+                src_path = os.path.join(blackbox_original_dir, src_filename)
+
+                if not os.path.exists(src_path):
+                    # Also try with old ID suffix
+                    old_stem_with_id = os.path.splitext(os.path.basename(old_relative_path))[0]
+                    src_path = os.path.join(blackbox_original_dir, f"{old_stem_with_id}.txt")
+                    if not os.path.exists(src_path):
+                        continue
+
+                dest_filename = f"{old_stem}-{new_log_id}.txt"
+                dest_dir = settings.BLACKBOX_ORIGINAL_ROOT
+                os.makedirs(dest_dir, exist_ok=True)
+                _shutil.copy2(src_path, os.path.join(dest_dir, dest_filename))
+            except Exception:
+                pass
 
     @staticmethod
     def _import_maintenance_logs(user, logs_path, uav_mapping, temp_dir):

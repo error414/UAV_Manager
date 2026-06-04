@@ -12,6 +12,7 @@ from .views import (
     UAVConfigListCreateView, UAVConfigDetailView,
     FlightLogMetaView, UAVMetaView,
     BlackboxUploadView,
+    BlackboxOriginalDownloadView,
 )
 
 urlpatterns = [
@@ -31,6 +32,9 @@ urlpatterns = [
 
     # Upload blackbox log file for a flight log
     path('flightlogs/<int:flightlog_id>/blackbox/', BlackboxUploadView.as_view(), name='flightlog-blackbox'),
+
+    # Download original blackbox file (forces binary download)
+    path('blackbox-original/<str:filename>', BlackboxOriginalDownloadView.as_view(), name='blackbox-original-download'),
 
     # Returns FlightLog meta information
     path('flightlogs/meta/', FlightLogMetaView.as_view(), name='flightlog-meta'),

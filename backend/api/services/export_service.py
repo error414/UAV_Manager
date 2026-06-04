@@ -163,6 +163,11 @@ class ExportService:
                     if os.path.exists(blackbox_path):
                         file_name = os.path.basename(log.blackbox_log)
                         zip_file.write(blackbox_path, f'flight_logs/blackbox/{file_name}')
+                    # Add original blackbox file if present
+                    original_filename = os.path.splitext(os.path.basename(log.blackbox_log))[0] + '.txt'
+                    original_path = os.path.join(settings.BLACKBOX_ORIGINAL_ROOT, original_filename)
+                    if os.path.exists(original_path):
+                        zip_file.write(original_path, f'flight_logs/blackbox-original/{original_filename}')
             zip_file.writestr('flight_logs/flight_logs.csv', output.getvalue())
             # Export GPS logs per flight log
             for log in flight_logs:

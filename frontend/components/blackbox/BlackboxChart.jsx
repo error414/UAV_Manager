@@ -20,6 +20,21 @@ const isNumericColumn = (rows, col) => {
   });
 };
 
+const getOriginalFilename = blackboxLog =>
+  blackboxLog.split('/').pop().replace(/\.csv$/, '.txt');
+
+const downloadWithAuth = async (url, filename) => {
+  const token = localStorage.getItem('access_token');
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return;
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
 const BlackboxChart = ({ blackboxLog, apiUrl }) => {
   const [open, setOpen] = useState(false);
   const [chartData, setChartData] = useState(null);
@@ -149,6 +164,24 @@ const BlackboxChart = ({ blackboxLog, apiUrl }) => {
         </button>
         <h3 className="text-lg font-medium text-gray-800">Blackbox Chart</h3>
         <div className="flex-1" />
+        <a
+          href={`${apiUrl}/media/${blackboxLog}`}
+          download
+          className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 mr-2"
+          title="Download decoded CSV"
+        >
+          Download CSV
+        </a>
+        <button
+          onClick={() => {
+            const filename = getOriginalFilename(blackboxLog);
+            downloadWithAuth(`${apiUrl}/api/blackbox-original/${filename}`, filename);
+          }}
+          className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700"
+          title="Download original blackbox file"
+        >
+          Download Original
+        </button>
       </div>
 
       {open && (

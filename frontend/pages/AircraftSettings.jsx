@@ -462,39 +462,6 @@ const AircraftSettings = () => {
             <InfoRow label="Total Landings (LDG):" value={na(aircraft.total_landings)} />
           </InfoSection>
           
-          <InfoSection title="Maintenance Information" className="bg-white shadow rounded-lg p-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="font-semibold text-gray-700 block">Last Props Maintenance:</span>
-                <span className="text-gray-900">{formatDate(aircraft.props_maint_date)}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-gray-700 block">Next Props Maintenance:</span>
-                <span className="text-gray-900">{formatDate(aircraft.next_props_maint_date)}</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="font-semibold text-gray-700 block">Last Motor Maintenance:</span>
-                <span className="text-gray-900">{formatDate(aircraft.motor_maint_date)}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-gray-700 block">Next Motor Maintenance:</span>
-                <span className="text-gray-900">{formatDate(aircraft.next_motor_maint_date)}</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="font-semibold text-gray-700 block">Last Frame Maintenance:</span>
-                <span className="text-gray-900">{formatDate(aircraft.frame_maint_date)}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-gray-700 block">Next Frame Maintenance:</span>
-                <span className="text-gray-900">{formatDate(aircraft.next_frame_maint_date)}</span>
-              </div>
-            </div>
-          </InfoSection>
-          
           <div className="bg-white shadow rounded-lg p-6">
             <ConfigFileTable
               tableType="config"
@@ -512,27 +479,6 @@ const AircraftSettings = () => {
             />
           </div>
           
-          <div className="bg-white shadow rounded-lg p-6">
-            <ConfigFileTable
-              tableType="logs"
-              logs={aircraft.maintenance_logs || []}
-              columns={maintenanceLogTableColumns}
-              editingLogId={editingLogId}
-              editingLog={editingLog}
-              formErrors={editFormErrors}
-              onEditLog={handleEditLog}
-              onSaveEdit={handleSaveEdit}
-              onCancelEdit={handleCancelEdit}
-              onDeleteLog={handleDeleteLog}
-              onEditChange={handleEditLogChange}
-              newLog={newLog}
-              newLogErrors={formErrors}
-              onNewLogChange={handleLogChange}
-              onAddLog={handleAddLog}
-              fileInputRef={fileInputRef}
-              getFilenameFromUrl={getFilenameFromUrl}
-            />
-          </div>
         </div>
       </div>
       
@@ -556,15 +502,6 @@ const AircraftSettings = () => {
         cancelText="Cancel"
       />
       
-      <ConfirmModal
-        open={showDeleteModal}
-        title="Confirm Delete Log"
-        message="Are you sure you want to delete this maintenance log?"
-        onConfirm={confirmDeleteLog}
-        onCancel={() => setShowDeleteModal(false)}
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
     </Layout>
   );
 };

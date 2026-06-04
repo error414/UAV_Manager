@@ -126,9 +126,21 @@ class FlightLogListCreateView(generics.ListCreateAPIView):
 class FlightLogDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = FlightLogWithGPSSerializer  # Includes GPS logs
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         return FlightLog.objects.filter(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        import os
+        if instance.blackbox_log:
+            csv_path = os.path.join(settings.MEDIA_ROOT, instance.blackbox_log)
+            if os.path.isfile(csv_path):
+                os.remove(csv_path)
+            original_filename = os.path.splitext(os.path.basename(instance.blackbox_log))[0] + '.txt'
+            original_path = os.path.join(settings.BLACKBOX_ORIGINAL_ROOT, original_filename)
+            if os.path.isfile(original_path):
+                os.remove(original_path)
+        instance.delete()
 
 # Endpoint for uploading and managing GPS data
 class FlightGPSDataUploadView(APIView):
@@ -254,6 +266,12 @@ class BlackboxUploadView(APIView):
             dest_filename = f"{original_stem}-{flightlog_id}.csv"
             shutil.copy2(csv_files[0], os.path.join(blackbox_dir, dest_filename))
 
+            # 6. Save original uploaded file to upload/blackbox-original/
+            original_dir = settings.BLACKBOX_ORIGINAL_ROOT
+            os.makedirs(original_dir, exist_ok=True)
+            original_dest_filename = f"{original_stem}-{flightlog_id}.txt"
+            shutil.copy2(temp_input, os.path.join(original_dir, original_dest_filename))
+
             relative_path = f"blackbox/{dest_filename}"
             flight_log.blackbox_log = relative_path
             flight_log.save(update_fields=['blackbox_log'])
@@ -264,7 +282,7 @@ class BlackboxUploadView(APIView):
             )
 
         finally:
-            # 5. Always clean up the temp directory
+            # Always clean up the temp directory
             shutil.rmtree(temp_dir, ignore_errors=True)
 
     def delete(self, request, flightlog_id):
@@ -286,10 +304,33 @@ class BlackboxUploadView(APIView):
         if os.path.isfile(file_path):
             os.remove(file_path)
 
+        original_filename = os.path.splitext(os.path.basename(flight_log.blackbox_log))[0] + '.txt'
+        original_path = os.path.join(settings.BLACKBOX_ORIGINAL_ROOT, original_filename)
+        if os.path.isfile(original_path):
+            os.remove(original_path)
+
         flight_log.blackbox_log = None
         flight_log.save(update_fields=['blackbox_log'])
 
         return Response({"detail": "Blackbox log deleted"}, status=status.HTTP_200_OK)
+
+
+class BlackboxOriginalDownloadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, filename):
+        import os
+        from django.http import FileResponse
+
+        safe_name = os.path.basename(filename)
+        file_path = os.path.join(settings.BLACKBOX_ORIGINAL_ROOT, safe_name)
+
+        if not os.path.isfile(file_path):
+            return Response({"detail": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        response = FileResponse(open(file_path, 'rb'), content_type='application/octet-stream')
+        response['Content-Disposition'] = f'attachment; filename="{safe_name}"'
+        return response
 
 
 # Flight log metadata endpoint
