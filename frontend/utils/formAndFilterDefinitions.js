@@ -305,10 +305,32 @@ export const getFlightFormFields = (availableUAVs = []) => [
     label: 'UAV', 
     type: 'select', 
     placeholder: 'Select UAV',
-    options: Array.isArray(availableUAVs) ? availableUAVs.map(uav => ({ 
-      value: uav.uav_id, 
-      label: uav.drone_name 
+    options: Array.isArray(availableUAVs) ? availableUAVs.map(uav => ({
+      value: uav.uav_id,
+      label: uav.drone_name
     })) : []
+  },
+  {
+    name: 'has_gps_log',
+    label: 'GPS',
+    type: 'select',
+    placeholder: 'GPS',
+    noInput: true,
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    name: 'has_blackbox',
+    label: 'Blackbox',
+    type: 'select',
+    placeholder: 'Blackbox',
+    noInput: true,
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
   },
   { name: 'comments', label: 'Comments', type: 'text', placeholder: 'Comments' }
 ];

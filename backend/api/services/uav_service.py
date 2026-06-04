@@ -1,5 +1,5 @@
 import csv
-from django.db.models import Exists, Sum, Count, Value, IntegerField, OuterRef
+from django.db.models import Exists, Sum, Count, Value, IntegerField, OuterRef, Q
 from django.db.models.functions import Coalesce
 from ..models import UAV, FlightLog, MaintenanceReminder, FlightGPSLog
 
@@ -235,6 +235,18 @@ class FlightLogService:
             if uav_id:
                 queryset = queryset.filter(uav_id=uav_id)
             
+            # GPS log presence filter (based on the has_gps_log annotation)
+            has_gps_log = query_params.get('has_gps_log')
+            if has_gps_log in ('true', 'false'):
+                queryset = queryset.filter(has_gps_log=(has_gps_log == 'true'))
+
+            # Blackbox log presence filter
+            has_blackbox = query_params.get('has_blackbox')
+            if has_blackbox == 'true':
+                queryset = queryset.exclude(blackbox_log__isnull=True).exclude(blackbox_log='')
+            elif has_blackbox == 'false':
+                queryset = queryset.filter(Q(blackbox_log__isnull=True) | Q(blackbox_log=''))
+
             # Date range filters - already implemented
             date_from = query_params.get('date_from')
             if date_from:

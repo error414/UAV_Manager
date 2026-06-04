@@ -8,7 +8,12 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
   const fieldName = fieldConfig.name || fieldConfig.accessor;
   const value = data ? data[fieldName] || '' : '';
   const isEditing = 'accessor' in fieldConfig;
-  
+
+  // Fields flagged as non-editable (e.g. GPS / Blackbox indicators) have no input
+  if (fieldConfig.noInput || fieldConfig.editable === false) {
+    return null;
+  }
+
   if (fieldName === 'uav') {
     // UAV select with dynamic options
     const uavOptions = Array.isArray(availableOptions?.availableUAVs) 
@@ -190,7 +195,13 @@ const ResponsiveTable = ({
             {columns.map((col) => (
               <div key={col.accessor} className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700">{col.header}</label>
-                <FormField fieldConfig={col} data={editingData} onChange={onEditChange} availableOptions={availableOptions} />
+                {col.editable === false ? (
+                  <span className="px-2 py-1">
+                    {col.render ? col.render(editingData?.[col.accessor], editingData) : (editingData?.[col.accessor] ?? '')}
+                  </span>
+                ) : (
+                  <FormField fieldConfig={col} data={editingData} onChange={onEditChange} availableOptions={availableOptions} />
+                )}
               </div>
             ))}
             <EditingActions 
@@ -280,7 +291,7 @@ const ResponsiveTable = ({
             <h3 className="font-medium text-lg mb-2">Add New</h3>
             <div className="space-y-2">
               {/* Render add fields */}
-              {addFields.map((field) => (
+              {addFields.filter((field) => !field.noInput).map((field) => (
                 <div key={field.name} className="flex flex-col">
                   <label className="text-sm font-medium text-gray-700">{field.label}</label>
                   <FormField fieldConfig={field} data={newItem} onChange={onNewItemChange} availableOptions={availableOptions} />
@@ -338,15 +349,21 @@ const ResponsiveTable = ({
                       <>
                         {/* Edit mode: show form fields */}
                         {columns.map((col) => (
-                          <td key={col.accessor} 
-                              className={`py-1 px-2 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`} 
+                          <td key={col.accessor}
+                              className={`py-1 px-2 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`}
                               onClick={(e) => e.stopPropagation()}>
-                            <FormField 
-                              fieldConfig={col} 
-                              data={editingData} 
-                              onChange={onEditChange} 
-                              availableOptions={availableOptions} 
-                            />
+                            {col.editable === false ? (
+                              <div className="truncate">
+                                {col.render ? col.render(editingData?.[col.accessor], editingData) : (editingData?.[col.accessor] ?? '')}
+                              </div>
+                            ) : (
+                              <FormField
+                                fieldConfig={col}
+                                data={editingData}
+                                onChange={onEditChange}
+                                availableOptions={availableOptions}
+                              />
+                            )}
                           </td>
                         ))}
                         <td className="py-1 px-2 text-right w-[150px]" onClick={(e) => e.stopPropagation()}>

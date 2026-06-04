@@ -69,7 +69,19 @@ export const flightLogTableColumns = [
         return `UAV #${value}`;
       }
       return '';
-    } 
+    }
+  },
+  {
+    header: 'GPS',
+    accessor: 'has_gps_log',
+    editable: false,
+    render: (value) => value ? '✓' : ''
+  },
+  {
+    header: 'Blackbox',
+    accessor: 'blackbox_log',
+    editable: false,
+    render: (value) => value ? '✓' : ''
   },
   { header: 'Comments', accessor: 'comments' }
 ];
