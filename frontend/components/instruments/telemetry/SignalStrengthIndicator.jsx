@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
+import useIsDarkMode from '../../../hooks/useIsDarkMode';
 
 /**
  * Displays receiver and transmitter signal quality as bar indicators.
@@ -19,6 +20,7 @@ const SignalStrengthIndicator = ({
 }) => {
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const isDark = useIsDarkMode();
   
   // Update container size on mount and window resize
   useEffect(() => {
@@ -71,21 +73,23 @@ const SignalStrengthIndicator = ({
   const barMaxHeight = effectiveSize * 0.75;
   const barMinHeight = effectiveSize * 0.15;
 
-  // Get bar color based on index and active bars
-  const getBarColor = (barIndex, activeBars) => {
-    if (barIndex >= activeBars) return '#d1d5db';
-    
+  // Get bar color for an active bar based on overall signal strength
+  const getBarColor = (activeBars) => {
     const signalStrength = activeBars / bars;
-    
+
     if (signalStrength <= 0.33) return '#ef4444';
     if (signalStrength <= 0.66) return '#eab308';
     return '#22c55e';
   };
 
-  // Render SVG bars for a signal
+  // Empty (inactive) bar color, adapted for dark mode.
+  const emptyBarColor = isDark ? '#4b5563' : '#d1d5db';
+
+  // Render SVG bars for a signal. Active bars keep their status color.
   const renderBars = (activeBars) =>
     Array.from({ length: bars }).map((_, i) => {
       const height = barMinHeight + ((barMaxHeight - barMinHeight) * (i + 1) / bars);
+      const isActive = i < activeBars;
       return (
         <rect
           key={i}
@@ -94,7 +98,7 @@ const SignalStrengthIndicator = ({
           width={barWidth}
           height={height}
           rx={barWidth * 0.3}
-          fill={getBarColor(i, activeBars)}
+          fill={isActive ? getBarColor(activeBars) : emptyBarColor}
         />
       );
     });
@@ -112,21 +116,23 @@ const SignalStrengthIndicator = ({
     gap: direction === 'vertical' ? '2px' : '4px'
   };
 
-  // Styles for each indicator box
+  // Styles for each indicator box, adapted for dark mode (inline so they don't
+  // depend on Tailwind class ordering for this SVG-based widget).
   const boxStyle = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    border: '1px solid #e5e7eb',
+    border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
     borderRadius: '4px',
     padding: '2px',
-    backgroundColor: 'white'
+    backgroundColor: isDark ? '#374151' : '#ffffff'
   };
 
   const textStyle = {
     fontSize: Math.max(8, effectiveSize / 8),
     marginTop: '1px',
-    lineHeight: '1'
+    lineHeight: '1',
+    color: isDark ? '#f3f4f6' : '#111827'
   };
 
   return (

@@ -19,7 +19,7 @@ const FormInput = ({
         {label && (
           <label
             htmlFor={id}
-            className={`block text-sm font-medium text-black ${labelClassName}`} 
+            className={`block text-sm font-medium text-black dark:text-gray-100 ${labelClassName}`} 
           >
             {label}
           </label>
@@ -30,7 +30,7 @@ const FormInput = ({
           id={id || name}
           value={value}
           onChange={onChange}
-          className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500"
           required={required}
           placeholder={placeholder}
           min={min}
@@ -45,7 +45,7 @@ const FormInput = ({
       {label && (
         <label
           htmlFor={id}
-          className={`block text-sm font-medium text-black ${labelClassName}`}
+          className={`block text-sm font-medium text-black dark:text-gray-100 ${labelClassName}`}
         >
           {label}
         </label>
@@ -57,7 +57,7 @@ const FormInput = ({
           value={value}
           onChange={onChange}
           required={required}
-          className="w-full px-3 py-2 border border-gray-300 rounded appearance-none bg-white text-gray-900 focus:outline-none focus:border-blue-500 pr-8"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded appearance-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500 pr-8"
         >
           {options.map(option => (
             <option key={option.value} value={option.value}>
@@ -65,7 +65,7 @@ const FormInput = ({
             </option>
           ))}
         </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>

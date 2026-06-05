@@ -565,7 +565,7 @@ const Flightlog = () => {
                     mobileFiltersVisible={mobileFiltersVisible}
                     mobileAddNewVisible={mobileAddNewVisible}
                     toggleMobileAddNew={toggleMobileAddNew}
-                    rowClassName={(row) => !row.has_gps_log ? 'border-l-[3px] border-red-200' : ''}
+                    rowClassName={(row) => !row.has_gps_log ? 'border-l-[3px] border-red-200 dark:border-red-800' : ''}
                 />
               </div>
 
@@ -584,7 +584,7 @@ const Flightlog = () => {
                 </Button>
               </div>
 
-              <div className="flex-shrink-0 border-t border-gray-200 bg-white mt-0 mb-0">
+              <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 mt-0 mb-0">
                 <div className="xl:hidden py-1">
                   <div className="flex justify-center mb-2">
                     <Pagination

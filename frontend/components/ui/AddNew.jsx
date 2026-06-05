@@ -12,7 +12,7 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
                 name={field.name}
                 value={formValues[field.name]}
                 onChange={onChange}
-                className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
+                className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring focus:ring-blue-100"
               >
                 <option value="">{field.placeholder || "Select"}</option>
                 {field.options &&
@@ -29,7 +29,7 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
                 value={formValues[field.name]}
                 onChange={onChange}
                 placeholder={field.placeholder || ""}
-                className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
+                className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring focus:ring-blue-100"
                 step={field.step}
                 min={field.min}
               />
@@ -47,12 +47,12 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
 
   // Mobile form layout
   return (
-    <div className="xl:hidden p-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
-      <h3 className="font-medium text-gray-700 mb-3">Add New Item</h3>
+    <div className="xl:hidden p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Add New Item</h3>
       <div className="space-y-3">
         {fields.map(field => (
           <div key={field.name} className="flex flex-col space-y-1">
-            <label className="text-xs font-medium text-gray-700">
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               {field.label} {field.required && "*"}
             </label>
             {field.type === "select" ? (
@@ -60,7 +60,7 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
                 name={field.name}
                 value={formValues[field.name]}
                 onChange={onChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring focus:ring-blue-100"
               >
                 <option value="">{field.placeholder || "Select"}</option>
                 {field.options &&
@@ -77,7 +77,7 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
                 value={formValues[field.name]}
                 onChange={onChange}
                 placeholder={field.placeholder || ""}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring focus:ring-blue-100"
                 step={field.step}
                 min={field.min}
               />
@@ -87,7 +87,7 @@ const AddNew = ({ fields, formValues, onChange, onSubmit, submitLabel = "Add", a
         <Button onClick={onSubmit} className="bg-green-600 hover:bg-green-700 mt-2">
           {submitLabel}
         </Button>
-        <p className="text-xs text-gray-500 mt-1">* Required fields</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">* Required fields</p>
       </div>
     </div>
   );

@@ -29,9 +29,9 @@ const Pagination = ({
   onPageChange,
   siblingsCount = 1,
   className = "flex justify-center items-center mt-4 gap-2",
-  buttonClassName = "px-3 py-1 bg-gray-200 rounded disabled:opacity-50",
+  buttonClassName = "px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded disabled:opacity-50",
   activeClassName = "bg-blue-500 text-white",
-  inactiveClassName = "bg-gray-200",
+  inactiveClassName = "bg-gray-200 dark:bg-gray-700",
   pageButtonClassName = "w-8 h-8 flex items-center justify-center rounded"
 }) => {
   if (totalPages <= 1) return null;

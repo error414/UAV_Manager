@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout, Button, Alert, FormInput, Loading } from '../components';
 import { CountryDropdown } from 'react-country-region-selector';
-import { useAuth, useApi } from '../hooks';
+import { useAuth, useApi, useTheme } from '../hooks';
 import { getAllUserFormFields, validateForm, useFieldValidation, processBackendErrors } from '../utils';
 
 const UserSettings = () => {
@@ -38,6 +38,7 @@ const UserSettings = () => {
 
   const { checkAuthAndGetUser, getAuthHeaders, handleAuthError } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
+  const { isDark, toggleTheme } = useTheme();
 
   useEffect(() => {
     // Check authentication and fetch user data on mount
@@ -404,14 +405,14 @@ const UserSettings = () => {
             id={reminderName}
             checked={reminderChecked}
             onChange={onReminderChange}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
             disabled={!isDateValid}
           />
-          <label htmlFor={reminderName} className={`ml-2 text-sm text-gray-700 ${!isDateValid ? 'text-gray-400' : ''}`}>
+          <label htmlFor={reminderName} className={`ml-2 text-sm text-gray-700 dark:text-gray-300 ${!isDateValid ? 'text-gray-400 dark:text-gray-500' : ''}`}>
             Send me a reminder before expiry
           </label>
           {!isDateValid && (
-            <span className="ml-2 text-xs text-gray-400">(Set a future date to enable)</span>
+            <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">(Set a future date to enable)</span>
           )}
         </div>
       </div>
@@ -424,11 +425,52 @@ const UserSettings = () => {
       {success && <Alert type="success" message={success} />}
 
       <div className="mb-6">
-        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <h3 className="text-lg font-medium text-gray-900">Data Management</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Appearance</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Switch between light and dark mode. This preference is stored only in a cookie on this device.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isDark}
+              onClick={toggleTheme}
+              className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
+                isDark ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+            >
+              <span className="sr-only">Toggle dark mode</span>
+              <span
+                className={`inline-flex h-5 w-5 transform items-center justify-center rounded-full bg-white shadow transition-transform ${
+                  isDark ? 'translate-x-8' : 'translate-x-1'
+                }`}
+              >
+                {isDark ? (
+                  // Moon icon
+                  <svg className="h-3 w-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                  </svg>
+                ) : (
+                  // Sun icon
+                  <svg className="h-3 w-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="mb-4 md:mb-0">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Data Management</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Export or import your drone data including UAVs, flight logs, and maintenance records.
               </p>
             </div>
@@ -627,7 +669,7 @@ const UserSettings = () => {
                 value={formData.country}
                 onChange={selectCountry}
                 defaultOptionLabel=" "
-                className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
@@ -658,7 +700,7 @@ const UserSettings = () => {
             />
           </div>
           
-          <h3 className="text-lg font-medium pt-2 text-black">License Category</h3>
+          <h3 className="text-lg font-medium pt-2 text-black dark:text-gray-100">License Category</h3>
           
           <LicenseField 
             label="A1 / A3"
@@ -691,10 +733,10 @@ const UserSettings = () => {
           />
           
           <div className="mt-4 border-t pt-4">
-            <h3 className="text-lg font-medium text-black">Notification Settings</h3>
+            <h3 className="text-lg font-medium text-black dark:text-gray-100">Notification Settings</h3>
             
             <div className="mt-4">
-              <label htmlFor="reminder_months_before" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="reminder_months_before" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Send reminders before expiry (months):
               </label>
               <select
@@ -702,7 +744,7 @@ const UserSettings = () => {
                 name="reminder_months_before"
                 value={userSettings.reminder_months_before}
                 onChange={handleSettingsChange}
-                className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500"
               >
                 <option value="1">1 month</option>
                 <option value="2">2 months</option>

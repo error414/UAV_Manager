@@ -1,9 +1,45 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode: `dark:` variants apply when <html> (or any
+   ancestor) has the `dark` class. Tailwind v4 defaults to prefers-color-scheme,
+   so this custom variant is required for the cookie-driven toggle. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
     html {
       font-family: "font-sans",;
       font-size: 16px;
       font-weight: 500;
     }
+
+    /* Default (light) page surface and dark-mode overrides. The app shell has
+       no explicit background, so the body provides the page backdrop. */
+    body {
+      background-color: #ffffff;
+      color: #111827; /* gray-900 */
+    }
+
+    .dark body {
+      background-color: #111827; /* gray-900 */
+      color: #f3f4f6; /* gray-100 */
+    }
+
+    /* Make native form controls (date pickers, selects, scrollbars) render
+       with dark styling when in dark mode. */
+    .dark {
+      color-scheme: dark;
+    }
   }
+
+/* Native form controls in dark mode: give selects, text inputs and textareas a
+   dark, readable surface even when no per-element background class is set
+   (e.g. the filter/animation selects in Flight Log and Flight Details). Left
+   unlayered so it reliably wins over Tailwind utility layers. Excludes toggle
+   controls so checkboxes/radios/ranges keep their native rendering. */
+.dark select,
+.dark select option,
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.dark textarea {
+  background-color: #374151; /* gray-700 */
+  color: #f3f4f6; /* gray-100 */
+}

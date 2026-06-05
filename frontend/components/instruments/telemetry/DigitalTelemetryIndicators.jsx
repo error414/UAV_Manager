@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 // Individual indicators (unchanged)
 export const ReceiverBatteryIndicator = ({ value = 0 }) => (
   <div className="flex flex-col items-center">
-    <span className="text-xs text-gray-500">RX Batt</span>
+    <span className="text-xs text-gray-500 dark:text-gray-400">RX Batt</span>
     <div className="text-lg font-mono font-bold text-blue-700">
       {value?.toFixed(2)} V
     </div>
@@ -16,7 +16,7 @@ ReceiverBatteryIndicator.propTypes = {
 
 export const CapacityIndicator = ({ value = 0 }) => (
   <div className="flex flex-col items-center">
-    <span className="text-xs text-gray-500">Capacity</span>
+    <span className="text-xs text-gray-500 dark:text-gray-400">Capacity</span>
     <div className="text-lg font-mono font-bold text-green-700">
       {value?.toFixed(0)} mAh
     </div>
@@ -29,7 +29,7 @@ CapacityIndicator.propTypes = {
 
 export const CurrentIndicator = ({ value = 0 }) => (
   <div className="flex flex-col items-center">
-    <span className="text-xs text-gray-500">Current</span>
+    <span className="text-xs text-gray-500 dark:text-gray-400">Current</span>
     <div className="text-lg font-mono font-bold text-red-700">
       {value?.toFixed(1)} A
     </div>
@@ -46,8 +46,8 @@ export const DigitalTelemetryIndicatorsGroup = ({
   capacity,
   current
 }) => (
-  <div className="flex flex-col items-center p-2 border border-gray-300 rounded">
-    <span className="font-semibold text-gray-700 mb-2">Telemetry</span>
+  <div className="flex flex-col items-center p-2 border border-gray-300 dark:border-gray-600 rounded">
+    <span className="font-semibold text-gray-700 dark:text-gray-300 mb-2">Telemetry</span>
     <ReceiverBatteryIndicator value={receiverBattery} />
     <CapacityIndicator value={capacity} />
     <CurrentIndicator value={current} />

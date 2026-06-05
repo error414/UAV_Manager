@@ -455,14 +455,14 @@ const AircraftSettings = () => {
         </div>
         
         <div className="space-y-6">
-          <InfoSection title="Statistics" className="bg-white shadow rounded-lg p-6">
+          <InfoSection title="Statistics" className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <InfoRow label="Total Flights:" value={na(aircraft.total_flights)} />
             <InfoRow label="Total Flight Time:" value={formatFlightHours(aircraft.total_flight_time)} />
             <InfoRow label="Total Takeoffs (TO):" value={na(aircraft.total_takeoffs)} />
             <InfoRow label="Total Landings (LDG):" value={na(aircraft.total_landings)} />
           </InfoSection>
           
-          <div className="bg-white shadow rounded-lg p-6">
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <ConfigFileTable
               tableType="config"
               configFiles={configFiles}

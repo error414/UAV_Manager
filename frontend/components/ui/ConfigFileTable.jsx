@@ -46,7 +46,7 @@ const ConfigFileTable = ({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`w-full px-2 py-1 border rounded ${error ? 'border-red-500' : 'border-gray-300'}`}
+        className={`w-full px-2 py-1 border rounded ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
         required
         {...rest}
       />
@@ -59,15 +59,15 @@ const ConfigFileTable = ({
     return (
       <>
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-medium text-gray-800">Configuration Files</h3>
+          <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">Configuration Files</h3>
           {showCompareButton && (
             <Button onClick={onCompareFiles} variant="primary">
               Compare Selected Files
             </Button>
           )}
         </div>
-        <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+          <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className="px-4 py-2">Select</th>
               <th className="px-4 py-2">Config Name</th>
@@ -77,13 +77,13 @@ const ConfigFileTable = ({
           </thead>
           <tbody>
             {configFiles.map((config) => (
-              <tr key={config.config_id} className="bg-white border-b hover:bg-gray-50">
+              <tr key={config.config_id} className="bg-white dark:bg-gray-800 border-b hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-4 py-2">
                   <input
                     type="checkbox"
                     checked={selectedConfigs.includes(config.config_id)}
                     onChange={() => onConfigSelection(config.config_id)}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                   />
                 </td>
                 <td className="px-4 py-2">
@@ -101,7 +101,7 @@ const ConfigFileTable = ({
                 </td>
               </tr>
             ))}
-            <tr className="bg-gray-50">
+            <tr className="bg-gray-50 dark:bg-gray-800">
               <td className="px-4 py-2"></td>
               <td className="px-4 py-2">
                 <input
@@ -110,7 +110,7 @@ const ConfigFileTable = ({
                   value={configFile.name}
                   onChange={onConfigChange}
                   placeholder="Enter configuration name"
-                  className={`w-full px-2 py-1 border rounded ${configFormErrors.name ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full px-2 py-1 border rounded ${configFormErrors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                 />
                 {configFormErrors.name && <p className="text-red-500 text-xs mt-1">{configFormErrors.name}</p>}
               </td>
@@ -120,7 +120,7 @@ const ConfigFileTable = ({
                   name="file"
                   onChange={onConfigChange}
                   accept=".txt,.csv,.json"
-                  className={`w-full px-2 py-1 border rounded ${configFormErrors.file ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full px-2 py-1 border rounded ${configFormErrors.file ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                   ref={configFileInputRef}
                 />
                 {configFormErrors.file && <p className="text-red-500 text-xs mt-1">{configFormErrors.file}</p>}
@@ -138,9 +138,9 @@ const ConfigFileTable = ({
   // Maintenance logs table
   return (
     <>
-      <h3 className="text-lg font-medium text-gray-800 mb-3">Maintenance Logs</h3>
-      <table className="w-full text-sm text-left text-gray-500 border border-gray-200">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+      <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-3">Maintenance Logs</h3>
+      <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+        <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-800">
           <tr>
             {columns.map(col => (
               <th key={col.accessor} className="px-4 py-2">{col.header}</th>
@@ -150,7 +150,7 @@ const ConfigFileTable = ({
         </thead>
         <tbody>
           {logs.map((log, index) => (
-            <tr key={index} className="bg-white border-b hover:bg-gray-50">
+            <tr key={index} className="bg-white dark:bg-gray-800 border-b hover:bg-gray-50 dark:hover:bg-gray-700">
               {editingLogId === log.maintenance_id ? (
                 <>
                   <td className="px-4 py-2">
@@ -185,9 +185,9 @@ const ConfigFileTable = ({
                       type="file"
                       name="file"
                       onChange={onEditChange}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                      className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Leave empty to keep current file</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave empty to keep current file</p>
                   </td>
                   <td className="px-4 py-2 space-x-2 flex">
                     <Button onClick={onSaveEdit} variant="success">Save</Button>
@@ -217,7 +217,7 @@ const ConfigFileTable = ({
               )}
             </tr>
           ))}
-          <tr className="bg-gray-50">
+          <tr className="bg-gray-50 dark:bg-gray-800">
             <td className="px-4 py-2">
               {renderInput({
                 type: "date",
@@ -242,7 +242,7 @@ const ConfigFileTable = ({
                 type="file"
                 name="file"
                 onChange={onNewLogChange}
-                className="w-full px-2 py-1 border border-gray-300 rounded"
+                className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                 ref={fileInputRef}
               />
             </td>

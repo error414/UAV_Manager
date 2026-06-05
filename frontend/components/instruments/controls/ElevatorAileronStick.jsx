@@ -59,7 +59,7 @@ const ElevatorAileronStick = ({
         {/* Stick handle */}
         <circle cx={adjustedX} cy={adjustedY} r={stickSize} fill="#555" stroke="#888" strokeWidth="2" />
       </svg>
-      <div className="text-xs text-gray-600 mt-1 font-mono w-full text-center whitespace-pre" style={{ height: '1.5rem' }}>
+      <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 font-mono w-full text-center whitespace-pre" style={{ height: '1.5rem' }}>
         E: {formatValue(elevatorValue)} A: {formatValue(aileronValue)}
       </div>
     </div>

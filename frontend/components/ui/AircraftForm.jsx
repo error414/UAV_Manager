@@ -93,17 +93,17 @@ const MaintenanceDatePair = ({ label, maintDate, onChange, formatDate, reminderD
           checked={reminderChecked}
           onChange={onReminderChange}
           disabled={disableCheckbox}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+          className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded"
         />
         <label
           htmlFor={`${maintDate}_reminder_active`}
-          className={`ml-2 text-sm ${disableCheckbox ? 'text-gray-400' : 'text-gray-700'}`}
+          className={`ml-2 text-sm ${disableCheckbox ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}
         >
           Send me a reminder {reminderMonthsBefore} months before expiry
         </label>
         {/* Show reason if reminder is disabled */}
         {!disableCheckbox || (
-          <span className="ml-2 text-xs text-gray-400">
+          <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
             (Reminder disabled: date within {reminderMonthsBefore} months)
           </span>
         )}
@@ -368,7 +368,7 @@ const AircraftForm = ({
         
         {/* Maintenance section */}
         <div className="flex items-center gap-2 pt-2">
-          <h3 className="text-lg font-medium text-black">Last Maintenance:</h3>
+          <h3 className="text-lg font-medium text-black dark:text-gray-100">Last Maintenance:</h3>
           <button
             type="button"
             onClick={handleSetTodayMaintDates}

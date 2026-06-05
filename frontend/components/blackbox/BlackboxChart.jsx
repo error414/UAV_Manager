@@ -152,22 +152,22 @@ const BlackboxChart = ({ blackboxLog, apiUrl }) => {
   };
 
   return (
-    <div className="bg-gray-50 p-4 rounded-lg shadow">
+    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow">
       {/* Header */}
       <div className="flex items-center mb-3">
         <button
-          className="text-gray-600 hover:text-gray-900 focus:outline-none mr-2"
+          className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none mr-2"
           onClick={() => setOpen(v => !v)}
           aria-label={open ? 'Collapse' : 'Expand'}
         >
           <span>{open ? '▲' : '▼'}</span>
         </button>
-        <h3 className="text-lg font-medium text-gray-800">Blackbox Chart</h3>
+        <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">Blackbox Chart</h3>
         <div className="flex-1" />
         <a
           href={`${apiUrl}/media/${blackboxLog}`}
           download
-          className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 mr-2"
+          className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 mr-2"
           title="Download decoded CSV"
         >
           Download CSV
@@ -177,7 +177,7 @@ const BlackboxChart = ({ blackboxLog, apiUrl }) => {
             const filename = getOriginalFilename(blackboxLog);
             downloadWithAuth(`${apiUrl}/api/blackbox-original/${filename}`, filename);
           }}
-          className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700"
+          className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
           title="Download original blackbox file"
         >
           Download Original
@@ -187,7 +187,7 @@ const BlackboxChart = ({ blackboxLog, apiUrl }) => {
       {open && (
         <>
           {loading && (
-            <p className="text-sm text-gray-500 py-6 text-center">Loading blackbox data…</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">Loading blackbox data…</p>
           )}
 
           {error && (
@@ -201,7 +201,7 @@ const BlackboxChart = ({ blackboxLog, apiUrl }) => {
                 <select
                   value={selectValue}
                   onChange={e => addColumn(e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                   <option value="">Add field…</option>
                   {available.map(col => (
@@ -229,7 +229,7 @@ const BlackboxChart = ({ blackboxLog, apiUrl }) => {
                 {isZoomed && (
                   <button
                     onClick={zoomOut}
-                    className="ml-auto px-3 py-1 text-xs rounded border border-gray-400 bg-white hover:bg-gray-100 text-gray-700"
+                    className="ml-auto px-3 py-1 text-xs rounded border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                   >
                     Zoom Out
                   </button>
@@ -239,7 +239,7 @@ const BlackboxChart = ({ blackboxLog, apiUrl }) => {
               {selected.length > 0 ? (
                 <>
                   {!isZoomed && (
-                    <p className="text-xs text-gray-400 mb-1 text-right">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 text-right">
                       Click and drag on the chart to zoom in
                     </p>
                   )}
@@ -303,7 +303,7 @@ const BlackboxChart = ({ blackboxLog, apiUrl }) => {
                   </ResponsiveContainer>
                 </>
               ) : (
-                <p className="text-sm text-gray-400 text-center py-10">
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-10">
                   Select a field above to display it in the chart.
                 </p>
               )}

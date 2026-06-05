@@ -10,7 +10,7 @@ const ArrowButton = ({
   const isLeft = direction === 'left';
   return (
     <button
-      className={`text-gray-600 hover:text-blue-600 hover:bg-gray-100 p-2 rounded-full transition-colors ${className}`}
+      className={`text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-full transition-colors ${className}`}
       onClick={onClick}
       title={title}
       disabled={disabled}

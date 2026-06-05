@@ -10,50 +10,24 @@ const ConfirmModal = ({
   if (!open) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.4)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000
-    }}>
-      <div style={{
-        background: '#fff',
-        borderRadius: 8,
-        minWidth: 320,
-        maxWidth: 400,
-        padding: 24,
-        boxShadow: '0 2px 16px rgba(0,0,0,0.2)'
-      }}>
-        <h2 style={{marginTop: 0}}>{title}</h2>
-        <div style={{margin: '16px 0', whiteSpace: 'pre-line'}}>{message}</div>
-        <div style={{display: 'flex', justifyContent: 'flex-end', gap: 8}}>
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40"
+    >
+      <div className="min-w-[320px] max-w-[400px] rounded-lg p-6 shadow-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+        <h2 className="mt-0 text-xl font-semibold">{title}</h2>
+        <div className="my-4 whitespace-pre-line">{message}</div>
+        <div className="flex justify-end gap-2">
           {cancelText && (
             <button
               onClick={onCancel}
-              style={{
-                background: '#eee',
-                border: 'none',
-                borderRadius: 4,
-                padding: '8px 16px',
-                cursor: 'pointer'
-              }}
+              className="rounded px-4 py-2 cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-100"
             >
               {cancelText}
             </button>
           )}
           <button
             onClick={onConfirm}
-            style={{
-              background: '#1976d2',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              padding: '8px 16px',
-              cursor: 'pointer'
-            }}
+            className="rounded px-4 py-2 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white"
           >
             {confirmText}
           </button>

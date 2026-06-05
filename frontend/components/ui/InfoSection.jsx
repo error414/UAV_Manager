@@ -3,23 +3,23 @@ import { useState, useEffect } from 'react';
 // Renders a label-value row
 const InfoRow = ({ label, value }) => (
   <div className="flex items-center">
-    <span className="font-semibold text-gray-700 w-40">{label}</span>
-    <span className="text-gray-900">{value}</span>
+    <span className="font-semibold text-gray-700 dark:text-gray-300 w-40">{label}</span>
+    <span className="text-gray-900 dark:text-gray-100">{value}</span>
   </div>
 );
 
 // Renders a label-value pair in a grid cell
 const GridInfo = ({ label, value }) => (
-  <div className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg bg-white shadow-sm min-h-[80px]">
-    <span className="font-semibold text-gray-700">{label}</span>
-    <span className="text-gray-900">{value}</span>
+  <div className="flex flex-col items-center justify-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-700 shadow-sm min-h-[80px]">
+    <span className="font-semibold text-gray-700 dark:text-gray-300">{label}</span>
+    <span className="text-gray-900 dark:text-gray-100">{value}</span>
   </div>
 );
 
 // Section container with title
-const InfoSection = ({ title, className = "bg-gray-50 p-4 rounded-lg shadow", children }) => (
+const InfoSection = ({ title, className = "bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow", children }) => (
   <div className={className}>
-    <h3 className="text-lg font-medium text-gray-800 mb-3">{title}</h3>
+    <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-3">{title}</h3>
     <div className="space-y-2">
       {children}
     </div>
@@ -28,8 +28,8 @@ const InfoSection = ({ title, className = "bg-gray-50 p-4 rounded-lg shadow", ch
 
 // Panel for displaying a list of label-value pairs
 const DataPanel = ({ title, items = [], columns = 1 }) => (
-    <div className="bg-white p-3 rounded-md shadow-sm">
-        {title && <h4 className="text-md font-medium text-gray-700 mb-2">{title}</h4>}
+    <div className="bg-white dark:bg-gray-700 p-3 rounded-md shadow-sm">
+        {title && <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">{title}</h4>}
         <div className="text-sm space-y-1">
             {items.map((item, index) => (
                 <p key={index}>
@@ -43,9 +43,9 @@ const DataPanel = ({ title, items = [], columns = 1 }) => (
 // Collapsible panel component
 const AccordionPanel = ({ title, isOpen, toggleOpen, children }) => {
   return (
-    <div className="bg-gray-50 p-2 rounded-lg shadow mb-2">
+    <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg shadow mb-2">
       <button
-        className="w-full flex items-center justify-between font-semibold text-gray-700"
+        className="w-full flex items-center justify-between font-semibold text-gray-700 dark:text-gray-300"
         onClick={toggleOpen}
       >
         {title}
@@ -108,10 +108,10 @@ const FlightInfoCard = ({ flight, hasGpsTrack = false }) => {
   if (!flight) return null;
 
   return (
-    <div className="bg-gray-50 p-4 rounded-lg shadow">
+    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow">
       <div className="flex items-center mb-3">
         <button
-          className="text-gray-600 hover:text-gray-900 focus:outline-none mr-2"
+          className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none mr-2"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? 'Collapse' : 'Expand'}
         >
@@ -121,7 +121,7 @@ const FlightInfoCard = ({ flight, hasGpsTrack = false }) => {
             <span>&#x25BC;</span> // Down arrow
           )}
         </button>
-        <h3 className="text-lg font-medium text-gray-800">Flight Information</h3>
+        <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">Flight Information</h3>
         <div className="flex-1" />
       </div>
       {open && (

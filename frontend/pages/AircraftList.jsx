@@ -290,7 +290,7 @@ const AircraftList = () => {
           {/* Desktop table container with dynamic height and white background */}
           <div className="hidden md:block md:flex flex-col w-full">
             <div
-              className="overflow-hidden rounded-lg border border-gray-200 shadow-md bg-white inline-block align-top"
+              className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-md bg-white dark:bg-gray-800 inline-block align-top"
               ref={tableContainerRef}
             >
               <ResponsiveTable

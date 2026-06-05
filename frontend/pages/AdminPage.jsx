@@ -353,7 +353,7 @@ const AdminPage = () => {
                   <Pagination currentPage={uavCurrentPage} totalPages={uavTotalPages} onPageChange={handleUavPageChange} />
                 </>
               ) : (
-                <div className="text-center py-1 bg-gray-100 rounded-md">This user has no registered aircraft.</div>
+                <div className="text-center py-1 bg-gray-100 dark:bg-gray-700 rounded-md">This user has no registered aircraft.</div>
               )}
               
               <div className="mt-2">
@@ -379,7 +379,7 @@ const AdminPage = () => {
                     <Pagination currentPage={flightLogCurrentPage} totalPages={flightLogTotalPages} onPageChange={setFlightLogCurrentPage} />
                   </>
                 ) : (
-                  <div className="text-center py-1 bg-gray-100 rounded-md">This user has no flight logs.</div>
+                  <div className="text-center py-1 bg-gray-100 dark:bg-gray-700 rounded-md">This user has no flight logs.</div>
                 )}
               </div>
             </div>

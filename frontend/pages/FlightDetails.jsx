@@ -721,14 +721,14 @@ const FlightDetails = () => {
         cancelText="Cancel"
         message={
           <div className="space-y-4">
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
               Please provide the initial departing heading and median speed for better flight path calculation.
             </p>
             
             {/* Required Parameters */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Initial Departing Heading (0-359°) *
                 </label>
                 <input
@@ -736,21 +736,21 @@ const FlightDetails = () => {
                   min="0"
                   max="359"
                   step="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., 90"
                   value={flightPathParams.heading}
                   onChange={(e) => setFlightPathParams(prev => ({ ...prev, heading: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Median Speed (km/h) *
                 </label>
                 <input
                   type="number"
                   min="0.1"
                   step="0.1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., 50"
                   value={flightPathParams.medianSpeed}
                   onChange={(e) => setFlightPathParams(prev => ({ ...prev, medianSpeed: e.target.value }))}
@@ -760,21 +760,21 @@ const FlightDetails = () => {
 
             {/* Circular Boundary Parameters */}
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Circular Flight Boundary (Optional)
               </h4>
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                 Set a circular boundary around the takeoff point. Drone will turn when approaching this limit.
               </p>
               <div className="w-1/2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                   Radius from Takeoff Point (meters)
                 </label>
                 <input
                   type="number"
                   min="0"
                   step="10"
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="e.g., 500"
                   value={flightPathParams.circularRadius}
                   onChange={(e) => setFlightPathParams(prev => ({ ...prev, circularRadius: e.target.value }))}
@@ -784,65 +784,65 @@ const FlightDetails = () => {
 
             {/* Rectangular Boundary Parameters */}
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Rectangular Flight Boundaries (Optional)
               </h4>
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                 Set maximum distances in meters from takeoff point. Drone will turn when approaching these limits.
                 Note: Circular boundary takes priority over rectangular boundaries if both are set.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                     North Boundary (meters)
                   </label>
                   <input
                     type="number"
                     min="0"
                     step="10"
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                     placeholder="e.g., 500"
                     value={flightPathParams.boundaryNorth}
                     onChange={(e) => setFlightPathParams(prev => ({ ...prev, boundaryNorth: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                     East Boundary (meters)
                   </label>
                   <input
                     type="number"
                     min="0"
                     step="10"
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                     placeholder="e.g., 300"
                     value={flightPathParams.boundaryEast}
                     onChange={(e) => setFlightPathParams(prev => ({ ...prev, boundaryEast: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                     South Boundary (meters)
                   </label>
                   <input
                     type="number"
                     min="0"
                     step="10"
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                     placeholder="e.g., 200"
                     value={flightPathParams.boundarySouth}
                     onChange={(e) => setFlightPathParams(prev => ({ ...prev, boundarySouth: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                     West Boundary (meters)
                   </label>
                   <input
                     type="number"
                     min="0"
                     step="10"
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                     placeholder="e.g., 400"
                     value={flightPathParams.boundaryWest}
                     onChange={(e) => setFlightPathParams(prev => ({ ...prev, boundaryWest: e.target.value }))}
@@ -939,7 +939,7 @@ const FlightDetails = () => {
               {/* Desktop: instrument panels side by side */}
               <div className="hidden lg:block">
                 <div
-                  className="bg-gray-50 p-4 rounded-lg shadow mb-4 flex justify-center gap-4"
+                  className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow mb-4 flex justify-center gap-4"
                   ref={instrumentsContainerRef}
                 >
                   <FlightInstruments 
@@ -950,7 +950,7 @@ const FlightDetails = () => {
                   />
                 </div>
                 <div className="flex flex-row gap-4 mb-4">
-                  <div className="bg-gray-50 p-2 rounded-lg shadow flex flex-col items-center justify-center flex-[0.5] min-w-0" ref={signalContainerRef}>
+                  <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg shadow flex flex-col items-center justify-center flex-[0.5] min-w-0" ref={signalContainerRef}>
                     <div className="w-full h-full flex items-center justify-center" style={{ maxHeight: controlSize * 0.9 }}>
                       <SignalStrengthIndicator
                         receiver_quality={currentGpsPoint?.receiver_quality ?? 0}
@@ -962,16 +962,16 @@ const FlightDetails = () => {
                       />
                     </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-row justify-center gap-4 flex-[2] min-w-0 items-center" ref={sticksContainerRef}>
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow flex flex-row justify-center gap-4 flex-[2] min-w-0 items-center" ref={sticksContainerRef}>
                     <FlightControlSticks currentGpsPoint={currentGpsPoint} size={controlSize} />
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col items-center flex-[0.5] min-w-0" ref={telemetryBoxRef}>
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col items-center flex-[0.5] min-w-0" ref={telemetryBoxRef}>
                     <TelemetryIndicators currentGpsPoint={currentGpsPoint} size={telemetrySize} />
                   </div>
                 </div>
               </div>
             </div>
-            <div className="bg-gray-50 p-4 rounded-lg shadow flex flex-col justify-between md:col-span-3 2xl:col-span-4" 
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col justify-between md:col-span-3 2xl:col-span-4" 
                  style={{ height: 'calc(100% - 1rem)' }}>
               <div className="flex-1" style={{ minHeight: '280px' }}>
                 <FlightMap
@@ -986,7 +986,7 @@ const FlightDetails = () => {
                   patchColorType={patchColorType}
                 />
               </div>
-              <div className="mt-2 pt-2 border-t border-gray-200">
+              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                 <GpsAnimationControls
                   isPlaying={isPlaying}
                   startAnimation={startAnimation}
@@ -1005,10 +1005,10 @@ const FlightDetails = () => {
             </div>
           </div>
           <div>
-            <div className="bg-gray-50 p-4 rounded-lg shadow">
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow">
               <div className="flex items-center mb-3">
                 <button
-                  className="text-gray-600 hover:text-gray-900 focus:outline-none mr-2"
+                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none mr-2"
                   onClick={() => setTelemetryOpen((v) => !v)}
                   aria-label={telemetryOpen ? 'Collapse' : 'Expand'}
                 >
@@ -1018,7 +1018,7 @@ const FlightDetails = () => {
                     <span>&#x25BC;</span> // Down arrow
                   )}
                 </button>
-                <h3 className="text-lg font-medium text-gray-800">Flight Telemetry</h3>
+                <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">Flight Telemetry</h3>
                 <div className="flex-1" />
               </div>
               {telemetryOpen && (

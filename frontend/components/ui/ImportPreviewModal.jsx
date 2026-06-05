@@ -45,17 +45,17 @@ const ImportPreviewModal = ({ show, onClose, onConfirm, csvData, fileName }) => 
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-[95vw] max-h-[90vh] flex flex-col">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[95vw] max-h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className="p-4 border-b">
                     <div className="flex justify-between items-center">
                         <div>
                             <h2 className="text-lg font-semibold">Import Preview: {fileName}</h2>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                                 Select rows to import ({selectedRows.size} of {csvData.rows.length} selected)
                             </p>
                         </div>
-                        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                        <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -65,9 +65,9 @@ const ImportPreviewModal = ({ show, onClose, onConfirm, csvData, fileName }) => 
 
                 {/* Table Container */}
                 <div className="overflow-auto flex-grow p-4">
-                    <table className="w-full text-sm text-left text-gray-500 table-fixed">
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400 table-fixed">
                         {/* Table Header */}
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
+                        <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
                         <tr>
                             <th className="p-2 pl-3 w-12 text-center">
                                 <input
@@ -91,12 +91,12 @@ const ImportPreviewModal = ({ show, onClose, onConfirm, csvData, fileName }) => 
                         </thead>
 
                         {/* Table Body */}
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {csvData.rows.map((row, rowIndex) => (
                             <tr
                                 key={rowIndex}
-                                className={`border-b hover:bg-gray-50 cursor-pointer ${
-                                    selectedRows.has(rowIndex) ? 'bg-blue-50' : 'bg-white'
+                                className={`border-b hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
+                                    selectedRows.has(rowIndex) ? 'bg-blue-50' : 'bg-white dark:bg-gray-800'
                                 }`}
                                 onClick={() => handleToggleRow(rowIndex)}
                             >
@@ -109,7 +109,7 @@ const ImportPreviewModal = ({ show, onClose, onConfirm, csvData, fileName }) => 
                                         className="w-4 h-4 cursor-pointer"
                                     />
                                 </td>
-                                <td className="py-2 px-3 text-center text-gray-500 w-16">
+                                <td className="py-2 px-3 text-center text-gray-500 dark:text-gray-400 w-16">
                                     {rowIndex + 1}
                                 </td>
                                 {csvData.headers.map((header, colIndex) => (
@@ -129,8 +129,8 @@ const ImportPreviewModal = ({ show, onClose, onConfirm, csvData, fileName }) => 
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t flex justify-between items-center bg-white">
-                    <div className="text-sm text-gray-600">
+                <div className="p-4 border-t flex justify-between items-center bg-white dark:bg-gray-800">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
                         {selectedRows.size === 0 && (
                             <span className="text-red-600">Please select at least one row to import</span>
                         )}

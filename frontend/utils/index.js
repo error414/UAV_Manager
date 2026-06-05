@@ -8,3 +8,4 @@ export * from './flightTimesUtils';
 export * from './uavIdUtils';
 export * from './flightPathUtils';
 export * from './colorUtils';
+export * from './themeUtils';

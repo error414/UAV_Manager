@@ -2,7 +2,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
   if (asTable) {
     // Render filters as a table row (desktop)
     return (
-        <tr className="table-row bg-gray-50">
+        <tr className="table-row bg-gray-50 dark:bg-gray-800">
           {fields.map(field => (
               <td key={field.name} className="p-2">
                 {field.type === 'select' ? (
@@ -10,7 +10,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
                         name={field.name}
                         value={filters[field.name] || ''}
                         onChange={onFilterChange}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                     >
                       <option value="">{field.placeholder}</option>
                       {field.name === 'uav' ? (
@@ -32,14 +32,14 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
                           name={`${field.name}_from`}
                           value={filters[`${field.name}_from`] || ""}
                           onChange={onFilterChange}
-                          className="w-full px-2 py-1 border border-gray-300 rounded"
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                       />
                       <input
                           type="date"
                           name={`${field.name}_to`}
                           value={filters[`${field.name}_to`] || ""}
                           onChange={onFilterChange}
-                          className="w-full px-2 py-1 border border-gray-300 rounded"
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                       />
                     </div>
                 ) : (
@@ -49,7 +49,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
                         placeholder={field.placeholder || ""}
                         value={filters[field.name] || ""}
                         onChange={onFilterChange}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                     />
                 )}
               </td>
@@ -61,17 +61,17 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
 
   // Mobile
   return (
-      <div className={`p-3 bg-gray-50 space-y-2 ${mobileFiltersVisible ? 'block' : 'hidden'}`}>
+      <div className={`p-3 bg-gray-50 dark:bg-gray-800 space-y-2 ${mobileFiltersVisible ? 'block' : 'hidden'}`}>
         {fields.map(field => (
             <div key={field.name} className="flex flex-col space-y-1">
-              <label className="text-xs font-medium text-gray-700">{field.label}</label>
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
 
               {field.type === 'select' ? (
                   <select
                       name={field.name}
                       value={filters[field.name] || ''}
                       onChange={onFilterChange}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                      className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                   >
                     <option value="">{field.placeholder}</option>
                     {field.name === 'uav' ? (
@@ -93,14 +93,14 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
                         name={`${field.name}_from`}
                         value={filters[`${field.name}_from`] || ""}
                         onChange={onFilterChange}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                     />
                     <input
                         type="date"
                         name={`${field.name}_to`}
                         value={filters[`${field.name}_to`] || ""}
                         onChange={onFilterChange}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                     />
                   </div>
               ) : (
@@ -110,7 +110,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
                       placeholder={field.placeholder || ""}
                       value={filters[field.name] || ""}
                       onChange={onFilterChange}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                      className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
                   />
               )}
             </div>

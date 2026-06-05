@@ -217,14 +217,14 @@ const Layout = ({ children, title, isOpen: externalIsOpen, toggleSidebar: extern
         
         {/* Version from public/app-version.json */}
         {appVersion && (
-          <div className="text-center mb-2 text-xs text-gray-500">
+          <div className="text-center mb-2 text-xs text-gray-500 dark:text-gray-400">
             Version {appVersion}
           </div>
         )}
         
         {userName && (
           <div className="p-3 border-t border-gray-800">
-            <div className="text-center mb-2 text-sm text-gray-400">
+            <div className="text-center mb-2 text-sm text-gray-400 dark:text-gray-500">
               {userName}
             </div>
             <Button 

@@ -6,43 +6,43 @@ export const GpsDataPanel = ({ gpsPoint, gpsStats }) => {
   if (!gpsPoint) return null;
   
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md w-full flex flex-col justify-between">
-      <h3 className="text-xl font-semibold text-gray-800 mb-4">Live GPS Data</h3>
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md w-full flex flex-col justify-between">
+      <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Live GPS Data</h3>
       <div className="flex-grow">
         <div className="mb-3">
-          <div className="text-gray-600 font-medium mb-1">Coordinates</div>
-          <div className="text-gray-800">Lat: {gpsPoint.latitude?.toFixed(6) || 'N/A'}</div>
-          <div className="text-gray-800">Lng: {gpsPoint.longitude?.toFixed(6) || 'N/A'}</div>
+          <div className="text-gray-600 dark:text-gray-300 font-medium mb-1">Coordinates</div>
+          <div className="text-gray-800 dark:text-gray-100">Lat: {gpsPoint.latitude?.toFixed(6) || 'N/A'}</div>
+          <div className="text-gray-800 dark:text-gray-100">Lng: {gpsPoint.longitude?.toFixed(6) || 'N/A'}</div>
         </div>
         <div className="flex mb-3 space-x-6">
           <div className="flex-1">
-            <div className="text-gray-600 font-medium mb-1">Altitude</div>
-            <div className="text-gray-800">{gpsPoint.altitude !== null && gpsPoint.altitude !== undefined ? `${gpsPoint.altitude.toFixed(1)} m` : '0.0 m'}</div>
+            <div className="text-gray-600 dark:text-gray-300 font-medium mb-1">Altitude</div>
+            <div className="text-gray-800 dark:text-gray-100">{gpsPoint.altitude !== null && gpsPoint.altitude !== undefined ? `${gpsPoint.altitude.toFixed(1)} m` : '0.0 m'}</div>
           </div>
           <div className="flex-1">
-            <div className="text-gray-600 font-medium mb-1">Vertical Speed</div>
-            <div className="text-gray-800">{gpsPoint.vertical_speed ? `${gpsPoint.vertical_speed.toFixed(1)} m/s` : 'N/A'}</div>
+            <div className="text-gray-600 dark:text-gray-300 font-medium mb-1">Vertical Speed</div>
+            <div className="text-gray-800 dark:text-gray-100">{gpsPoint.vertical_speed ? `${gpsPoint.vertical_speed.toFixed(1)} m/s` : 'N/A'}</div>
           </div>
         </div>
         <div className="mb-3">
-          <div className="text-gray-600 font-medium mb-1">Speed</div>
-          <div className="text-gray-800">{gpsPoint.speed ? `${gpsPoint.speed.toFixed(1)} km/h` : 'N/A'}</div>
+          <div className="text-gray-600 dark:text-gray-300 font-medium mb-1">Speed</div>
+          <div className="text-gray-800 dark:text-gray-100">{gpsPoint.speed ? `${gpsPoint.speed.toFixed(1)} km/h` : 'N/A'}</div>
         </div>
         <div className="mb-3">
-          <div className="text-gray-600 font-medium mb-1">Satellites</div>
-          <div className="text-gray-800">{gpsPoint.num_sat || 'N/A'}</div>
+          <div className="text-gray-600 dark:text-gray-300 font-medium mb-1">Satellites</div>
+          <div className="text-gray-800 dark:text-gray-100">{gpsPoint.num_sat || 'N/A'}</div>
         </div>
         <div className="mb-4">
-          <div className="text-gray-600 font-medium mb-1">Course</div>
-          <div className="text-gray-800">{gpsPoint.ground_course ? `${gpsPoint.ground_course.toFixed(1)}°` : 'N/A'}</div>
+          <div className="text-gray-600 dark:text-gray-300 font-medium mb-1">Course</div>
+          <div className="text-gray-800 dark:text-gray-100">{gpsPoint.ground_course ? `${gpsPoint.ground_course.toFixed(1)}°` : 'N/A'}</div>
         </div>
         
         {/* Statistics Box */}
         {gpsStats && (
           <div className="mt-2 border-t pt-3">
-            <div className="text-gray-600 font-medium mb-2">Statistics</div>
-            <div className="bg-gray-50 p-2 rounded-lg">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-gray-500">
+            <div className="text-gray-600 dark:text-gray-300 font-medium mb-2">Statistics</div>
+            <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
                 <div>
                   <span className="font-medium">Min Altitude:</span> {gpsStats.minAltitude !== null && gpsStats.minAltitude !== undefined ? `${gpsStats.minAltitude.toFixed(1)} m` : '0.0 m'}
                 </div>
@@ -158,7 +158,7 @@ const GpsAnimationControls = ({
             max={trackLength ? trackLength - 1 : 0}
             value={currentPointIndex}
             onChange={(e) => onPositionChange(parseInt(e.target.value, 10))}
-            className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer"
+            className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full appearance-none cursor-pointer"
             // Dynamic progress bar styling based on current position
             style={{
               background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${trackLength ? (currentPointIndex / (trackLength - 1)) * 100 : 0}%, #e5e7eb ${trackLength ? (currentPointIndex / (trackLength - 1)) * 100 : 0}%, #e5e7eb 100%)`,
@@ -166,7 +166,7 @@ const GpsAnimationControls = ({
             }}
           />
         </div>
-        <div className="flex justify-between text-sm text-gray-600 mt-2">
+        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300 mt-2">
           <span>Start</span>
           <span>Position: {currentPointIndex} / {trackLength - 1}</span>
           <span>Time: {Math.round((fullGpsData[currentPointIndex].timestamp - fullGpsData[0].timestamp) / 1000000)} s</span>

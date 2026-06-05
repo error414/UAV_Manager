@@ -24,7 +24,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
         name={fieldName}
         value={value}
         onChange={onChange}
-        className="w-full px-2 py-1 border border-gray-300 rounded"
+        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
       >
         <option value="">{isEditing ? `Select UAV` : fieldConfig.placeholder}</option>
         {uavOptions.map((uav) => (
@@ -42,7 +42,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
         value={value}
         onChange={(val) => onChange({ target: { name: fieldName, value: val } })}
         defaultOptionLabel={isEditing ? `Select country` : fieldConfig.placeholder}
-        className="w-full px-2 py-1 border border-gray-300 rounded"
+        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
       />
     );
   }
@@ -54,7 +54,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
         name={fieldName}
         value={value.toString()}
         onChange={onChange}
-        className="w-full px-2 py-1 border border-gray-300 rounded"
+        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
       >
         <option value="">Select {fieldConfig.header || fieldConfig.label}</option>
         <option value="true">Yes</option>
@@ -70,7 +70,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
         name={fieldName}
         value={value}
         onChange={onChange}
-        className="w-full px-2 py-1 border border-gray-300 rounded"
+        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
       >
         <option value="">{isEditing ? `Select ${fieldConfig.header}` : fieldConfig.placeholder}</option>
         {availableOptions.formOptions[fieldName].map((option) => (
@@ -87,7 +87,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
         name={fieldName}
         value={value}
         onChange={onChange}
-        className="w-full px-2 py-1 border border-gray-300 rounded"
+        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
       >
         <option value="">{fieldConfig.placeholder}</option>
         {fieldConfig.options.map((option) => (
@@ -110,7 +110,7 @@ const FormField = ({ fieldConfig, data, onChange, availableOptions }) => {
       placeholder={fieldConfig.placeholder}
       value={value}
       onChange={onChange}
-      className="w-full px-2 py-1 border border-gray-300 rounded"
+      className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
       step={fieldConfig.step}
       min={fieldConfig.min}
     />
@@ -185,7 +185,7 @@ const ResponsiveTable = ({
     
     return (
       <div 
-        className={`rounded-lg shadow mb-4 p-4 ${item.is_active === false ? 'bg-red-100' : 'bg-white'} ${rowClickable ? 'cursor-pointer' : ''}`}
+        className={`rounded-lg shadow mb-4 p-4 ${item.is_active === false ? 'bg-red-100 dark:bg-red-900/40' : 'bg-white dark:bg-gray-800'} ${rowClickable ? 'cursor-pointer' : ''}`}
         onClick={rowClickable ? () => onRowClick(item[idField]) : undefined}
       >
         {editingId === item[idField] ? (
@@ -194,7 +194,7 @@ const ResponsiveTable = ({
             {/* Render form fields for editing */}
             {columns.map((col) => (
               <div key={col.accessor} className="flex flex-col">
-                <label className="text-sm font-medium text-gray-700">{col.header}</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{col.header}</label>
                 {col.editable === false ? (
                   <span className="px-2 py-1">
                     {col.render ? col.render(editingData?.[col.accessor], editingData) : (editingData?.[col.accessor] ?? '')}
@@ -287,13 +287,13 @@ const ResponsiveTable = ({
         </div>
         
         {showAddRow && addFields && mobileAddNewVisible && (
-          <div className="mt-1 bg-white p-3 rounded-lg shadow border border-gray-200">
+          <div className="mt-1 bg-white dark:bg-gray-800 p-3 rounded-lg shadow border border-gray-200 dark:border-gray-700">
             <h3 className="font-medium text-lg mb-2">Add New</h3>
             <div className="space-y-2">
               {/* Render add fields */}
               {addFields.filter((field) => !field.noInput).map((field) => (
                 <div key={field.name} className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700">{field.label}</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
                   <FormField fieldConfig={field} data={newItem} onChange={onNewItemChange} availableOptions={availableOptions} />
                 </div>
               ))}
@@ -310,9 +310,9 @@ const ResponsiveTable = ({
           // Removed height/minHeight/maxHeight for auto-sizing
         }}
       >
-        <div className="flex-grow overflow-hidden rounded-lg border border-gray-200 shadow-md bg-white">
-          <table className={`w-full text-sm text-left text-gray-500 ${showActionColumn ? 'table-fixed' : ''}`} style={tableStyles}>
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
+        <div className="flex-grow overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-md bg-white dark:bg-gray-800">
+          <table className={`w-full text-sm text-left text-gray-500 dark:text-gray-400 ${showActionColumn ? 'table-fixed' : ''}`} style={tableStyles}>
+            <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
               <tr>
                 {columns.map((col) => (
                   <th key={col.accessor} className={`p-2 pl-3 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`}>
@@ -327,7 +327,7 @@ const ResponsiveTable = ({
               </tr>
             </thead>
             {!hideDesktopFilters && (
-              <tbody className="bg-gray-50">
+              <tbody className="bg-gray-50 dark:bg-gray-800">
                 <Filters 
                   fields={filterFields}
                   filters={filters}
@@ -338,11 +338,11 @@ const ResponsiveTable = ({
                 />
               </tbody>
             )}
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {data.map((item) => (
                   <tr 
                     key={item[idField]} 
-                    className={`${item.is_active === false ? 'bg-red-100' : 'bg-white'} border-b hover:bg-gray-50 ${rowClickable ? 'cursor-pointer' : ''}`}
+                    className={`${item.is_active === false ? 'bg-red-100 dark:bg-red-900/40' : 'bg-white dark:bg-gray-800'} border-b hover:bg-gray-50 dark:hover:bg-gray-700 ${rowClickable ? 'cursor-pointer' : ''}`}
                     onClick={rowClickable ? () => onRowClick(item[idField]) : undefined}
                   >
                     {editingId === item[idField] ? (
@@ -395,7 +395,7 @@ const ResponsiveTable = ({
                 ))}
             </tbody>
             {showAddRow && addFields && (
-              <tfoot className="bg-white border-t sticky bottom-0 z-10">
+              <tfoot className="bg-white dark:bg-gray-800 border-t sticky bottom-0 z-10">
                 <tr>
                   {/* Render add fields in footer */}
                   {addFields.map((field) => (

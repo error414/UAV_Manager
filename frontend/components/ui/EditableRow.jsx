@@ -45,7 +45,7 @@ const EditableRow = React.memo(({
             name="uav"
             value={editingData.uav}
             onChange={onEditChange}
-            className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
+            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring focus:ring-blue-100"
           >
             <option value="">Select UAV</option>
             {availableUAVs.map((uav) => (
@@ -66,7 +66,7 @@ const EditableRow = React.memo(({
             name={col.accessor}
             value={editingData[col.accessor]}
             onChange={onEditChange}
-            className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
+            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring focus:ring-blue-100"
           >
             <option value="">Select</option>
             {OPTIONS[col.accessor].map(option => (
@@ -99,7 +99,7 @@ const EditableRow = React.memo(({
           name={col.accessor}
           value={editingData[col.accessor] || ''}
           onChange={onEditChange}
-          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-100"
+          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring focus:ring-blue-100"
           {...inputProps}
         />
       </td>
@@ -113,7 +113,7 @@ const EditableRow = React.memo(({
         {isEditing ? (
           <div className="flex space-x-2">
             <button onClick={onSave} className="text-green-600 hover:text-green-800">Save</button>
-            <button onClick={onCancel} className="text-gray-600 hover:text-gray-800">Cancel</button>
+            <button onClick={onCancel} className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">Cancel</button>
             <button onClick={() => onDelete(log.flightlog_id)} className="text-red-600 hover:text-red-800">Delete</button>
           </div>
         ) : (
@@ -124,7 +124,7 @@ const EditableRow = React.memo(({
   };
 
   return (
-    <tr className="bg-white border-b hover:bg-gray-50 transition-colors">
+    <tr className="bg-white dark:bg-gray-800 border-b hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
       {columns.map(col => renderEditField(col))}
       {renderEditCell()}
     </tr>
