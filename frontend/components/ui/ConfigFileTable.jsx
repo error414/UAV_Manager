@@ -1,3 +1,5 @@
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from '../index';
 
 const ConfigFileTable = ({
@@ -16,6 +18,12 @@ const ConfigFileTable = ({
   onAddConfig,
   configFileInputRef,
   onCompareFiles,
+  editingConfigId,
+  editingConfig,
+  onEditConfig,
+  onEditConfigChange,
+  onSaveConfig,
+  onCancelEditConfig,
   
   // Maintenance log specific props
   logs = [],
@@ -76,7 +84,9 @@ const ConfigFileTable = ({
             </tr>
           </thead>
           <tbody>
-            {configFiles.map((config) => (
+            {configFiles.map((config) => {
+              const isEditing = editingConfigId === config.config_id;
+              return (
               <tr key={config.config_id} className="bg-white dark:bg-gray-800 border-b hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-4 py-2">
                   <input
@@ -87,7 +97,37 @@ const ConfigFileTable = ({
                   />
                 </td>
                 <td className="px-4 py-2">
-                  {config.name || 'N/A'}
+                  {isEditing ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        name="name"
+                        value={editingConfig.name}
+                        onChange={onEditConfigChange}
+                        placeholder="Configuration name"
+                        className="w-full px-2 py-1 border rounded border-gray-300 dark:border-gray-600"
+                      />
+                      <textarea
+                        name="note"
+                        value={editingConfig.note}
+                        onChange={onEditConfigChange}
+                        placeholder="Note (Markdown supported, shown on hover)"
+                        rows={4}
+                        className="w-full px-2 py-1 border rounded border-gray-300 dark:border-gray-600"
+                      />
+                    </div>
+                  ) : config.note ? (
+                    <span className="relative group inline-block">
+                      <span className="border-b border-dotted border-gray-400 cursor-help">
+                        {config.name || 'N/A'}
+                      </span>
+                      <div className="markdown-note invisible group-hover:visible absolute z-20 left-0 top-full mt-1 w-72 max-h-64 overflow-auto p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow-lg text-xs text-left text-gray-700 dark:text-gray-200 whitespace-normal normal-case">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{config.note}</ReactMarkdown>
+                      </div>
+                    </span>
+                  ) : (
+                    <span>{config.name || 'N/A'}</span>
+                  )}
                 </td>
                 <td className="px-4 py-2">
                   {config.file ? (
@@ -97,10 +137,21 @@ const ConfigFileTable = ({
                   ) : 'N/A'}
                 </td>
                 <td className="px-4 py-2">
-                  <Button onClick={() => onDeleteConfig(config.config_id)} variant="danger">Delete</Button>
+                  {isEditing ? (
+                    <div className="flex space-x-2">
+                      <Button onClick={onSaveConfig} variant="success">Save</Button>
+                      <Button onClick={onCancelEditConfig} variant="secondary">Cancel</Button>
+                    </div>
+                  ) : (
+                    <div className="flex space-x-2">
+                      <Button onClick={() => onEditConfig(config.config_id)} variant="primary">Edit</Button>
+                      <Button onClick={() => onDeleteConfig(config.config_id)} variant="danger">Delete</Button>
+                    </div>
+                  )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
             <tr className="bg-gray-50 dark:bg-gray-800">
               <td className="px-4 py-2"></td>
               <td className="px-4 py-2">

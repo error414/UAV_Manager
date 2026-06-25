@@ -21,6 +21,8 @@ const AircraftSettings = () => {
   });
   const [configFiles, setConfigFiles] = useState([]);
   const [configFormErrors, setConfigFormErrors] = useState({});
+  const [editingConfigId, setEditingConfigId] = useState(null);
+  const [editingConfig, setEditingConfig] = useState({ name: '', note: '' });
   const [deleteConfigId, setDeleteConfigId] = useState(null);
   const [showDeleteConfigModal, setShowDeleteConfigModal] = useState(false);
   const [editingLogId, setEditingLogId] = useState(null);
@@ -236,6 +238,47 @@ const AircraftSettings = () => {
       
     } catch (error) {
       setError("Failed to upload configuration file");
+    }
+  };
+
+  // Start editing a configuration file (name and note)
+  const handleEditConfig = configId => {
+    const config = configFiles.find(c => c.config_id === configId);
+    if (config) {
+      setEditingConfigId(configId);
+      setEditingConfig({ name: config.name || '', note: config.note || '' });
+    }
+  };
+
+  // Handle editing config input changes
+  const handleEditConfigChange = e => {
+    const { name, value } = e.target;
+    setEditingConfig(c => ({ ...c, [name]: value }));
+  };
+
+  // Cancel editing configuration file
+  const handleCancelEditConfig = () => {
+    setEditingConfigId(null);
+    setEditingConfig({ name: '', note: '' });
+  };
+
+  // Save edited configuration file (name and note)
+  const handleSaveConfig = async () => {
+    if (!editingConfig.name?.trim()) return;
+    try {
+      const result = await fetchData(
+        `/api/uav-configs/${editingConfigId}/`,
+        {},
+        'PATCH',
+        { name: editingConfig.name.trim(), note: editingConfig.note }
+      );
+      if (!result.error) {
+        await fetchConfigFiles();
+        setEditingConfigId(null);
+        setEditingConfig({ name: '', note: '' });
+      }
+    } catch (error) {
+      setError("Failed to update configuration file");
     }
   };
 
@@ -476,6 +519,12 @@ const AircraftSettings = () => {
               configFileInputRef={configFileInputRef}
               getFilenameFromUrl={getFilenameFromUrl}
               onCompareFiles={compareFiles}
+              editingConfigId={editingConfigId}
+              editingConfig={editingConfig}
+              onEditConfig={handleEditConfig}
+              onEditConfigChange={handleEditConfigChange}
+              onSaveConfig={handleSaveConfig}
+              onCancelEditConfig={handleCancelEditConfig}
             />
           </div>
           
