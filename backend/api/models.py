@@ -119,6 +119,7 @@ class UAVConfig(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uav_configurations')
     name = models.CharField(max_length=255)
     note = models.TextField(blank=True, default='')
+    script = models.TextField(blank=True, default='')
     upload_date = models.DateField()
     file = models.FileField(upload_to=uav_config_path)
     created_at = models.DateTimeField(auto_now_add=True)

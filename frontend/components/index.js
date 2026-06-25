@@ -12,6 +12,7 @@ export { default as EditableRow } from './ui/EditableRow';
 export { default as AircraftForm } from './ui/AircraftForm';
 export { default as Loading } from './ui/Loading';
 export { default as ConfirmModal } from './ui/ConfirmModal';
+export { default as ScriptModal } from './ui/ScriptModal';
 export { default as Pagination } from './ui/Pagination';
 export { getVisiblePageNumbers } from './ui/Pagination';
 export { default as AnimatedMarker } from './map/AnimatedMarker';

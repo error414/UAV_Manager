@@ -24,7 +24,8 @@ const ConfigFileTable = ({
   onEditConfigChange,
   onSaveConfig,
   onCancelEditConfig,
-  
+  onOpenScript,
+
   // Maintenance log specific props
   logs = [],
   columns,
@@ -145,6 +146,9 @@ const ConfigFileTable = ({
                   ) : (
                     <div className="flex space-x-2">
                       <Button onClick={() => onEditConfig(config.config_id)} variant="primary">Edit</Button>
+                      <Button onClick={() => onOpenScript(config.config_id)} variant="secondary">
+                        {config.script && config.script.trim() ? 'Edit Script' : 'Set Script'}
+                      </Button>
                       <Button onClick={() => onDeleteConfig(config.config_id)} variant="danger">Delete</Button>
                     </div>
                   )}

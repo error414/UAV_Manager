@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout, Button, Loading, ConfirmModal, CompareModal, ArrowButton, ConfigFileTable, InfoRow, GridInfo, InfoSection } from '../components';
+import { Layout, Button, Loading, ConfirmModal, CompareModal, ScriptModal, ArrowButton, ConfigFileTable, InfoRow, GridInfo, InfoSection } from '../components';
 import { maintenanceLogTableColumns, compareConfigFiles, na, formatFlightHours, formatDate, extractUavId } from '../utils';
 import { useAuth, useApi } from '../hooks';
 
@@ -25,6 +25,7 @@ const AircraftSettings = () => {
   const [editingConfig, setEditingConfig] = useState({ name: '', note: '' });
   const [deleteConfigId, setDeleteConfigId] = useState(null);
   const [showDeleteConfigModal, setShowDeleteConfigModal] = useState(false);
+  const [scriptConfigId, setScriptConfigId] = useState(null);
   const [editingLogId, setEditingLogId] = useState(null);
   const [editingLog, setEditingLog] = useState(null);
   const [deleteLogId, setDeleteLogId] = useState(null);
@@ -282,6 +283,30 @@ const AircraftSettings = () => {
     }
   };
 
+  // Open the script popup for a configuration file
+  const handleOpenScript = configId => {
+    setScriptConfigId(configId);
+  };
+
+  // Save the script for the currently open configuration (popup stays open)
+  const handleSaveScript = async (script) => {
+    if (scriptConfigId == null) return false;
+    try {
+      const result = await fetchData(
+        `/api/uav-configs/${scriptConfigId}/`,
+        {},
+        'PATCH',
+        { script }
+      );
+      if (result.error) return false;
+      await fetchConfigFiles();
+      return true;
+    } catch (error) {
+      setError("Failed to save script");
+      return false;
+    }
+  };
+
   // Show delete config confirmation modal
   const handleDeleteConfig = configId => {
     setDeleteConfigId(configId);
@@ -525,6 +550,7 @@ const AircraftSettings = () => {
               onEditConfigChange={handleEditConfigChange}
               onSaveConfig={handleSaveConfig}
               onCancelEditConfig={handleCancelEditConfig}
+              onOpenScript={handleOpenScript}
             />
           </div>
           
@@ -539,6 +565,14 @@ const AircraftSettings = () => {
         show={showCompareModal} 
         onClose={() => setShowCompareModal(false)} 
         data={comparisonData} 
+      />
+
+      <ScriptModal
+        open={scriptConfigId !== null}
+        configName={configFiles.find(c => c.config_id === scriptConfigId)?.name}
+        script={configFiles.find(c => c.config_id === scriptConfigId)?.script || ''}
+        onSave={handleSaveScript}
+        onClose={() => setScriptConfigId(null)}
       />
 
       <ConfirmModal

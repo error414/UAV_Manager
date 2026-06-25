@@ -112,14 +112,14 @@ class ExportService:
             writer = csv.writer(output)
             header = [
                 'config_id', 'uav_id', 'drone_name', 'name', 'note',
-                'upload_date', 'file_path'
+                'script', 'upload_date', 'file_path'
             ]
             writer.writerow(header)
             for config in uav_configs:
                 file_path = config.file.name if config.file else ''
                 row = [
                     config.config_id, config.uav_id, config.uav.drone_name,
-                    config.name, config.note, config.upload_date, file_path
+                    config.name, config.note, config.script, config.upload_date, file_path
                 ]
                 writer.writerow(row)
                 # Add config file to ZIP if present
