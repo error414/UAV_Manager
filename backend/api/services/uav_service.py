@@ -341,9 +341,10 @@ class FlightLogService:
             'error_count': 0,
             'errors': [],
             'unmapped_message': '',
-            'duplicate_message': ''  # Initialize this key
+            'duplicate_message': '',  # Initialize this key
+            'imported': []  # Created logs (id + identifying fields) for follow-up uploads
         }
-        
+
         unmapped_uavs = set()
         duplicate_entries = []
         
@@ -451,6 +452,17 @@ class FlightLogService:
                     
                     flight_log.save()
                     results['success_count'] += 1
+
+                    # Record the created log so the client can attach the matching
+                    # TeleLog file to its flightlog_id afterwards.
+                    results['imported'].append({
+                        'flightlog_id': flight_log.flightlog_id,
+                        'uav_id': uav.uav_id,
+                        'drone_name': uav.drone_name,
+                        'serial_number': uav.serial_number,
+                        'departure_date': str(departure_date_str),
+                        'departure_time': str(departure_time_str),
+                    })
                     
                 except Exception as e:
                     results['error_count'] += 1

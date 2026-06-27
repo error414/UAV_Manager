@@ -614,7 +614,8 @@ class FlightLogImportView(APIView):
                 'unmapped_count': import_results['unmapped_count'],
                 'error_count': import_results['error_count'],
                 'unmapped_message': import_results['unmapped_message'],
-                'duplicate_message': import_results.get('duplicate_message', '')
+                'duplicate_message': import_results.get('duplicate_message', ''),
+                'imported': import_results.get('imported', [])
             }
         }
         

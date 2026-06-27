@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Alert, Button, ResponsiveTable, ConfirmModal, Pagination, ImportPreviewModal } from '../components';
-import { getEnhancedFlightLogColumns, getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS, exportFlightLogToPDF, calculateFlightDuration, extractUavId } from '../utils';
+import { getEnhancedFlightLogColumns, getFlightFormFields, INITIAL_FLIGHT_STATE, FLIGHT_FORM_OPTIONS, exportFlightLogToPDF, calculateFlightDuration, extractUavId, parseGPSFile } from '../utils';
 import { useAuth, useApi, useUAVs, useQueryState } from '../hooks';
 
 const Flightlog = () => {
@@ -315,8 +315,50 @@ const Flightlog = () => {
     parseCSVFile(file);
   }, [parseCSVFile]);
 
+  // Upload the matched TeleLog files to their freshly created flight logs.
+  // Each created log is identified by uav + departure date/time so we can map a
+  // matched file (which knows its CSV row) to the new flightlog_id.
+  const uploadMatchedTeleLogs = useCallback(async (matchedLogFiles, importedLogs) => {
+    if (!matchedLogFiles?.length || !importedLogs?.length) {
+      return { uploaded: 0, failed: 0 };
+    }
+
+    let uploaded = 0;
+    let failed = 0;
+
+    for (const { row, file } of matchedLogFiles) {
+      const rowDate = row.Date || row.departure_date || '';
+      const rowTime = row['Timestamp-TO'] || row.departure_time || '';
+      const rowUav = row.ModelName || row.drone_name || row.uav_serial || '';
+
+      const target = importedLogs.find(e =>
+        e.departure_date === rowDate &&
+        e.departure_time === rowTime &&
+        (e.drone_name === rowUav || e.serial_number === rowUav)
+      );
+
+      if (!target) continue; // log wasn't created (duplicate/unmapped) — nothing to attach
+
+      try {
+        const { gpsData } = await parseGPSFile(file);
+        const result = await fetchData(
+          `/api/flightlogs/${target.flightlog_id}/gps/`, {}, 'POST', { gps_data: gpsData }
+        );
+        if (result.error) {
+          failed += 1;
+        } else {
+          uploaded += 1;
+        }
+      } catch {
+        failed += 1;
+      }
+    }
+
+    return { uploaded, failed };
+  }, [fetchData]);
+
   // Handle confirmed import with selected rows
-  const handleConfirmImport = useCallback(async (selectedRows) => {
+  const handleConfirmImport = useCallback(async (selectedRows, matchedLogFiles = []) => {
     setShowImportPreview(false);
     setIsLoading(true);
 
@@ -350,10 +392,21 @@ const Flightlog = () => {
         return;
       }
 
+      // Attach matched TeleLog files to the newly created flight logs.
+      const { uploaded, failed } = await uploadMatchedTeleLogs(
+        matchedLogFiles, result.details?.imported
+      );
+
+      let teleLogMessage = '';
+      if (uploaded > 0 || failed > 0) {
+        teleLogMessage = ` Attached ${uploaded} TeleLog file${uploaded === 1 ? '' : 's'}`;
+        teleLogMessage += failed > 0 ? ` (${failed} failed).` : '.';
+      }
+
       await fetchFlightLogs();
 
       setImportResult({
-        message: (result.message || '') + (result.details?.unmapped_message || '')
+        message: (result.message || '') + (result.details?.unmapped_message || '') + teleLogMessage
       });
     } catch (err) {
       setError('Failed to upload CSV. Please try again.');
@@ -362,7 +415,7 @@ const Flightlog = () => {
       setCsvPreviewData(null);
       setCsvFileName('');
     }
-  }, [API_URL, csvPreviewData, csvFileName, fetchFlightLogs, getAuthHeaders, handleAuthError]);
+  }, [API_URL, csvPreviewData, csvFileName, fetchFlightLogs, getAuthHeaders, handleAuthError, uploadMatchedTeleLogs]);
 
   const handleImportClick = useCallback(() => {
     if (fileInputRef.current) {
