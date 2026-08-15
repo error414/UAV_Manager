@@ -287,8 +287,21 @@ export const INITIAL_FLIGHT_STATE = {
   comments: ''
 };
 
-// Returns flight log form fields, UAV options are dynamic
+// Returns flight log form fields, UAV options are dynamic.
+// The order must mirror flightLogTableColumns: the table lines filters and the
+// add-new row up with the columns by position.
 export const getFlightFormFields = (availableUAVs = []) => [
+  { name: 'uav_image', label: '', type: 'none', noInput: true },
+  {
+    name: 'uav',
+    label: 'UAV',
+    type: 'select',
+    placeholder: 'Select UAV',
+    options: Array.isArray(availableUAVs) ? availableUAVs.map(uav => ({
+      value: uav.uav_id,
+      label: uav.drone_name
+    })) : []
+  },
   { name: 'departure_place', label: 'Departure Place', type: 'text', placeholder: 'Departure Place' },
   { name: 'date', label: 'Date', type: 'date_range', placeholder: 'Date' },
   { name: 'departure_time', label: 'Departure Time', type: 'time', placeholder: 'Departure Time', step: '1' },
@@ -297,19 +310,6 @@ export const getFlightFormFields = (availableUAVs = []) => [
   { name: 'flight_duration', label: 'Duration', type: 'number', placeholder: 'Duration (s)', step: '1', min: '0' },
   { name: 'takeoffs', label: 'T/O', type: 'number', placeholder: 'T/O', step: '1', min: '0' },
   { name: 'landings', label: 'LDG', type: 'number', placeholder: 'LDG', step: '1', min: '0' },
-  { name: 'light_conditions', label: 'Light', type: 'select', placeholder: 'Light', options: FLIGHT_FORM_OPTIONS.light_conditions },
-  { name: 'ops_conditions', label: 'OPS', type: 'select', placeholder: 'OPS', options: FLIGHT_FORM_OPTIONS.ops_conditions },
-  { name: 'pilot_type', label: 'Pilot Type', type: 'select', placeholder: 'Pilot Type', options: FLIGHT_FORM_OPTIONS.pilot_type },
-  { 
-    name: 'uav', 
-    label: 'UAV', 
-    type: 'select', 
-    placeholder: 'Select UAV',
-    options: Array.isArray(availableUAVs) ? availableUAVs.map(uav => ({
-      value: uav.uav_id,
-      label: uav.drone_name
-    })) : []
-  },
   {
     name: 'has_gps_log',
     label: 'GPS',

@@ -20,7 +20,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
         <tr className="table-row bg-gray-50 dark:bg-gray-800">
           {fields.map(field => (
               <td key={field.name} className="p-2">
-                {field.type === 'select' ? (
+                {field.type === 'none' ? null : field.type === 'select' ? (
                     <select
                         name={field.name}
                         value={filters[field.name] || ''}
@@ -67,7 +67,7 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
   // Mobile
   return (
       <div className={`p-3 bg-gray-50 dark:bg-gray-800 space-y-2 ${mobileFiltersVisible ? 'block' : 'hidden'}`}>
-        {fields.map(field => (
+        {fields.filter(field => field.type !== 'none').map(field => (
             <div key={field.name} className="flex flex-col space-y-1">
               <label className="text-xs font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
 

@@ -1,3 +1,5 @@
+import { createElement } from 'react';
+
 export const userTableColumns = [
   { header: 'Email', accessor: 'email' },
   { header: 'First Name', accessor: 'first_name' },
@@ -42,21 +44,23 @@ export const uavTableColumns = [
   { header: 'ACC', accessor: 'acc' },
 ];
 
+// Renders the aircraft picture of a flight log row, or nothing if the UAV has none.
+// Pictures are stored square (256x256), so they are shown 1:1 and unscaled in
+// shape. createElement instead of JSX: this module is a plain .js file.
+const renderUavImage = (uav) => {
+  if (!uav?.image) return '';
+  return createElement('img', {
+    src: uav.image,
+    alt: uav.drone_name || 'Aircraft',
+    className: 'h-8 w-8 aspect-square object-contain'
+  });
+};
+
 export const flightLogTableColumns = [
-  { header: 'Dept Place', accessor: 'departure_place' },
-  { header: 'Date', accessor: 'departure_date' },
-  { header: 'Dept Time', accessor: 'departure_time' },
-  { header: 'LDG Time', accessor: 'landing_time' },
-  { header: 'LDG Place', accessor: 'landing_place' },
-  { header: 'Duration', accessor: 'flight_duration' },
-  { header: 'T/O', accessor: 'takeoffs' },
-  { header: 'LDG', accessor: 'landings' },
-  { header: 'Light', accessor: 'light_conditions' },
-  { header: 'OPS', accessor: 'ops_conditions' },
-  { header: 'Pilot Type', accessor: 'pilot_type' },
-  { 
-    header: 'UAV', 
-    accessor: 'uav', 
+  { header: '', accessor: 'uav_image', editable: false, width: '48px', render: () => '' },
+  {
+    header: 'UAV',
+    accessor: 'uav',
     render: (value) => {
       // Prefer drone_name if available, otherwise fallback to uav_id or value
       if (value && typeof value === 'object' && value.drone_name) {
@@ -71,6 +75,14 @@ export const flightLogTableColumns = [
       return '';
     }
   },
+  { header: 'Dept Place', accessor: 'departure_place' },
+  { header: 'Date', accessor: 'departure_date' },
+  { header: 'Dept Time', accessor: 'departure_time' },
+  { header: 'LDG Time', accessor: 'landing_time' },
+  { header: 'LDG Place', accessor: 'landing_place' },
+  { header: 'Duration', accessor: 'flight_duration' },
+  { header: 'T/O', accessor: 'takeoffs' },
+  { header: 'LDG', accessor: 'landings' },
   {
     header: 'GPS',
     accessor: 'has_gps_log',
@@ -86,8 +98,25 @@ export const flightLogTableColumns = [
   { header: 'Comments', accessor: 'comments' }
 ];
 
+// Resolves the UAV of a flight log row against the known UAV list, since the
+// row itself only carries the id (or a UAV without its picture).
+const findRowUav = (value, availableUAVs) => {
+  if (!value) return null;
+  const uavId = typeof value === 'object' ? value.uav_id : value;
+  const found = availableUAVs.find(uav => uav.uav_id == uavId);
+  if (found) return found;
+  return typeof value === 'object' ? value : null;
+};
+
 export const getEnhancedFlightLogColumns = (availableUAVs) => {
   return flightLogTableColumns.map(col => {
+    if (col.accessor === 'uav_image') {
+      return {
+        ...col,
+        render: (_value, row) => renderUavImage(findRowUav(row?.uav, availableUAVs))
+      };
+    }
+
     if (col.accessor === 'uav') {
       return {
         ...col,
@@ -96,13 +125,13 @@ export const getEnhancedFlightLogColumns = (availableUAVs) => {
           if (value && typeof value === 'object' && value.drone_name) {
             return value.drone_name;
           }
-          
+
           if (value) {
             const uavId = typeof value === 'object' ? value.uav_id : value;
             const foundUav = availableUAVs.find(uav => uav.uav_id == uavId);
             return foundUav ? foundUav.drone_name : `UAV #${uavId}`;
           }
-          
+
           return '';
         }
       };

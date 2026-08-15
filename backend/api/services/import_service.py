@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import zipfile
 import tempfile
 from django.db import transaction
@@ -7,6 +8,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.conf import settings
 from ..models import UAV, FlightLog, MaintenanceLog, MaintenanceReminder, FlightGPSLog, UAVConfig
+from ..serializers import MAX_UAV_IMAGE_LENGTH
 
 class ImportService:
     @staticmethod
@@ -85,7 +87,9 @@ class ImportService:
                 if os.path.exists(uavs_path):
                     try:
                         with transaction.atomic():
-                            imported_count = ImportService._import_uavs(user, uavs_path, uav_mapping)
+                            imported_count = ImportService._import_uavs(
+                                user, uavs_path, uav_mapping, temp_dir
+                            )
                             result['details']['uavs_imported'] = imported_count
                     except Exception as e:
                         result['details']['errors'].append(f"UAVs import error: {str(e)}")
@@ -217,17 +221,55 @@ class ImportService:
                         pass  # Ignore if directory is no longer empty
 
     @staticmethod
-    def _import_uavs(user, uavs_path, uav_mapping):
+    def _resolve_uav_image(uav_data, old_id, temp_dir):
+        """Return the picture of an imported UAV as a data URI, or None.
+
+        Prefers the value carried in uavs.json; falls back to the picture file
+        the export writes alongside it (uavs/images/uav_<id>.<ext>), so an
+        archive stays importable either way.
+        """
+        image = uav_data.get('image')
+        if isinstance(image, str) and image.startswith('data:image/'):
+            return image if len(image) <= MAX_UAV_IMAGE_LENGTH else None
+
+        if old_id is None:
+            return None
+
+        images_dir = os.path.join(temp_dir, 'uavs', 'images')
+        if not os.path.isdir(images_dir):
+            return None
+
+        for file_name in os.listdir(images_dir):
+            stem, extension = os.path.splitext(file_name)
+            if stem != f'uav_{old_id}' or not extension:
+                continue
+
+            file_path = os.path.join(images_dir, file_name)
+            if os.path.getsize(file_path) > MAX_UAV_IMAGE_LENGTH * 3 // 4:
+                return None
+
+            with open(file_path, 'rb') as f:
+                payload = base64.b64encode(f.read()).decode('ascii')
+
+            extension = extension.lstrip('.').lower()
+            subtype = {'jpg': 'jpeg', 'svg': 'svg+xml'}.get(extension, extension)
+            return f'data:image/{subtype};base64,{payload}'
+
+        return None
+
+    @staticmethod
+    def _import_uavs(user, uavs_path, uav_mapping, temp_dir):
         """Import UAVs from JSON and return old->new ID mapping."""
         with open(uavs_path, 'r') as f:
             uavs_data = json.load(f)
-        
+
         imported_count = 0
         skipped_count = 0
-        
+
         for uav_data in uavs_data:
             old_id = uav_data.get('uav_id')
-            
+            image = ImportService._resolve_uav_image(uav_data, old_id, temp_dir)
+
             drone_name = uav_data.get('drone_name')
             manufacturer = uav_data.get('manufacturer')
             serial_number = uav_data.get('serial_number')
@@ -253,13 +295,19 @@ class ImportService:
                 existing_uav = existing_uavs.first()
             
             if existing_uav:
+                # The UAV itself is left untouched, but an archive may still
+                # carry a picture for one that doesn't have any yet.
+                if image and not existing_uav.image:
+                    existing_uav.image = image
+                    existing_uav.save(update_fields=['image'])
+
                 # Add mapping for reference in logs
                 if old_id:
                     uav_mapping[old_id] = existing_uav.uav_id
-                    
+
                 skipped_count += 1
                 continue
-            
+
             # Extract maintenance reminder fields before removing them
             maintenance_data = {}
             maintenance_fields = [
@@ -279,7 +327,14 @@ class ImportService:
                 'props_reminder_active', 'motor_reminder_active', 'frame_reminder_active'
             ])
             uav_data['user'] = user
-            
+
+            # Replace whatever the JSON held with the validated picture, so a
+            # missing or malformed one is never stored
+            if image:
+                uav_data['image'] = image
+            else:
+                uav_data.pop('image', None)
+
             try:
                 new_uav = UAV.objects.create(**uav_data)
                 

@@ -1,6 +1,9 @@
 import os
+import re
 import json
 import csv
+import base64
+import binascii
 import zipfile
 import tempfile
 from datetime import datetime
@@ -64,23 +67,49 @@ class ExportService:
             output = StringIO()
             writer = csv.writer(output)
             header = [
-                'uav_id', 'drone_name', 'manufacturer', 'type', 'motors', 
+                'uav_id', 'drone_name', 'manufacturer', 'type', 'motors',
                 'motor_type', 'video', 'video_system', 'esc', 'esc_firmware',
                 'receiver', 'receiver_firmware', 'flight_controller', 'firmware',
                 'firmware_version', 'gps', 'mag', 'baro', 'gyro', 'acc',
-                'registration_number', 'serial_number', 'is_active'
+                'registration_number', 'serial_number', 'is_active', 'image_file'
             ]
             writer.writerow(header)
             for uav in uavs:
+                # The picture is also written out as a real image file so the
+                # export stays viewable outside the app (uavs.json keeps the
+                # data URI, which is what an import reads back).
+                image_path = ExportService._write_uav_image(zip_file, uav)
                 row = [
                     uav.uav_id, uav.drone_name, uav.manufacturer, uav.type, uav.motors,
                     uav.motor_type, uav.video, uav.video_system, uav.esc, uav.esc_firmware,
                     uav.receiver, uav.receiver_firmware, uav.flight_controller, uav.firmware,
                     uav.firmware_version, uav.gps, uav.mag, uav.baro, uav.gyro, uav.acc,
-                    uav.registration_number, uav.serial_number, uav.is_active
+                    uav.registration_number, uav.serial_number, uav.is_active, image_path
                 ]
                 writer.writerow(row)
             zip_file.writestr('uavs/uavs.csv', output.getvalue())
+
+    @staticmethod
+    def _write_uav_image(zip_file, uav):
+        """Decode a UAV's base64 data URI into the ZIP. Returns the path used, or ''."""
+        if not uav.image:
+            return ''
+
+        match = re.match(r'^data:image/([a-zA-Z0-9.+-]+);base64,(.*)$', uav.image, re.DOTALL)
+        if not match:
+            return ''
+
+        subtype, payload = match.groups()
+        extension = {'jpeg': 'jpg', 'svg+xml': 'svg'}.get(subtype.lower(), subtype.lower())
+
+        try:
+            content = base64.b64decode(payload)
+        except (binascii.Error, ValueError):
+            return ''
+
+        path = f'uavs/images/uav_{uav.uav_id}.{extension}'
+        zip_file.writestr(path, content)
+        return path
     
     @staticmethod
     def _export_uav_configs(zip_file, user):

@@ -93,6 +93,8 @@ class UAV(models.Model):
     acc = models.CharField(max_length=100, blank=True, null=True)
     registration_number = models.CharField(max_length=100, blank=True, null=True)
     serial_number = models.CharField(max_length=100, blank=True, null=True)
+    # Aircraft picture, stored in the DB as a 256x256 base64 data URI
+    image = models.TextField(blank=True, null=True)
     custom_attributes = models.JSONField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

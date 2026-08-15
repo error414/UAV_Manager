@@ -5,6 +5,10 @@ from .models import UserSettings, UAV, FlightLog, MaintenanceLog, MaintenanceRem
 
 User = get_user_model()
 
+# Upper bound for the base64 data URI of a UAV image (a 256x256 picture stays
+# far below this; the limit only guards against oversized payloads).
+MAX_UAV_IMAGE_LENGTH = 2 * 1024 * 1024
+
 class CustomUserCreateSerializer(BaseUserCreateSerializer):
     class Meta(BaseUserCreateSerializer.Meta):
         model = User
@@ -46,6 +50,17 @@ class UAVSerializer(serializers.ModelSerializer):
         model = UAV
         fields = '__all__'
         read_only_fields = ('created_at', 'updated_at')
+
+    def validate_image(self, value):
+        # The image is stored inline in the DB as a base64 data URI (256x256,
+        # produced by the client), so reject anything that isn't one.
+        if not value:
+            return value
+        if not value.startswith('data:image/'):
+            raise serializers.ValidationError("Image must be a base64 data URI (data:image/...).")
+        if len(value) > MAX_UAV_IMAGE_LENGTH:
+            raise serializers.ValidationError("Image is too large.")
+        return value
 
     def validate_drone_name(self, value):
         user = self.context['request'].user
@@ -89,9 +104,20 @@ class UAVSerializer(serializers.ModelSerializer):
 
         return uav
 
+class NestedUAVSerializer(UAVSerializer):
+    """UAV as embedded in a flight log.
+
+    Drops the image, which would otherwise be repeated for every row of a
+    flight log page. The flight log UI resolves pictures from the UAV list.
+    """
+    class Meta(UAVSerializer.Meta):
+        fields = None
+        exclude = ('image',)
+
+
 class FlightLogSerializer(serializers.ModelSerializer):
     # Use full UAV serializer for read operations
-    uav = UAVSerializer(read_only=True)
+    uav = NestedUAVSerializer(read_only=True)
     # Accept UAV ID for write operations
     uav_id = serializers.IntegerField(write_only=True)
 
@@ -129,7 +155,7 @@ class FlightGPSLogSerializer(serializers.ModelSerializer):
 
 class FlightLogWithGPSSerializer(serializers.ModelSerializer):
     # Use full UAV serializer for frontend compatibility
-    uav = UAVSerializer(read_only=True)
+    uav = NestedUAVSerializer(read_only=True)
     gps_logs = FlightGPSLogSerializer(many=True, read_only=True)
     # Accept UAV ID for write operations
     uav_id = serializers.IntegerField(write_only=True, required=False)

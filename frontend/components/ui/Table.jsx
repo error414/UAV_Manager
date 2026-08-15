@@ -219,7 +219,7 @@ const ResponsiveTable = ({
                 {/* First half of columns */}
                 {contentColumns.slice(0, halfLength).map((col) => (
                   <p key={col.accessor} className="text-sm mb-1">
-                    <span className="font-medium">{col.header}:</span>{' '}
+                    {col.header && <span className="font-medium">{col.header}:{' '}</span>}
                     {col.render ? col.render(item[col.accessor], item) : (item[col.accessor] || 'N/A')}
                   </p>
                 ))}
@@ -228,7 +228,7 @@ const ResponsiveTable = ({
                 {/* Second half of columns */}
                 {contentColumns.slice(halfLength).map((col) => (
                   <p key={col.accessor} className="text-sm mb-1">
-                    <span className="font-medium">{col.header}:</span>{' '}
+                    {col.header && <span className="font-medium">{col.header}:{' '}</span>}
                     {col.render ? col.render(item[col.accessor], item) : (item[col.accessor] || 'N/A')}
                   </p>
                 ))}
@@ -315,7 +315,11 @@ const ResponsiveTable = ({
             <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
               <tr>
                 {columns.map((col) => (
-                  <th key={col.accessor} className={`p-2 pl-3 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`}>
+                  <th
+                    key={col.accessor}
+                    className={`p-2 pl-3 overflow-hidden text-ellipsis whitespace-nowrap ${getColumnClasses(col)}`}
+                    style={col.width ? { width: col.width } : undefined}
+                  >
                     {col.header}
                   </th>
                 ))}

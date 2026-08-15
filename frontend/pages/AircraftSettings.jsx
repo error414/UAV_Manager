@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout, Button, Loading, ConfirmModal, CompareModal, ScriptModal, ArrowButton, ConfigFileTable, InfoRow, GridInfo, InfoSection } from '../components';
-import { maintenanceLogTableColumns, compareConfigFiles, na, formatFlightHours, formatDate, extractUavId } from '../utils';
+import { Layout, Alert, Button, Loading, ConfirmModal, CompareModal, ScriptModal, ArrowButton, ConfigFileTable, InfoRow, GridInfo, InfoSection } from '../components';
+import { maintenanceLogTableColumns, compareConfigFiles, na, formatFlightHours, formatDate, extractUavId, resizeImageToDataUrl, UAV_IMAGE_SIZE } from '../utils';
 import { useAuth, useApi } from '../hooks';
 
 const AircraftSettings = () => {
@@ -12,7 +12,8 @@ const AircraftSettings = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const configFileInputRef = useRef(null);
-  
+  const imageInputRef = useRef(null);
+
   const [aircraft, setAircraft] = useState(null);
   const [newLog, setNewLog] = useState({ event_type: 'LOG', description: '', event_date: '', file: null });
   const [configFile, setConfigFile] = useState({
@@ -40,6 +41,7 @@ const AircraftSettings = () => {
 
   const [minUavId, setMinUavId] = useState(null);
   const [maxUavId, setMaxUavId] = useState(null);
+  const [imageSaving, setImageSaving] = useState(false);
 
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
   const { fetchData } = useApi(API_URL, setError);
@@ -185,6 +187,37 @@ const AircraftSettings = () => {
       return false;
     }
   };
+
+  // Store the aircraft picture (a data URI) on the UAV record
+  const saveAircraftImage = async (image) => {
+    setImageSaving(true);
+    try {
+      // fetchData reports the backend message through setError on failure
+      const result = await fetchData(`/api/uavs/${uavId}/`, {}, 'PATCH', { image });
+      if (result.error) return;
+
+      setAircraft(a => ({ ...a, image }));
+      setError(null);
+    } finally {
+      setImageSaving(false);
+    }
+  };
+
+  // Scale the picked file down to 256x256 before storing it
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    try {
+      const dataUrl = await resizeImageToDataUrl(file, UAV_IMAGE_SIZE);
+      await saveAircraftImage(dataUrl);
+    } catch (err) {
+      setError(err.message || 'Failed to process the image');
+    }
+  };
+
+  const handleRemoveImage = () => saveAircraftImage(null);
 
   // Handle config file input changes
   const handleConfigChange = e => {
@@ -478,14 +511,52 @@ const AircraftSettings = () => {
           disabled={maxUavId === null || uavId >= maxUavId}
         />
       </div>
+      <Alert type="error" message={error} />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6">
+          <InfoSection title="Image">
+            <div className="flex items-center gap-4">
+              <div className="h-32 w-32 flex-shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                {aircraft.image ? (
+                  <img src={aircraft.image} alt={aircraft.drone_name} className="h-full w-full aspect-square object-contain" />
+                ) : (
+                  <span className="text-xs text-gray-400 dark:text-gray-500">No image</span>
+                )}
+              </div>
+              <div className="flex flex-col items-start gap-2">
+                <Button
+                  onClick={() => imageInputRef.current?.click()}
+                  variant="primary"
+                  disabled={imageSaving}
+                >
+                  {aircraft.image ? 'Replace Image' : 'Upload Image'}
+                </Button>
+                {aircraft.image && (
+                  <Button onClick={handleRemoveImage} variant="secondary" disabled={imageSaving}>
+                    Remove Image
+                  </Button>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Scaled to {UAV_IMAGE_SIZE}x{UAV_IMAGE_SIZE} px.
+                </p>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                ref={imageInputRef}
+                onChange={handleImageChange}
+                style={{ display: 'none' }}
+              />
+            </div>
+          </InfoSection>
+
           <InfoSection title="General Information">
             <InfoRow label="Drone Name:" value={na(aircraft.drone_name)} />
             <InfoRow label="Manufacturer:" value={na(aircraft.manufacturer)} />
             <InfoRow label="Type:" value={na(aircraft.type)} />
           </InfoSection>
-          
+
           <InfoSection title="Motors">
             <InfoRow label="Motors:" value={na(aircraft.motors)} />
             <InfoRow label="Type of Motor:" value={na(aircraft.motor_type)} />

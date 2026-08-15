@@ -183,6 +183,11 @@ const Flightlog = () => {
       flight_duration: parseInt(flightData.flight_duration) || 0,
       takeoffs: parseInt(flightData.takeoffs) || 1,
       landings: parseInt(flightData.landings) || 1,
+      // These are no longer columns of this table, but the backend still
+      // requires them; existing logs keep their value, new ones get the default.
+      light_conditions: flightData.light_conditions || 'Day',
+      ops_conditions: flightData.ops_conditions || 'VLOS',
+      pilot_type: flightData.pilot_type || 'PIC',
       comments: flightData.comments || '',
       user: userId
     };
@@ -190,7 +195,7 @@ const Flightlog = () => {
 
   const handleNewFlightAdd = useCallback(async () => {
     const requiredFields = ['departure_date', 'departure_time', 'landing_time', 'uav',
-      'departure_place', 'landing_place', 'light_conditions', 'ops_conditions', 'pilot_type'];
+      'departure_place', 'landing_place'];
 
     const missingFields = requiredFields.filter(field => !newFlight[field]);
     if (missingFields.length > 0) {
