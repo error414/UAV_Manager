@@ -1,4 +1,19 @@
+import DateRangePicker from './DateRangePicker';
+
 const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = false, mobileFiltersVisible = true }) => {
+  // A range is a single user action, so both bounds are emitted as one change.
+  // `values` lets the consumer apply them together instead of one overwriting
+  // the other in a debounce window.
+  const handleRangeChange = (field) => ({ from, to }) => onFilterChange({
+    target: {
+      name: field.name,
+      values: {
+        [`${field.name}_from`]: from,
+        [`${field.name}_to`]: to
+      }
+    }
+  });
+
   if (asTable) {
     // Render filters as a table row (desktop)
     return (
@@ -26,22 +41,12 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
                       )}
                     </select>
                 ) : field.type === 'date_range' ? (
-                    <div className="flex flex-col gap-1">
-                      <input
-                          type="date"
-                          name={`${field.name}_from`}
-                          value={filters[`${field.name}_from`] || ""}
-                          onChange={onFilterChange}
-                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
-                      />
-                      <input
-                          type="date"
-                          name={`${field.name}_to`}
-                          value={filters[`${field.name}_to`] || ""}
-                          onChange={onFilterChange}
-                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
-                      />
-                    </div>
+                    <DateRangePicker
+                        from={filters[`${field.name}_from`] || ""}
+                        to={filters[`${field.name}_to`] || ""}
+                        onChange={handleRangeChange(field)}
+                        placeholder={field.placeholder || "Any date"}
+                    />
                 ) : (
                     <input
                         type={field.type}
@@ -87,22 +92,12 @@ const Filters = ({ fields, filters, onFilterChange, availableOptions, asTable = 
                     )}
                   </select>
               ) : field.type === 'date_range' ? (
-                  <div className="flex flex-col gap-1">
-                    <input
-                        type="date"
-                        name={`${field.name}_from`}
-                        value={filters[`${field.name}_from`] || ""}
-                        onChange={onFilterChange}
-                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
-                    />
-                    <input
-                        type="date"
-                        name={`${field.name}_to`}
-                        value={filters[`${field.name}_to`] || ""}
-                        onChange={onFilterChange}
-                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
-                    />
-                  </div>
+                  <DateRangePicker
+                      from={filters[`${field.name}_from`] || ""}
+                      to={filters[`${field.name}_to`] || ""}
+                      onChange={handleRangeChange(field)}
+                      placeholder={field.placeholder || "Any date"}
+                  />
               ) : (
                   <input
                       type={field.type || "text"}

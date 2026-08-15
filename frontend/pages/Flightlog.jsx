@@ -20,6 +20,7 @@ const Flightlog = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [pageSize, setPageSize] = useState(17);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [sortField, setSortField] = useState('-departure_date,-departure_time');
   const [debouncedFilters, setDebouncedFilters] = useState({});
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -37,6 +38,7 @@ const Flightlog = () => {
 
   const fileInputRef = useRef(null);
   const filterTimer = useRef(null);
+  const pendingFilters = useRef({});
   const tableContainerRef = useRef(null);
 
   const { getAuthHeaders, handleAuthError, checkAuthAndGetUser } = useAuth();
@@ -83,6 +85,7 @@ const Flightlog = () => {
       }
 
       setIsLoading(false);
+      setHasLoadedOnce(true);
       return result;
     });
   }, [runAuthenticatedOperation, fetchData, debouncedFilters, currentPage, pageSize, sortField]);
@@ -137,14 +140,32 @@ const Flightlog = () => {
   }, []);
 
   const handleFilterChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-    if (filterTimer.current) clearTimeout(filterTimer.current);
-    filterTimer.current = setTimeout(() => {
+    const { name, value, values } = e.target;
+    // `values` is sent by composite filters (date range) that change several
+    // keys at once; a plain input only ever changes its own key.
+    const patch = values || { [name]: value };
+
+    setFilters(prev => ({ ...prev, ...patch }));
+
+    // Collect pending changes so a filter edited during the debounce window is
+    // not dropped by the next one.
+    pendingFilters.current = { ...pendingFilters.current, ...patch };
+
+    const applyPending = () => {
+      const pending = pendingFilters.current;
+      pendingFilters.current = {};
       setCurrentPage(1);
-      setDebouncedFilters(f => ({ ...f, [name]: value }));
+      setDebouncedFilters(f => ({ ...f, ...pending }));
       // Query string is updated by useEffect
-    }, 500);
+    };
+
+    if (filterTimer.current) clearTimeout(filterTimer.current);
+    if (values) {
+      // Already an explicit, committed selection - no need to wait for typing
+      applyPending();
+    } else {
+      filterTimer.current = setTimeout(applyPending, 500);
+    }
   }, []);
 
   const handleNewFlightChange = useCallback((e) => handleFormChange(setNewFlight, e, false), [handleFormChange]);
@@ -566,12 +587,20 @@ const Flightlog = () => {
       <Layout title="Flight Log">
         <Alert type="error" message={error} />
 
-        {isLoading ? (
+        {isLoading && !hasLoadedOnce ? (
             <div className="flex justify-center py-4">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
             </div>
         ) : (
-            <div className="flex flex-col h-full" style={{ height: "calc(100vh - 50px)" }}>
+            /* After the first load the grid stays mounted while refetching, so
+               open filter controls (e.g. the date range picker) keep their
+               state instead of being torn down on every reload. */
+            <div className="relative flex flex-col h-full" style={{ height: "calc(100vh - 50px)" }}>
+              {isLoading && (
+                  <div className="pointer-events-none absolute left-1/2 top-2 z-20 -translate-x-1/2">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                  </div>
+              )}
               <div className="xl:hidden mt-0.5 mb-0.5 w-full">
                 <Button
                     onClick={toggleMobileFilters}

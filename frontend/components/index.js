@@ -4,6 +4,7 @@ export { default as Alert } from './ui/Alert';
 export { default as Button } from './ui/Button';
 export { default as ArrowButton } from './ui/ArrowButton';
 export { default as Filters } from './ui/Filters';
+export { default as DateRangePicker } from './ui/DateRangePicker';
 export { default as ResponsiveTable } from './ui/Table';
 export { default as AddNew } from './ui/AddNew';
 export { default as Sidebar } from './ui/Layout';
